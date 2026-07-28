@@ -1,0 +1,81 @@
+# ogviz
+
+Shared matplotlib figure code: style, violins, significance brackets, bar panels. Colours,
+p-values and units are passed in.
+
+```bash
+uv add "ogviz @ git+https://github.com/OrenGurevitch/ogviz"
+```
+
+```python
+from ogviz import group_violins, save, titled, use_house_style, value_ticks
+
+use_house_style()
+fig, ax = plt.subplots(figsize=(7, 8))
+group_violins(ax, [(0.0, control, "#E8A838", "#B97C10"),
+                   (1.0, treated, "#7C9A6E", "#4A6136")],
+              comparisons=[(0.0, 1.0, p_value)], display_scale=1e3)
+value_ticks(ax, count=4, scale=1e3)
+titled(fig, "Two groups")
+save(fig, out_dir, "figure")
+```
+
+## Testing
+
+`uv run just` — lint, format, typecheck, test. `uv run just strict` turns deprecations into
+errors. CI runs matplotlib 3.10 and 3.11.
+
+## Examples
+
+`uv run just figures` renders `examples/out/` from made-up data with fixed seeds, PNG and SVG. Source:
+`examples/__main__.py`.
+
+| | |
+|---|---|
+| ![](examples/out/01_two_group_violin.png) | ![](examples/out/02_display_units.png) |
+| `group_violins` — marks, limits, printed means, bracket | `display_scale` — stored in ppm, drawn in ppb |
+| ![](examples/out/03_stacked_brackets.png) | ![](examples/out/04_grouped_bars.png) |
+| `bracket_stack` — stars anchored by their ink | `bar_panel` — signed bars, sign-aware labels |
+| ![](examples/out/05_bars_with_reference.png) | ![](examples/out/06_horizontal.png) |
+| asymmetric CI, a reference line, labels knock out what they cross | `orientation="horizontal"` |
+| ![](examples/out/07_split_violins.png) | ![](examples/out/08_headline_bars.png) |
+| `split_violins` — one quantity, two measurements | `rounded` / `highlight` / `reference_band` |
+| ![](examples/out/09_coupling_panels.png) | ![](examples/out/10_violin_grid.png) |
+| `coupling_panels` — pairs above, their estimates and stars on one scale below | a 2x2 grid of `group_violins` on one shared scale |
+| ![](examples/out/11_effort_curves.png) | ![](examples/out/12_comparison_table.png) |
+| `line_panel` — measured points, log money axis, `broken_zero` marks the cut | `table_panel` — highlighted column, shaded best value, `caption` |
+
+## Captions
+
+Off unless asked for. `caption(fig, note, heading=...)` puts a bold claim above the figure and a
+grey source note below, both wrapped to the figure width — measured from the render and re-wrapped
+until they fit, at any figure size. A word too long to break is reported by name rather than shrunk.
+
+## Checks
+
+`save` runs `ogviz.qc.assert_clean` and raises instead of writing. It catches:
+
+- text that collides, or sits under 5 px from its neighbour on the same row
+- text sitting on the marks, or crossing a gridline with nothing behind it
+- a caption wider than the figure it belongs to
+- a mark clipped outside the axes
+- a spine or a threshold buried under the marks it is read against
+- a value tick in the space held open for a bracket stack
+- stars at different distances from their brackets, or an uneven stack
+- a jittered dot on the mean line, the box or the median
+- a glyph missing from the resolved font
+- a non-finite value, a p outside [0, 1], two groups at one position, an empty tick range
+
+`test_qc.py` runs them over the examples, with a planted defect each.
+
+## Module tree
+
+<sub>generated with [pypatree](https://github.com/yberreby/pypatree)</sub>
+
+```text
+{{MODULE_TREE}}
+```
+
+## License
+
+MIT.

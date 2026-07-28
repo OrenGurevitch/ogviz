@@ -1,0 +1,162 @@
+"""ogviz — publication figure primitives shared across projects.
+
+Import what you need from the top level; the submodules are the implementation.
+
+    from ogviz import group_violins, save, titled, use_house_style
+
+Group colours are NOT defined here. A project owns the meaning of its groups, so it passes
+colours in. What ogviz owns is everything that should never differ between projects: the
+canvas and type, the violin's stacking order, how a jittered point finds its x, where a
+significance star sits relative to its bracket, and how a figure is written to disk.
+"""
+
+from importlib.metadata import PackageNotFoundError, version
+
+from ogviz.layout import (
+    annotate_clear,
+    assert_no_text_overlap,
+    assert_nothing_clipped,
+    baseline,
+    caption,
+    clear_position,
+    clipped_artists,
+    dead_space,
+    fit_under_header,
+    hairline_grid,
+    legend_pill,
+    overflowing_text,
+    panel_row,
+    pill_frame,
+    round_ticks,
+    save,
+    share_value_limits,
+    text_over_data,
+    text_overlaps,
+    ticks_over_data,
+    titled,
+    trim_margins,
+    value_ticks,
+    zero_baseline,
+)
+from ogviz.marks import iqr_box, jitter_x, mean_line, points, violin
+from ogviz.panels import (
+    Cell,
+    Cloud,
+    Estimate,
+    Leg,
+    Line,
+    Row,
+    Series,
+    bar_panel,
+    broken_zero,
+    coupling_panels,
+    estimate_strip,
+    group_violins,
+    line_panel,
+    money_ticks,
+    reference_line,
+    scatter_panel,
+    series_colors,
+    shared_limits,
+    split_violins,
+    table_panel,
+    trend_line,
+    value_floor,
+    value_labels,
+)
+from ogviz.qc import assert_clean, audit
+from ogviz.significance import bracket_stack, spaced_stars, stars
+from ogviz.theme import (
+    CANVAS,
+    GRID,
+    INK,
+    MUTED_INK,
+    PANEL_FILL,
+    PAPER_WHITE,
+    REFERENCE,
+    SERIES,
+    WARM_CANVAS,
+    glyphs_must_render,
+    house_style,
+    page_color,
+    use_house_style,
+)
+
+try:  # a project pins this so an ogviz change cannot silently alter a frozen figure
+    __version__ = version("ogviz")
+except PackageNotFoundError:  # running from a source tree that was never installed
+    __version__ = "0+unknown"
+
+__all__ = [
+    "CANVAS",
+    "GRID",
+    "INK",
+    "MUTED_INK",
+    "PANEL_FILL",
+    "PAPER_WHITE",
+    "REFERENCE",
+    "SERIES",
+    "WARM_CANVAS",
+    "Cell",
+    "Cloud",
+    "Estimate",
+    "Leg",
+    "Line",
+    "Row",
+    "Series",
+    "__version__",
+    "annotate_clear",
+    "assert_clean",
+    "assert_no_text_overlap",
+    "assert_nothing_clipped",
+    "audit",
+    "bar_panel",
+    "baseline",
+    "bracket_stack",
+    "broken_zero",
+    "caption",
+    "clear_position",
+    "clipped_artists",
+    "coupling_panels",
+    "dead_space",
+    "estimate_strip",
+    "fit_under_header",
+    "glyphs_must_render",
+    "group_violins",
+    "hairline_grid",
+    "house_style",
+    "iqr_box",
+    "jitter_x",
+    "legend_pill",
+    "line_panel",
+    "mean_line",
+    "money_ticks",
+    "overflowing_text",
+    "page_color",
+    "panel_row",
+    "pill_frame",
+    "points",
+    "reference_line",
+    "round_ticks",
+    "save",
+    "scatter_panel",
+    "series_colors",
+    "share_value_limits",
+    "shared_limits",
+    "spaced_stars",
+    "split_violins",
+    "stars",
+    "table_panel",
+    "text_over_data",
+    "text_overlaps",
+    "ticks_over_data",
+    "titled",
+    "trend_line",
+    "trim_margins",
+    "use_house_style",
+    "value_floor",
+    "value_labels",
+    "value_ticks",
+    "violin",
+    "zero_baseline",
+]

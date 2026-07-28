@@ -1,0 +1,290 @@
+"""The group-comparison violin panel — the figure every project draws.
+
+`group_violins` is the whole panel in one call: bodies, jittered points, IQR boxes, mean lines,
+the printed group means, the y-limits, and the significance brackets. It exists because the
+alternative is each project re-deriving the same four numbers, and getting the headroom wrong
+in a different way each time.
+
+Headroom is the part that is easy to get wrong by hand. The axis grows by `SPAN_HEADROOM` of the
+data span when a bracket is present, and the first bracket sits `BRACKET_INSET` below the new
+top, so the bracket is always clear of the highest observation. Clearance and headroom come from
+the same number, which is why a caller cannot place a bracket on a violin's tail.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+from ogviz.layout import ticks_over_data
+from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin
+from ogviz.orientation import (
+    category_limits,
+    place_many,
+    value_limits,
+    value_span,
+)
+from ogviz.significance import bracket_stack
+from ogviz.theme import INK, KNOCKOUT_PAD, MEAN_LABEL_SIZE, page_color
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping, Sequence
+
+    from matplotlib.axes import Axes
+    from numpy.typing import NDArray
+
+    from ogviz.orientation import Orientation
+
+BOTTOM_PAD = 0.20  # the margin left below the data, as a fraction of the span
+# The printed means sit in the MIDDLE of that margin, not at a fraction of their own choosing. Two
+# independent constants drift: raise the pad and the row stays put, crowding the violins it belongs
+# to; halve the pad and the row lands under the axis. One number, and the row is centred by
+# construction between the lowest mark and the frame.
+MEAN_ROW_OFFSET = BOTTOM_PAD / 2.0
+SPAN_HEADROOM = 0.30  # extra top room for the FIRST bracket
+PLAIN_HEADROOM = 0.20
+BRACKET_INSET = 0.12  # first bracket, below the expanded top
+STACK_FIT_MARGIN = 0.02  # slack per attempt while growing the axis to fit a bracket stack
+
+
+def _printed_means(
+    ax: Axes,
+    items: Sequence[tuple[float, NDArray[np.float64]]],
+    y: float,
+    *,
+    fontsize: float,
+    decimals: int | None,
+    orientation: Orientation,
+    scale: float,
+    thousands_separator: bool,
+) -> None:
+    from ogviz.layout.ticks import auto_decimals, format_value
+
+    means = [float(np.mean(v)) for _p, v in items]
+    # One format for the whole row. Letting each value pick its own gives a ragged
+    # "0.0887 / 0.545 / 1.57", which reads as three different measurements.
+    if decimals is None:
+        decimals = auto_decimals(max((abs(m * scale) for m in means), default=1.0))
+    for (position, _values), mean in zip(items, means, strict=True):
+        horizontal, vertical = place_many(orientation, position, y)
+        printed = ax.text(
+            horizontal,
+            vertical,
+            format_value(
+                mean,
+                scale=scale,
+                decimals=decimals,
+                thousands_separator=thousands_separator,
+            ),
+            ha="center",
+            va="center",
+            fontsize=fontsize,
+            fontweight="bold",
+            color="#333333",
+            zorder=9,
+            bbox={
+                "facecolor": page_color(),
+                "edgecolor": "none",
+                "pad": KNOCKOUT_PAD,
+                "boxstyle": "square",
+            },
+        )
+        # Tagged so a grid can put every panel's row on one line. On a shared scale the floor is
+        # common but each panel's lowest violin is not, so a row placed from a panel's own data
+        # lands at a different height in every panel — which is the thing a shared scale exists to
+        # prevent.
+        printed.ogviz_mean_row = True  # type: ignore[attr-defined]
+
+
+def _fit_bracket_stack(
+    ax: Axes,
+    comparisons: Sequence[tuple[float, float, float]],
+    *,
+    low: float,
+    high: float,
+    span: float,
+    bottom_pad: float,
+    lift: float,
+    base_headroom: float,
+    label_for: Callable[[float], str] | None,
+    orientation: Orientation,
+) -> tuple[float, float]:
+    """Grow the value axis until the whole bracket stack fits. Returns (headroom, stack start).
+
+    The first bracket is anchored to the DATA (`high + lift * span`), not to the axis top. That
+    matters: with it anchored to the top, raising the headroom lifted the stack by exactly as much
+    as it lifted the ceiling, while also stretching the data-per-pixel so the stack grew — the
+    loop could never converge, and the first version of this fix asserted on every panel with
+    three brackets instead of fixing them.
+
+    Anchored to the data, each pass strictly reduces the overshoot as long as the stack is shorter
+    than the axes, so two or three passes settle it. Measured with `draw=False` rather than
+    predicted, because the arithmetic is circular.
+    """
+    headroom = base_headroom
+    start = high + lift * span
+    for _attempt in range(12):
+        top = high + headroom * span
+        value_limits(ax, orientation)(low - bottom_pad * span, top)
+        reached = bracket_stack(
+            ax,
+            comparisons,
+            start=start,
+            span=span,
+            text_color=INK,
+            label_for=label_for,
+            orientation=orientation,
+            draw=False,
+        )
+        if reached <= top:
+            return headroom, start
+        headroom += (reached - top) / span + STACK_FIT_MARGIN
+    raise AssertionError(
+        f"{len(comparisons)} brackets will not fit above the data at this figure size — the stack "
+        "is taller than the axes. Make the figure taller along the value axis, or draw fewer "
+        "comparisons."
+    )
+
+
+def group_violins(
+    ax: Axes,
+    groups: Sequence[tuple[float, NDArray[np.float64], str, str]],
+    *,
+    comparisons: Sequence[tuple[float, float, float]] = (),
+    anchor_value: float | None = None,
+    seed: int = 0,
+    show_means: bool | None = None,
+    mean_fontsize: float = MEAN_LABEL_SIZE,
+    mean_decimals: int | None = None,
+    display_scale: float = 1.0,
+    thousands_separator: bool = False,
+    label_for: Callable[[float], str] | None = None,
+    mean_row_offset: float = MEAN_ROW_OFFSET,
+    bottom_pad: float = BOTTOM_PAD,
+    headroom: float | None = None,
+    bracket_inset: float = BRACKET_INSET,
+    violin_kwargs: Mapping[str, object] | None = None,
+    point_kwargs: Mapping[str, object] | None = None,
+    box_kwargs: Mapping[str, object] | None = None,
+    mean_kwargs: Mapping[str, object] | None = None,
+    orientation: Orientation = "vertical",
+) -> float:
+    """Draw a full group-comparison panel. Returns the topmost drawn y in data units.
+
+    `groups` is [(x position, values, fill colour, edge colour)].
+    `comparisons` is [(x_left, x_right, p)] for significance brackets, lowest first.
+    `anchor_value` forces a value into the range (0 for a zero-anchored measure).
+    `label_for` overrides what a bracket's label says, the way `bracket_stack` does.
+    `display_scale` converts the stored unit to the printed one — a quantity stored in ppm and
+    written in ppb — and applies to the printed means. Pair it with `value_ticks(scale=...)`
+    so the axis and the means agree. The data is never touched.
+
+    The `*_kwargs` reach the marks, so a panel whose layout wants a wider body passes
+    `violin_kwargs={"width": 0.8}, point_kwargs={"width": 0.8}` and gets it — a composite that
+    hardcodes its parts' defaults is not reusable, it is one project's figure with a public name.
+    The spacing fractions are arguments for the same reason.
+    """
+    # In a vertical panel the printed means get a row beneath the violins. A horizontal panel
+    # has no such room: the space past the low end of the value axis is where the category tick
+    # labels sit, so the default is off there rather than colliding by default.
+    if show_means is None:
+        show_means = orientation == "vertical"
+
+    populated = [(p, np.asarray(v, dtype=float), f, e) for p, v, f, e in groups if len(v)]
+    assert populated, "group_violins needs at least one non-empty group"
+    seats = [p for p, _v, _f, _e in populated]
+    assert len(set(seats)) == len(seats), (
+        f"two groups share a position in {seats}. They would be drawn on top of each other — two "
+        "violins, two clouds of dots, two mean lines, and no way to read either."
+    )
+    for position, values, _f, _e in populated:
+        missing = int(np.count_nonzero(~np.isfinite(values)))
+        assert not missing, (
+            f"group at x={position} has {missing} non-finite value(s) of {len(values)}. "
+            "Drop or impute them in the project, where the choice is visible — a plot that "
+            "silently omits them shows an n nobody wrote down."
+        )
+    rng = np.random.default_rng(seed)
+    violin_kwargs = {"orientation": orientation, **dict(violin_kwargs or {})}
+    point_kwargs = {"orientation": orientation, **dict(point_kwargs or {})}
+    box_kwargs = {"orientation": orientation, **dict(box_kwargs or {})}
+    mean_kwargs = {"orientation": orientation, **dict(mean_kwargs or {})}
+
+    series = [v for _p, v, _f, _e in populated]
+    if anchor_value is not None:
+        series.append(np.array([anchor_value]))
+    every = np.concatenate(series)
+    low, high = float(every.min()), float(every.max())
+    span = max(high - low, 1e-9)
+
+    # BOTH limits first, then marks. `points` sizes its central lane from the axes transform, so
+    # the scale has to be final before a dot is placed. The category axis matters as much as the
+    # value axis and is easier to miss: matplotlib autoscales it only once the violin is added,
+    # so a lane computed mid-draw is measured against provisional limits and every dot clears the
+    # wrong distance — which is how they ended up back on the marks.
+    stack_start = high
+    if headroom is None:
+        # A fixed fraction covered ONE bracket, so from the third up the stack ran past the
+        # limit — and because matplotlib clips Line2D but not Text, the line vanished while its
+        # star stayed, leaving a star floating over nothing.
+        if comparisons:
+            headroom, stack_start = _fit_bracket_stack(
+                ax,
+                comparisons,
+                low=low,
+                high=high,
+                span=span,
+                bottom_pad=bottom_pad,
+                lift=SPAN_HEADROOM - bracket_inset,
+                base_headroom=SPAN_HEADROOM,
+                label_for=label_for,
+                orientation=orientation,
+            )
+        else:
+            headroom, stack_start = PLAIN_HEADROOM, high
+    top = high + headroom * span
+    value_limits(ax, orientation)(low - bottom_pad * span, top)
+
+    body = float(violin_kwargs.get("width", VIOLIN_WIDTH))  # type: ignore[arg-type]
+    places = [p for p, _v, _f, _e in populated]
+    category_limits(ax, orientation)(min(places) - body, max(places) + body)
+
+    for position, values, fill, edge in populated:
+        violin(ax, values, position, fill, **violin_kwargs)  # type: ignore[arg-type]
+        points(ax, values, position, fill, edge, rng, **point_kwargs)  # type: ignore[arg-type]
+        iqr_box(ax, values, position, **box_kwargs)  # type: ignore[arg-type]
+        mean_line(ax, values, position, **mean_kwargs)  # type: ignore[arg-type]
+
+    if show_means:
+        _printed_means(
+            ax,
+            [(p, v) for p, v, _f, _e in populated],
+            low - mean_row_offset * span,
+            fontsize=mean_fontsize,
+            decimals=mean_decimals,
+            orientation=orientation,
+            scale=display_scale,
+            thousands_separator=thousands_separator,
+        )
+
+    if not comparisons:
+        ticks_over_data(ax, high, orientation=orientation)
+        return high
+    reached = bracket_stack(
+        ax,
+        comparisons,
+        start=stack_start,
+        span=span,
+        text_color=INK,
+        label_for=label_for,
+        orientation=orientation,
+    )
+    limit = value_span(ax, orientation)[1]
+    assert reached <= limit + 1e-9, (
+        f"the bracket stack reaches {reached:.4g} but the axis stops at {limit:.4g}. matplotlib "
+        "clips the bracket LINES and not their stars, so this would have shipped as stars "
+        "floating over nothing. Raise `headroom`."
+    )
+    ticks_over_data(ax, high, orientation=orientation)
+    return reached

@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="866.16pt" height="608.9184pt" viewBox="0 0 866.16 608.9184" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-07-28T16:38:32.494351</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 608.9184 
+L 866.16 608.9184 
+L 866.16 0 
+L 0 0 
+z
+" style="fill: #fcfcfa"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 360.440423 157.174052 
+L 459.484231 157.174052 
+L 459.484231 101.995798 
+L 360.440423 101.995798 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: #f9e1d9"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 360.440423 212.352306 
+L 459.484231 212.352306 
+L 459.484231 157.174052 
+L 360.440423 157.174052 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: #f9e1d9"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 360.440423 267.53056 
+L 459.484231 267.53056 
+L 459.484231 212.352306 
+L 360.440423 212.352306 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: #f9e1d9"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 360.440423 344.780116 
+L 459.484231 344.780116 
+L 459.484231 267.53056 
+L 360.440423 267.53056 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: #f9e1d9"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 360.440423 399.95837 
+L 459.484231 399.95837 
+L 459.484231 344.780116 
+L 360.440423 344.780116 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: #f9e1d9"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 459.484231 455.136625 
+L 552.791884 455.136625 
+L 552.791884 399.95837 
+L 459.484231 399.95837 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: #f9e1d9"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 360.440423 510.314879 
+L 459.484231 510.314879 
+L 459.484231 455.136625 
+L 360.440423 455.136625 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: #f9e1d9"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 360.440423 565.493133 
+L 459.484231 565.493133 
+L 459.484231 510.314879 
+L 360.440423 510.314879 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: #f9e1d9"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 77.76 101.995798 
+L 858.96 101.995798 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 77.76 157.174052 
+L 858.96 157.174052 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 77.76 212.352306 
+L 858.96 212.352306 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 77.76 267.53056 
+L 858.96 267.53056 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_5">
+    <path d="M 77.76 344.780116 
+L 858.96 344.780116 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_6">
+    <path d="M 77.76 399.95837 
+L 858.96 399.95837 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_7">
+    <path d="M 77.76 455.136625 
+L 858.96 455.136625 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_8">
+    <path d="M 77.76 510.314879 
+L 858.96 510.314879 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_9">
+    <path d="M 77.76 565.493133 
+L 858.96 565.493133 
+" style="fill: none; stroke: #e7e5dd; stroke-width: 0.8; stroke-linecap: square"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 369.814823 565.493133 
+L 450.109831 565.493133 
+Q 459.484231 565.493133 459.484231 559.136598 
+L 459.484231 42.138428 
+Q 459.484231 35.781893 450.109831 35.781893 
+L 369.814823 35.781893 
+Q 360.440423 35.781893 360.440423 42.138428 
+L 360.440423 559.136598 
+Q 360.440423 565.493133 369.814823 565.493133 
+L 369.814823 565.493133 
+z
+" clip-path="url(#p7978afd0fa)" style="fill: none; stroke: #e8552d; stroke-width: 1.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="68.683619" transform="rotate(-0 409.962327 68.683619)">Goku SSJ4</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="506.138058" y="68.683619" transform="rotate(-0 506.138058 68.683619)">Goku SSJ1</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.412116" y="68.683619" transform="rotate(-0 600.412116 68.683619)">Goku SSJ2</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="701.357596" y="68.683502" transform="rotate(-0 701.357596 68.683502)">Vegeta SSJ2</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="68.683619" transform="rotate(-0 806.821422 68.683619)">Gohan SSJ2</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="126.204464" transform="rotate(-0 77.76 126.204464)">Power level</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="142.637553" transform="rotate(-0 77.76 142.637553)">scouter, reads high and then explodes</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="132.690394" transform="rotate(-0 409.962327 132.690394)">28,000,000</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="506.138058" y="132.690394" transform="rotate(-0 506.138058 132.690394)">150,000</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.412116" y="132.690394" transform="rotate(-0 600.412116 132.690394)">155,000</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="701.357596" y="132.690394" transform="rotate(-0 701.357596 132.690394)">152,000</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="132.690394" transform="rotate(-0 806.821422 132.690394)">1,400,000</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="181.382719" transform="rotate(-0 77.76 181.382719)">Cool level</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="197.815807" transform="rotate(-0 77.76 197.815807)">fan poll, entirely invented</text>
+   </g>
+   <g id="text_15">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="187.868648" transform="rotate(-0 409.962327 187.868648)">99.4%</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="506.138058" y="187.868648" transform="rotate(-0 506.138058 187.868648)">71.0%</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.412116" y="187.868648" transform="rotate(-0 600.412116 187.868648)">73.0%</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="701.357596" y="187.868648" transform="rotate(-0 701.357596 187.868648)">88.0%</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="187.868648" transform="rotate(-0 806.821422 187.868648)">64.0%</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="236.560973" transform="rotate(-0 77.76 236.560973)">Speed</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="252.994061" transform="rotate(-0 77.76 252.994061)">Snake Way, one lap</text>
+   </g>
+   <g id="text_22">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="243.046902" transform="rotate(-0 409.962327 243.046902)">Mach 402</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="506.138058" y="243.046902" transform="rotate(-0 506.138058 243.046902)">Mach 61</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.412116" y="243.046902" transform="rotate(-0 600.412116 243.046902)">Mach 63</text>
+   </g>
+   <g id="text_25">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="701.357596" y="243.046902" transform="rotate(-0 701.357596 243.046902)">Mach 62</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="243.046902" transform="rotate(-0 806.821422 243.046902)">Mach 140</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="302.774878" transform="rotate(-0 77.76 302.774878)">Ki control</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="319.207966" transform="rotate(-0 77.76 319.207966)">share of ki that reaches the target</text>
+   </g>
+   <g id="text_29">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="302.904272" transform="rotate(-0 409.962327 302.904272)">96%</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 8.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="409.962327" y="318.94927" transform="rotate(-0 409.962327 318.94927)">effortless</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="506.138058" y="302.904272" transform="rotate(-0 506.138058 302.904272)">61%</text>
+   </g>
+   <g id="text_32">
+    <text style="font-size: 8.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="506.138058" y="318.94927" transform="rotate(-0 506.138058 318.94927)">strained</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.412116" y="302.904272" transform="rotate(-0 600.412116 302.904272)">63%</text>
+   </g>
+   <g id="text_34">
+    <text style="font-size: 8.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="600.412116" y="318.94927" transform="rotate(-0 600.412116 318.94927)">strained</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="701.357596" y="302.904272" transform="rotate(-0 701.357596 302.904272)">74%</text>
+   </g>
+   <g id="text_36">
+    <text style="font-size: 8.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="701.357596" y="318.94927" transform="rotate(-0 701.357596 318.94927)">furious</text>
+   </g>
+   <g id="text_37">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="302.904272" transform="rotate(-0 806.821422 302.904272)">91%</text>
+   </g>
+   <g id="text_38">
+    <text style="font-size: 8.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="806.821422" y="318.94927" transform="rotate(-0 806.821422 318.94927)">calm</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="368.988783" transform="rotate(-0 77.76 368.988783)">Hair</text>
+   </g>
+   <g id="text_40">
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="385.421964" transform="rotate(-0 77.76 385.421964)">a real difference, unlike the two beside it</text>
+   </g>
+   <g id="text_41">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="375.474595" transform="rotate(-0 409.962327 375.474595)">waist length</text>
+   </g>
+   <g id="text_42">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="506.138058" y="375.474712" transform="rotate(-0 506.138058 375.474712)">spiked</text>
+   </g>
+   <g id="text_43">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.412116" y="375.474712" transform="rotate(-0 600.412116 375.474712)">spiked</text>
+   </g>
+   <g id="text_44">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="701.357596" y="375.474712" transform="rotate(-0 701.357596 375.474712)">spiked</text>
+   </g>
+   <g id="text_45">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="375.474712" transform="rotate(-0 806.821422 375.474712)">spiked</text>
+   </g>
+   <g id="text_46">
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="424.167037" transform="rotate(-0 77.76 424.167037)">Stamina drain</text>
+   </g>
+   <g id="text_47">
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="440.600218" transform="rotate(-0 77.76 440.600218)">lower is better — the one row the fourth form loses</text>
+   </g>
+   <g id="text_48">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="430.652966" transform="rotate(-0 409.962327 430.652966)">14%/min</text>
+   </g>
+   <g id="text_49">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="506.138058" y="430.652966" transform="rotate(-0 506.138058 430.652966)">3%/min</text>
+   </g>
+   <g id="text_50">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.412116" y="430.652966" transform="rotate(-0 600.412116 430.652966)">9%/min</text>
+   </g>
+   <g id="text_51">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="701.357596" y="430.652966" transform="rotate(-0 701.357596 430.652966)">11%/min</text>
+   </g>
+   <g id="text_52">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="430.652966" transform="rotate(-0 806.821422 430.652966)">5%/min</text>
+   </g>
+   <g id="text_53">
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="479.345291" transform="rotate(-0 77.76 479.345291)">Transformation scream</text>
+   </g>
+   <g id="text_54">
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="495.77838" transform="rotate(-0 77.76 495.77838)">uninterrupted, measured at the cliff edge</text>
+   </g>
+   <g id="text_55">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="485.83122" transform="rotate(-0 409.962327 485.83122)">42 s</text>
+   </g>
+   <g id="text_56">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="506.138058" y="485.83122" transform="rotate(-0 506.138058 485.83122)">18 s</text>
+   </g>
+   <g id="text_57">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.412116" y="485.83122" transform="rotate(-0 600.412116 485.83122)">19 s</text>
+   </g>
+   <g id="text_58">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="701.357596" y="485.83122" transform="rotate(-0 701.357596 485.83122)">31 s</text>
+   </g>
+   <g id="text_59">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="485.83122" transform="rotate(-0 806.821422 485.83122)">11 s</text>
+   </g>
+   <g id="text_60">
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="534.523545" transform="rotate(-0 77.76 534.523545)">Tail</text>
+   </g>
+   <g id="text_61">
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="550.956727" transform="rotate(-0 77.76 550.956727)">the em dash is 'measured, absent' — not zero</text>
+   </g>
+   <g id="text_62">
+    <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="541.009357" transform="rotate(-0 409.962327 541.009357)">yes</text>
+   </g>
+   <g id="text_63">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="506.138058" y="541.009474" transform="rotate(-0 506.138058 541.009474)">—</text>
+   </g>
+   <g id="text_64">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="600.412116" y="541.009474" transform="rotate(-0 600.412116 541.009474)">—</text>
+   </g>
+   <g id="text_65">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="701.357596" y="541.009474" transform="rotate(-0 701.357596 541.009474)">—</text>
+   </g>
+   <g id="text_66">
+    <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="806.821422" y="541.009474" transform="rotate(-0 806.821422 541.009474)">—</text>
+   </g>
+  </g>
+  <g id="text_67">
+   <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="7.2" y="19.713896" transform="rotate(-0 7.2 19.713896)">Super Saiyan forms, compared</text>
+  </g>
+  <g id="text_68">
+   <text style="font-size: 9px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; fill: #5c5b57" transform="translate(7.2 585.043)">Source: nothing. Every number here is invented to show the layout. Notes: the em dash marks a measurement that was not taken, which is not the same as a zero. Shaded cells are the strongest value in their</text>
+   <text style="font-size: 9px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; fill: #5c5b57" transform="translate(7.2 597.712433)">row, including the one row where that is not the highlighted column. Super Saiyan 1 and 2 sit within a few percent of each other on every row but hair.</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p7978afd0fa">
+   <rect x="77.76" y="35.781893" width="781.2" height="529.71124"/>
+  </clipPath>
+ </defs>
+</svg>

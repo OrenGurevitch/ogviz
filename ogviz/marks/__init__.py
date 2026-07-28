@@ -1,0 +1,304 @@
+"""The violin and its central marks, drawn in one fixed order.
+
+Stacking is named here so no caller re-decides it: violin body < points < IQR bar < mean line <
+median dot. Getting this wrong is invisible in code review and obvious in the figure — a mean
+line drawn under the IQR bar reads as passing behind it.
+
+The mean line's halo is the canvas colour and only slightly wider than the line. A wide *white*
+halo under a dark IQR bar punches a pale gap through the bar, which reads as the mean line
+going behind it — the exact bug the ordering was supposed to prevent.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import matplotlib.patheffects as path_effects
+import numpy as np
+from scipy.stats import gaussian_kde
+
+from ogviz.orientation import (
+    is_vertical,
+    place_many,
+    require_linear_value_axis,
+    violin_orientation_kwarg,
+)
+from ogviz.theme import INK, page_color
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from numpy.typing import NDArray
+
+    from ogviz.orientation import Orientation
+
+Z_VIOLIN = 2
+Z_POINTS = 3
+Z_IQR = 4
+Z_MEAN_LINE = 6
+Z_MEDIAN_DOT = 8
+
+VIOLIN_WIDTH = 0.62
+VIOLIN_ALPHA = 0.35
+POINT_SIZE = 30
+POINT_ALPHA = 0.85
+POINT_EDGE_WIDTH = 0.8
+JITTER_FILL = 0.82  # fraction of the local half-width dots may occupy (<1 keeps them inside)
+CENTER_GAP = 0.06  # min x-gap dots keep from the centre marks where the violin is wide
+BOX_COLOR = "#6E6E6E"
+MEAN_HALF_WIDTH = 0.15
+
+
+def violin(
+    ax: Axes,
+    values: NDArray[np.float64],
+    position: float,
+    color: str,
+    *,
+    width: float = VIOLIN_WIDTH,
+    alpha: float = VIOLIN_ALPHA,
+    edge_color: str | None = None,
+    edge_width: float = 1.3,
+    zorder: float = Z_VIOLIN,
+    orientation: Orientation = "vertical",
+) -> None:
+    """Filled kernel-density body, no matplotlib extras.
+
+    `width` is an argument because it is a layout fact, not a house fact: three conditions in a
+    cell want a wider body than two groups in a tall panel. Anything a project must be able to
+    set per panel belongs in the signature; the default is the house value.
+    """
+    parts = ax.violinplot(
+        [values],
+        positions=[position],
+        showmeans=False,
+        showmedians=False,
+        showextrema=False,
+        widths=width,
+        **violin_orientation_kwarg(orientation),  # type: ignore[arg-type]
+    )
+    for body in parts["bodies"]:  # type: ignore[union-attr]
+        body.set_facecolor(color)
+        body.set_alpha(alpha)
+        body.set_edgecolor(edge_color if edge_color is not None else "none")
+        if edge_color is not None:
+            body.set_linewidth(edge_width)
+        body.set_zorder(zorder)
+
+
+def jitter_x(
+    values: NDArray[np.float64],
+    position: float,
+    rng: np.random.Generator,
+    *,
+    width: float = VIOLIN_WIDTH,
+    fill: float = JITTER_FILL,
+    center_gap: float = CENTER_GAP,
+    clearance: NDArray[np.float64] | None = None,
+) -> NDArray[np.float64]:
+    """Category-axis coordinate per point, spread across the violin's OWN width at its value.
+
+    Uniform jitter puts dots outside a narrow violin and clumps them inside a wide one. Spreading
+    by the same Gaussian KDE the body is drawn from keeps every dot inside the shape it belongs
+    to, and a central lane keeps the box, the mean line and the median dot readable.
+
+    `clearance` is the per-point half-width that lane must have, which is NOT one number: a dot
+    level with the mean has to clear the mean line, and one out in a tail only has to clear the
+    thin whisker. When it is given it is a FLOOR — a dot is pushed just outside the marks rather
+    than squeezed onto them, even where the body is too narrow to hold it. Squeezing is what put
+    dots on top of the mean line and the median.
+    """
+    v = np.asarray(values, dtype=np.float64)
+    if len(v) < 2 or float(np.ptp(v)) == 0.0:
+        return np.full(len(v), float(position))
+    kde = gaussian_kde(v)
+    densest = max(float(kde(np.linspace(v.min(), v.max(), 200)).max()), float(kde(v).max()))
+    half_width = kde(v) / densest * (width / 2) * fill
+    if clearance is None:
+        inner = np.minimum(center_gap, half_width * 0.9)
+    else:
+        inner = np.asarray(clearance, dtype=np.float64)
+        half_width = np.maximum(half_width, inner * 1.06)  # always somewhere to put the dot
+    side = np.where(rng.random(len(v)) < 0.5, -1.0, 1.0)
+    return position + side * rng.uniform(inner, half_width)
+
+
+def central_clearance(
+    ax: Axes,
+    values: NDArray[np.float64],
+    *,
+    point_size: float = POINT_SIZE,
+    mean_half_width: float = MEAN_HALF_WIDTH,
+    mean_linewidth: float = 3.2,
+    box_linewidth: float = 5.5,
+    median_size: float = 7.5,
+    orientation: Orientation = "vertical",
+) -> NDArray[np.float64]:
+    """Per-point half-width, in data units, that a dot must keep clear of the central marks.
+
+    The marks do not all span the whole violin. The whisker runs its full height but is thin; the
+    IQR bar is thicker and spans Q1-Q3; the mean line is by far the widest but occupies only its
+    own linewidth in y; the median dot only its own diameter. So the lane a dot has to respect
+    depends on where the dot IS — which is why one `center_gap` could not do this, and why dots
+    kept landing on the mean line, whose reach is more than twice that gap.
+
+    Reads the axes transform, so the limits must be set before this is called.
+    """
+    require_linear_value_axis(ax, orientation, "central_clearance")
+    v = np.asarray(values, dtype=np.float64)
+    to_data_x, to_data_y = _data_per_point(ax, orientation)
+    dot_radius_x = to_data_x * float(np.sqrt(point_size)) / 2.0
+    dot_radius_y = to_data_y * float(np.sqrt(point_size)) / 2.0
+
+    q1, median, q3 = (float(x) for x in np.percentile(v, [25, 50, 75]))
+    mean = float(np.mean(v))
+
+    lane = np.full(len(v), to_data_x * box_linewidth / 2.0)  # the whisker, everywhere
+    lane = np.where((v >= q1) & (v <= q3), to_data_x * box_linewidth / 2.0, lane)
+    near_median = np.abs(v - median) <= (to_data_y * median_size / 2.0 + dot_radius_y)
+    lane = np.where(near_median, to_data_x * median_size / 2.0, lane)
+    near_mean = np.abs(v - mean) <= (to_data_y * mean_linewidth / 2.0 + dot_radius_y)
+    lane = np.where(near_mean, mean_half_width, lane)
+    return lane + dot_radius_x
+
+
+def _data_per_point(ax: Axes, orientation: Orientation) -> tuple[float, float]:
+    """Data units per typographic point, on the (category, value) axes."""
+    figure = ax.figure
+    assert figure is not None, "the axes must belong to a figure"
+    px_per_point = figure.dpi / 72.0
+    origin = ax.transData.transform((0.0, 0.0))
+    unit = ax.transData.transform((1.0, 1.0))
+    px_per_data_x = abs(unit[0] - origin[0]) or 1.0
+    px_per_data_y = abs(unit[1] - origin[1]) or 1.0
+    across, along = px_per_data_x, px_per_data_y
+    if not is_vertical(orientation):
+        across, along = along, across
+    return px_per_point / across, px_per_point / along
+
+
+def points(
+    ax: Axes,
+    values: NDArray[np.float64],
+    position: float,
+    color: str,
+    edge_color: str,
+    rng: np.random.Generator,
+    *,
+    size: float = POINT_SIZE,
+    alpha: float = POINT_ALPHA,
+    edge_width: float = POINT_EDGE_WIDTH,
+    width: float = VIOLIN_WIDTH,
+    fill: float = JITTER_FILL,
+    center_gap: float = CENTER_GAP,
+    clear_central_marks: bool = True,
+    orientation: Orientation = "vertical",
+) -> None:
+    """One dot per observation, jittered inside the violin body.
+
+    `width`, `fill` and `center_gap` must match the violin this scatter sits in, or the dots
+    spread outside a narrow body or clump inside a wide one.
+    """
+    clearance = (
+        central_clearance(ax, values, point_size=size, orientation=orientation)
+        if clear_central_marks and len(np.asarray(values)) > 1
+        else None
+    )
+    spread = jitter_x(
+        values,
+        position,
+        rng,
+        width=width,
+        fill=fill,
+        center_gap=center_gap,
+        clearance=clearance,
+    )
+    horizontal, vertical = place_many(orientation, spread, values)
+    drawn = ax.scatter(
+        horizontal,
+        vertical,
+        color=color,
+        s=size,
+        alpha=alpha,
+        edgecolor=edge_color,
+        linewidth=edge_width,
+        zorder=Z_POINTS,
+    )
+    # Record what was actually reserved. The lane is a step function of y whose steps move when
+    # the axes are resized, so recomputing it after a `tight_layout` can assign a dot a different
+    # lane than the one it was placed against — and QC then reports a correctly placed dot. The
+    # only trustworthy check is against the value that was used.
+    drawn.ogviz_lane = clearance  # type: ignore[attr-defined]
+    drawn.ogviz_position = float(position)  # type: ignore[attr-defined]
+
+
+def iqr_box(
+    ax: Axes,
+    values: NDArray[np.float64],
+    position: float,
+    *,
+    color: str = BOX_COLOR,
+    box_width: float = 5.5,
+    whisker_width: float = 1.5,
+    median_size: float = 7.5,
+    median_fill: str | None = None,
+    orientation: Orientation = "vertical",
+) -> None:
+    """Q1-Q3 bar on a 1.5x IQR whisker, with the median as a dot on top."""
+    q1, median, q3 = np.percentile(values, [25, 50, 75])
+    spread = q3 - q1
+    low = max(float(values.min()), q1 - 1.5 * spread)
+    high = min(float(values.max()), q3 + 1.5 * spread)
+    ax.plot(
+        *place_many(orientation, [position] * 2, [low, high]),
+        color=color,
+        lw=whisker_width,
+        zorder=Z_IQR,
+        solid_capstyle="round",
+    )
+    ax.plot(
+        *place_many(orientation, [position] * 2, [q1, q3]),
+        color=color,
+        lw=box_width,
+        zorder=Z_IQR,
+        solid_capstyle="round",
+    )
+    ax.plot(
+        *place_many(orientation, [position], [median]),
+        "o",
+        mfc=median_fill if median_fill is not None else page_color(),
+        mec=color,
+        mew=1.6,
+        ms=median_size,
+        zorder=Z_MEDIAN_DOT,
+    )
+
+
+def mean_line(
+    ax: Axes,
+    values: NDArray[np.float64],
+    position: float,
+    *,
+    half_width: float = MEAN_HALF_WIDTH,
+    color: str = INK,
+    linewidth: float = 3.2,
+    halo: str | None = None,
+    orientation: Orientation = "vertical",
+) -> None:
+    """Mean as a short ink line, over the IQR bar and under the median dot.
+
+    The halo is the page colour, read at draw time so it follows `use_house_style(canvas=...)`;
+    pass your own, or "none" to drop it.
+    """
+    m = float(np.mean(values))
+    ax.plot(
+        *place_many(orientation, [position - half_width, position + half_width], [m, m]),
+        color=color,
+        lw=linewidth,
+        solid_capstyle="round",
+        zorder=Z_MEAN_LINE,
+        path_effects=[
+            path_effects.withStroke(
+                linewidth=linewidth * 1.75, foreground=halo if halo is not None else page_color()
+            )
+        ],
+    )
