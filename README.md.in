@@ -27,23 +27,42 @@ errors. CI runs matplotlib 3.10 and 3.11.
 
 ## Examples
 
-`uv run just figures` renders `examples/out/` from made-up data with fixed seeds, PNG and SVG. Source:
-`examples/__main__.py`.
+`uv run just figures` renders `examples/out/` from made-up data with fixed seeds, PNG and SVG.
+Source: `examples/__main__.py`.
+
+### Violins
 
 | | |
 |---|---|
 | ![](examples/out/01_two_group_violin.png) | ![](examples/out/02_display_units.png) |
 | `group_violins` — marks, limits, printed means, bracket | `display_scale` — stored in ppm, drawn in ppb |
-| ![](examples/out/03_stacked_brackets.png) | ![](examples/out/04_grouped_bars.png) |
-| `bracket_stack` — stars anchored by their ink | `bar_panel` — signed bars, sign-aware labels |
-| ![](examples/out/05_bars_with_reference.png) | ![](examples/out/06_horizontal.png) |
-| asymmetric CI, a reference line, labels knock out what they cross | `orientation="horizontal"` |
-| ![](examples/out/07_split_violins.png) | ![](examples/out/08_headline_bars.png) |
-| `split_violins` — one quantity, two measurements | `rounded` / `highlight` / `reference_band` |
-| ![](examples/out/09_coupling_panels.png) | ![](examples/out/10_violin_grid.png) |
-| `coupling_panels` — pairs above, their estimates and stars on one scale below | a 2x2 grid of `group_violins` on one shared scale |
-| ![](examples/out/11_effort_curves.png) | ![](examples/out/12_comparison_table.png) |
-| `line_panel` — measured points, log money axis, `broken_zero` marks the cut | `table_panel` — highlighted column, shaded best value, `caption` |
+| ![](examples/out/03_stacked_brackets.png) | ![](examples/out/04_split_violins.png) |
+| `bracket_stack` — stars anchored by their ink | `split_violins` — one quantity, two measurements |
+| ![](examples/out/05_violin_grid.png) | |
+| `share_value_limits` — one scale, one line of printed means | |
+
+### Bars
+
+| | |
+|---|---|
+| ![](examples/out/06_grouped_bars.png) | ![](examples/out/07_bars_with_reference.png) |
+| `bar_panel` — signed bars, sign-aware labels | asymmetric CI, a threshold drawn over the bars |
+| ![](examples/out/08_headline_bars.png) | ![](examples/out/09_horizontal.png) |
+| `rounded` / `highlight` / `reference_band` | `orientation="horizontal"`, for names too long for a tick |
+
+### Relationships over a continuous axis
+
+| | |
+|---|---|
+| ![](examples/out/10_coupling_panels.png) | ![](examples/out/11_effort_curves.png) |
+| `coupling_panels` — pairs above, estimates and stars on one scale below | `line_panel` — measured points, log money axis, `broken_zero` |
+
+### A table drawn as a figure
+
+| | |
+|---|---|
+| ![](examples/out/12_comparison_table.png) | |
+| `table_panel` — highlighted column, shaded best value, `caption` | |
 
 ## Captions
 

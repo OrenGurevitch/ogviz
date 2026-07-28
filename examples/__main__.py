@@ -204,7 +204,7 @@ def grouped_bars() -> None:
         subtitle="value labels clear the whisker cap, on the correct side",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "04_grouped_bars")
+    render(fig, "06_grouped_bars")
 
 
 def bars_with_reference() -> None:
@@ -227,7 +227,7 @@ def bars_with_reference() -> None:
         subtitle="invented numbers; the label masks the reference line it crosses",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "05_bars_with_reference")
+    render(fig, "07_bars_with_reference")
 
 
 def horizontal() -> None:
@@ -266,7 +266,7 @@ def horizontal() -> None:
     right.legend(loc="lower right", frameon=False, bbox_to_anchor=(1.0, -0.26), ncol=2)
     titled(fig, "Laid on their side", subtitle="orientation='horizontal' on any mark or panel")
     fig.subplots_adjust(top=0.82, bottom=0.17, left=0.09, right=0.985, wspace=0.72)
-    render(fig, "06_horizontal")
+    render(fig, "09_horizontal")
 
 
 def split_violin_pair() -> None:
@@ -291,7 +291,7 @@ def split_violin_pair() -> None:
         subtitle="a shared spine, so a pair that agrees looks like it agrees",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "07_split_violins")
+    render(fig, "04_split_violins")
 
 
 def headline_bars() -> None:
@@ -380,7 +380,7 @@ def coupling_triangle() -> None:
         top=header_bottom - 34.0 / figure_points,
         bottom=62.0 / figure_points,
     )
-    render(fig, "09_coupling_panels")
+    render(fig, "10_coupling_panels")
 
 
 def violin_grid() -> None:
@@ -422,7 +422,7 @@ def violin_grid() -> None:
         subtitle="four nations on one scale, so the panels read against each other",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "10_violin_grid")
+    render(fig, "05_violin_grid")
 
 
 def effort_curves() -> None:
@@ -560,18 +560,26 @@ def comparison_table() -> None:
     render(fig, "12_comparison_table")
 
 
+# Grouped by what the panel IS, and numbered to match. A gallery ordered by the date each example
+# was written asks the reader to hold twelve unrelated things in mind; ordered by kind, the violin
+# panels are one idea with five variations.
 EXAMPLES = (
+    # violins
     two_group_violin,
     display_units,
     stacked_brackets,
+    split_violin_pair,
+    violin_grid,
+    # bars
     grouped_bars,
     bars_with_reference,
-    horizontal,
-    split_violin_pair,
     headline_bars,
+    # either orientation
+    horizontal,
+    # relationships over a continuous axis
     coupling_triangle,
-    violin_grid,
     effort_curves,
+    # a table drawn as a figure
     comparison_table,
 )
 
