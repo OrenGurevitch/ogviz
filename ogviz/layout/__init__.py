@@ -206,6 +206,12 @@ def align_mean_rows(axes, *, floor: float) -> float | None:
     The line is the midpoint between the floor and the lowest mark ACROSS the panels, so it clears
     the deepest violin in the grid and is identical everywhere. Returns None where no panel prints
     means.
+
+    Measured in DISPLAY space and converted back, not averaged in data units. "Midway between the
+    violin and the frame" is a question about the picture, and the two agree only while the axis is
+    linear: on a log axis running 1 to 1000, the data-space midpoint of a gap from 1 to 100 lands
+    108 px from the middle of a 308 px gap. Every panel here happens to be linear today, which is
+    exactly why the error would have sat unnoticed until the first log axis.
     """
     rows = [text for ax in axes for text in ax.texts if getattr(text, "ogviz_mean_row", False)]
     if not rows:
@@ -222,7 +228,12 @@ def align_mean_rows(axes, *, floor: float) -> float | None:
     )
     if lowest is None:
         return None
-    line = (floor + lowest) / 2.0
+    reference = next(iter(axes))
+    reference.figure.canvas.draw()
+    to_pixels, to_data = reference.transData, reference.transData.inverted()
+    floor_px = float(to_pixels.transform((0.0, floor))[1])
+    lowest_px = float(to_pixels.transform((0.0, lowest))[1])
+    line = float(to_data.transform((0.0, (floor_px + lowest_px) / 2.0))[1])
     for text in rows:
         text.set_position((text.get_position()[0], line))
     return line
