@@ -12,6 +12,7 @@ and read. A caption baked into an image is a second copy that drifts.
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
@@ -233,13 +234,18 @@ def fit_under_header(
     *,
     bottom: float = 0.0,
     gap: float = 0.014,
-) -> None:
+) -> bool:
     """Lay the panels out and PIN their top just under the header `titled` reported.
 
     `tight_layout(rect=...)` treats the rect as room it may use, not a top edge it must reach: with
     a legend anchored below the axes it leaves a band of empty page between the panels and the
     title — 92 px on a 680 px figure, which reads as a mistake rather than as breathing room. Doing
     the layout and then pinning the top closes it.
+
+    Returns whether `tight_layout` actually ran. It refuses, with a warning and no effect, when the
+    axis decorations cannot fit the rect — a two-line x tick label is enough to cause it (FIXME §8)
+    — and the figure then keeps default margins. Usually fine, never silent: a caller that needs
+    the layout to have happened can check.
 
     `gap` is the only free number left, and it is the space BETWEEN the subtitle and the panels
     rather than a guess at where the header ends; `titled` measures that and returns it.
@@ -250,7 +256,16 @@ def fit_under_header(
     font size, because a title that wrapped to two lines needs twice the room and says so only once
     it has been laid out.
     """
-    fig.tight_layout(rect=(0.0, bottom, 1.0, header_bottom))
+    # matplotlib warns and then does nothing when the decorations will not fit the rect, leaving
+    # the figure on default margins. That is survivable — the top pin below is applied either way,
+    # and the overlap checks still run on whatever came out — but it must not be mistaken for a
+    # layout that succeeded. Caught so it cannot be lost in a build log, and reported through the
+    # return value so a caller can act on it.
+    applied = True
+    with warnings.catch_warnings(record=True) as raised:
+        warnings.simplefilter("always", UserWarning)
+        fig.tight_layout(rect=(0.0, bottom, 1.0, header_bottom))
+        applied = not any("Tight layout not applied" in str(one.message) for one in raised)
     fig.canvas.draw()
     figure_px = fig.get_figheight() * fig.dpi
     titles_px = max(
@@ -259,6 +274,7 @@ def fit_under_header(
     )
     reserved = titles_px / figure_px * TITLE_CLEARANCE
     fig.subplots_adjust(top=max(0.05, header_bottom - gap - reserved))
+    return applied
 
 
 def zero_baseline(ax: Axes) -> None:

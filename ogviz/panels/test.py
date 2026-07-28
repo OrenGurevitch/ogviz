@@ -221,3 +221,37 @@ def test_a_shared_scale_puts_every_printed_mean_on_one_line() -> None:
         for path in collection.get_paths()
     )
     assert aligned.pop() == pytest.approx((floor + lowest) / 2), "midway between floor and deepest"
+
+
+def test_a_single_panel_and_a_grid_place_the_mean_row_the_same_way() -> None:
+    """The reported defect: the row sat closer to the violin than to the frame.
+
+    A violin's body reaches past its data — the kernel's tail goes below the smallest observation —
+    so placing the row from the data minimum is not the midpoint of anything a reader can see. The
+    grid measured the drawn body and a single panel measured the data, which is two answers to one
+    question.
+    """
+    import numpy as np
+
+    from ogviz import group_violins
+
+    def row_and_midpoint(ax) -> tuple[float, float]:
+        ax.figure.canvas.draw()
+        floor = ax.get_ylim()[0]
+        drawn = min(
+            float(np.asarray(path.vertices, dtype=float)[:, 1].min())
+            for collection in ax.collections
+            for path in collection.get_paths()
+            if np.asarray(path.vertices, dtype=float).size
+        )
+        row = next(t for t in ax.texts if getattr(t, "ogviz_mean_row", False))
+        return float(row.get_position()[1]), (floor + drawn) / 2
+
+    rng = np.random.default_rng(11)
+    # a long lower tail, so the drawn body reaches well past the smallest observation
+    values = np.concatenate([rng.normal(0.0, 1.0, 60), rng.normal(-4.0, 0.4, 4)])
+
+    _fig, ax = plt.subplots(figsize=(5.0, 6.0))
+    group_violins(ax, [(0.0, values, "#E8A838", "#B97C10")])
+    row, midpoint = row_and_midpoint(ax)
+    assert row == pytest.approx(midpoint, abs=1e-6), "one panel: midway between frame and body"

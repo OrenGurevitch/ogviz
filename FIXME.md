@@ -10,6 +10,20 @@ the bottom with the commit that fixed them.
 
 ## Open
 
+### §15 — 📚 `fit_under_header` reports a refusal that nothing acts on
+
+`tight_layout` declines, with a warning and no effect, when axis decorations cannot fit the rect;
+`02_display_units` hits it through its two-line x tick labels, which is §8 in a second place. The
+figure then keeps default margins, which is survivable — the top pin is applied either way and the
+checks still run on the result — and `fit_under_header` now returns whether the layout ran rather
+than letting the warning vanish into a build log.
+
+Nothing reads the return value. Either a caller should act on it or the gate should, and the real
+fix is whatever closes §8: reserve for decorations that grow downward past their allotment. Tried
+and rejected: more figure height, a bottom margin, a larger header gap — the constraint is
+structural, not room.
+
+
 ### §8 — 🎨 the caption row can still be reached by a two-line x-label
 
 Held as an xfail (`test_a_two_line_x_label_still_reaches_the_caption_row`). The reserved row is

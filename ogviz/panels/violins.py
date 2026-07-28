@@ -17,10 +17,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ogviz.layout import ticks_over_data
+from ogviz.layout import align_mean_rows, ticks_over_data
 from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin
 from ogviz.orientation import (
     category_limits,
+    is_vertical,
     place_many,
     value_limits,
     value_span,
@@ -95,6 +96,20 @@ def _printed_means(
         # lands at a different height in every panel — which is the thing a shared scale exists to
         # prevent.
         printed.ogviz_mean_row = True  # type: ignore[attr-defined]
+
+
+def _settle_mean_row(ax: Axes, orientation: Orientation) -> None:
+    """Put this panel's printed means midway between the frame and the lowest DRAWN mark.
+
+    One code path with the grid, deliberately. The row was placed from the data minimum, and a
+    violin's body extends past its data: the kernel's tail reaches below the smallest observation,
+    so the row sat closer to the violin than to the frame — by half a unit on a panel with a long
+    tail — while a grid, which measured the rendered body, put it in the middle. Two ways of
+    answering "midway" is how a single panel and a grid of panels came to disagree.
+    """
+    if not is_vertical(orientation):
+        return  # a horizontal panel prints no mean row
+    align_mean_rows([ax], floor=ax.get_ylim()[0])
 
 
 def _fit_bracket_stack(
@@ -270,6 +285,7 @@ def group_violins(
 
     if not comparisons:
         ticks_over_data(ax, high, orientation=orientation)
+        _settle_mean_row(ax, orientation)
         return high
     reached = bracket_stack(
         ax,
@@ -287,4 +303,5 @@ def group_violins(
         "floating over nothing. Raise `headroom`."
     )
     ticks_over_data(ax, high, orientation=orientation)
+    _settle_mean_row(ax, orientation)
     return reached

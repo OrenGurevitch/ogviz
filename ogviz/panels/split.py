@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout import align_mean_rows
 from ogviz.marks import (
     BOX_COLOR,
     MEAN_HALF_WIDTH,
@@ -167,10 +168,13 @@ def split_violins(
             right,
             left_color=left_color,
             right_color=right_color,
-            y=low - bottom_pad * span * 0.62,
+            y=low - bottom_pad * span * 0.5,  # settled exactly by `align_mean_rows` below
             decimals=mean_decimals,
             scale=display_scale,
         )
+        # Same rule as every other panel: midway between the frame and the lowest drawn mark. A
+        # fraction chosen here would be a third answer to one question.
+        align_mean_rows([ax], floor=ax.get_ylim()[0])
 
 
 def _printed_pairs(
@@ -193,7 +197,7 @@ def _printed_pairs(
         decimals = auto_decimals(max((abs(m) for m in means if m), default=1.0))
     for at, low_values, high_values in zip(positions, left, right, strict=True):
         for side, values, color in ((-1, low_values, left_color), (1, high_values, right_color)):
-            ax.text(
+            printed = ax.text(
                 at + side * 0.22,
                 y,
                 format_value(float(np.mean(values)), scale=scale, decimals=decimals),
@@ -210,3 +214,4 @@ def _printed_pairs(
                     "boxstyle": "square",
                 },
             )
+            printed.ogviz_mean_row = True  # type: ignore[attr-defined]
