@@ -96,3 +96,46 @@ def test_a_filled_body_still_reports_its_own_shape() -> None:
     ax.fill_between([0.0, 1.0], [2.0, 2.0], [7.0, 7.0])
     low, high = drawn_value_extent(ax)
     assert (low, high) == pytest.approx((2.0, 7.0))
+
+
+def test_the_axis_keeps_one_tick_above_the_marks() -> None:
+    """An axis brackets its data. Only dropping what sits above leaves a coarse one unreadable.
+
+    Reported on a panel with ticks every 2.0 and violins reaching 3.75: everything above 2.0 was
+    removed, so the upper 1.75 of every body had no reference beside it. What is worth removing is
+    the LADDER of ticks climbing through the room held open for brackets, not the tick that closes
+    the data in.
+    """
+
+    from ogviz.layout import ticks_over_data
+
+    _fig, ax = plt.subplots(figsize=(5.0, 6.0))
+    ax.plot([0.0, 1.0], [0.0, 3.75])
+    ax.set_ylim(-3.0, 9.0)
+    ax.set_yticks([-2.0, 0.0, 2.0, 4.0, 6.0, 8.0])
+    ticks_over_data(ax, 3.75)
+
+    kept = [float(tick) for tick in ax.get_yticks()]
+    assert 4.0 in kept, "the tick that brackets the top of the marks stays"
+    assert 6.0 not in kept and 8.0 not in kept, "the ladder above it goes"
+
+
+def test_ticks_over_data_measures_the_drawn_marks_when_not_told() -> None:
+    """Callers kept handing it the DATA maximum, which is not where a violin's body ends.
+
+    A kernel density body reaches past the largest observation, so the tick above that observation
+    is inside the violin — and dropping it is what left the top of a panel unlabelled. Measuring by
+    default means a caller cannot make that mistake.
+    """
+
+    from ogviz.layout import drawn_value_extent, ticks_over_data
+
+    _fig, ax = plt.subplots(figsize=(5.0, 6.0))
+    ax.fill_between([0.0, 1.0], [0.0, 0.0], [3.75, 3.75])
+    ax.set_ylim(-1.0, 9.0)
+    ax.set_yticks([0.0, 2.0, 4.0, 6.0, 8.0])
+
+    assert drawn_value_extent(ax)[1] == pytest.approx(3.75)
+    ticks_over_data(ax)
+    assert 4.0 in [float(tick) for tick in ax.get_yticks()]
+    assert 8.0 not in [float(tick) for tick in ax.get_yticks()]

@@ -149,7 +149,7 @@ ogviz
 ├── layout
 │   ├── axis
 │   │   ├── drawn_value_extent(ax: Axes) -> tuple[float, float] | None
-│   │   └── ticks_over_data(ax: Axes, data_high: float, *, orientation: Orientation) -> None
+│   │   └── ticks_over_data(...) -> ...
 │   ├── caption
 │   │   ├── caption(...) -> ...
 │   │   ├── longest_unbreakable(text: str, size: float) -> float

@@ -400,9 +400,13 @@ def ticks_in_the_headroom(fig: Figure) -> list[str]:
             continue
         _low, high = ax.get_ylim()
         stray = [float(tick) for tick in ax.get_yticks() if reach + 1e-9 < float(tick) <= high]
-        if stray:
+        # One tick above the marks is the axis closing the data in, and is wanted: without it a
+        # coarse axis leaves the top of a violin with nothing to read against. Two or more is a
+        # ladder climbing through the space held open for brackets.
+        if len(stray) > 1:
             complaints.append(
-                f"tick(s) {stray} sit above every mark on the panel, in the bracket headroom"
+                f"ticks {stray[1:]} climb above the marks into the bracket headroom "
+                f"(one bracketing tick at {stray[0]:g} is expected)"
             )
     return complaints
 

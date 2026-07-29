@@ -114,7 +114,9 @@ def _finish(ax: Axes, high: float, orientation: Orientation) -> None:
     limits are supposed to be.
     """
     before = value_span(ax, orientation)
-    ticks_over_data(ax, high, orientation=orientation)
+    # No argument: it measures the drawn marks. Handing it `high`, the data maximum, dropped
+    # the tick a violin's own body reaches past.
+    ticks_over_data(ax, orientation=orientation)
     _settle_mean_row(ax, orientation)
     after = value_span(ax, orientation)
     drift = max(abs(a - b) for a, b in zip(after, before, strict=True))

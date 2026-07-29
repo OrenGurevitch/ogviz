@@ -19,20 +19,41 @@ if TYPE_CHECKING:
     from ogviz.orientation import Orientation
 
 
-def ticks_over_data(ax: Axes, data_high: float, *, orientation: Orientation = "vertical") -> None:
+def ticks_over_data(
+    ax: Axes, data_high: float | None = None, *, orientation: Orientation = "vertical"
+) -> None:
     """Drop value ticks that fall in the room reserved above the data.
 
     A panel grows its value axis to fit a bracket stack, and the locator then puts ticks up there
     because it sees axis, not meaning. Those ticks and their gridlines say a measurement could sit
     at that height when nothing can — the space is layout, held open for the brackets.
 
+    `data_high` defaults to MEASURING what was drawn, and callers should let it. Passed the data
+    maximum instead, it drops the ticks a violin needs: a kernel density body reaches past the
+    largest observation, so the tick above that observation is inside the violin and taking it away
+    leaves the top of the shape with nothing to read it against. That is what happened — a panel
+    whose bodies reached 3.75 was left with its highest tick at 2.0. The same mistake, of using the
+    data extent where the DRAWN extent is meant, put a printed mean off the page a few days ago.
+
     It also makes panels disagree with each other for no reason a reader can see: one whose stack
     happens to clear a round number carries an extra rule and its neighbour does not. That is the
     inconsistency this removes.
     """
     upright = orientation == "vertical"
+    if data_high is None:
+        extent = drawn_value_extent(ax)
+        if extent is None:
+            return
+        data_high = extent[1]
     ticks = ax.get_yticks() if upright else ax.get_xticks()
-    kept = [float(tick) for tick in ticks if float(tick) <= data_high + 1e-9]
+    # Keep every tick up to the marks AND the first one past them, so the data is BRACKETED. Only
+    # dropping what sits above leaves a coarse axis unreadable at the top: a panel with ticks every
+    # 2.0 and violins reaching 3.75 kept nothing above 2.0, so the upper 1.75 of every body had no
+    # reference beside it. What is worth removing is the LADDER of ticks climbing through the room
+    # held open for brackets, not the one that closes the data in.
+    below = [float(tick) for tick in ticks if float(tick) <= data_high + 1e-9]
+    above = [float(tick) for tick in ticks if float(tick) > data_high + 1e-9]
+    kept = below + above[:1]
     if not kept or len(kept) == len(ticks):
         return
     # `set_yticks` FIXES the locator, and matplotlib then grows the view to contain every fixed

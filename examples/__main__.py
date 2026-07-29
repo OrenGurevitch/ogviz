@@ -142,8 +142,9 @@ def display_units() -> None:
         )
         value_ticks(ax, count=4, scale=scale, thousands_separator=thousands)
         # Re-applied after choosing ticks: `value_ticks` places them across the whole axis, and the
-        # top of this one is room held open for the bracket, not values anything can take.
-        ticks_over_data(ax, max(float(v.max()) for v in values.values()))
+        # top of this one is room held open for the bracket, not values anything can take. No
+        # argument — it measures what was drawn, which is not the same as the largest observation.
+        ticks_over_data(ax)
         ax.set_ylabel(label, fontsize=17, fontweight="bold", labelpad=8)
         _ticks(ax, values)
     header_bottom = titled(
