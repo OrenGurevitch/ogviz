@@ -70,28 +70,49 @@ Off unless asked for. `caption(fig, note, heading=...)` puts a bold claim above 
 grey source note below, both wrapped to the figure width — measured from the render and re-wrapped
 until they fit, at any figure size. A word too long to break is reported by name rather than shrunk.
 
-## Checks on someone else's figures
+## Using it only to find figure problems
 
-The checks do not need the rest of the package. Point them at any matplotlib figure:
+The checks need nothing else from this package. Point them at any matplotlib figure, from any
+project, drawn any way.
 
 ```bash
 uv run python -m ogviz.qc mypackage.figures:build_panel   # a callable that returns a figure
 uv run python -m ogviz.qc scripts/make_figures.py         # a script; every figure it leaves open
+uv run python -m ogviz.qc scripts/make_figures.py --fix out/   # repair what it can, write to out/
 uv run python -m ogviz.qc --list-checks
 ```
 
-Exit 0 when every figure is clean, 1 otherwise, so it sits in CI beside the tests. The target is
-executed — it is the project's own figure code, and artists have to exist to be measured.
+Exit 0 when nothing is outstanding, 1 otherwise, so it sits in CI beside the tests. The target is
+executed — artists have to exist before they can be measured.
 
-Checks that read an ogviz tag, such as where a printed mean should sit, simply say nothing about a
-figure that has none. The rest — overlap, clipping, buried lines, caption width, colour-vision
-separation — apply to anything.
+`--fix` changes only presentation: a label moves off the marks, a knockout appears behind one
+crossing a gridline, a buried spine or threshold is raised above what covers it. Nothing moves a
+mark, changes a limit or alters a value. What it cannot decide it reports and leaves — two series
+that merge under colour-vision deficiency need a marker, a dash or a different palette, and which
+one is yours to pick.
+
+```
+figure_1:
+  - 'alpha' and 'beta' are distinct now and 0.10 apart under deuteranopia
+  - 'a label right on the curves' sits on 2 mark(s) — it has to move
+  fixed: moved 'a label right on the curves' clear of the marks
+  wrote out/figure_1.png
+  still needs a person: 'alpha' and 'beta' are distinct now and 0.10 apart under deuteranopia
+```
+
+From Python:
 
 ```python
 from ogviz.qc import audit, assert_clean
-audit(fig)          # every complaint, as strings
-assert_clean(fig)   # raise instead of shipping it
+from ogviz.qc.repair import repair
+
+audit(fig)         # every complaint, as strings
+repair(fig)        # fix what has one obvious fix; returns what changed
+assert_clean(fig)  # raise rather than ship it
 ```
+
+Checks that read an ogviz tag — where a printed mean belongs, whether a star sits against its
+bracket — say nothing about a figure that has none. The rest apply to anything.
 
 ## Checks
 

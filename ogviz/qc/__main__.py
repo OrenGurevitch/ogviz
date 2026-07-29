@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from matplotlib.figure import Figure
 
 from ogviz.qc import CHECKS, audit
+from ogviz.qc.repair import repair
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -73,6 +74,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--list-checks", action="store_true", help="print what is checked, and stop"
     )
+    parser.add_argument(
+        "--fix",
+        metavar="DIR",
+        help=(
+            "repair what has one obvious fix, write the results to DIR, and report what is left. "
+            "The originals are not touched."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.list_checks:
@@ -87,19 +96,34 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not figures:
         print(f"{args.target} produced no figures")
         return 1
-    complaints = 0
+    destination = Path(args.fix) if args.fix else None
+    if destination is not None:
+        destination.mkdir(parents=True, exist_ok=True)
+
+    outstanding = 0
     for index, figure in enumerate(figures):
-        found = audit(figure)
-        complaints += len(found)
-        label = figure.get_label() or f"figure {index + 1}"
-        if found:
-            print(f"{label}:")
-            for complaint in found:
-                print(f"  - {complaint}")
-        else:
-            print(f"{label}: clean")
-    print(f"\n{len(figures)} figure(s), {complaints} complaint(s)")
-    return 1 if complaints else 0
+        label = figure.get_label() or f"figure_{index + 1}"
+        print(f"{label}:")
+        for complaint in audit(figure):
+            print(f"  - {complaint}")
+
+        if destination is None:
+            outstanding += len(audit(figure))
+            continue
+
+        for change in repair(figure):
+            print(f"  fixed: {change}")
+        written = destination / f"{label}.png"
+        figure.savefig(written, dpi=200, bbox_inches="tight")
+        print(f"  wrote {written}")
+        remaining = audit(figure)
+        outstanding += len(remaining)
+        for complaint in remaining:
+            print(f"  still needs a person: {complaint}")
+
+    tail = "outstanding" if destination is not None else ""
+    print(f"\n{len(figures)} figure(s), {outstanding} complaint(s) {tail}".rstrip())
+    return 1 if outstanding else 0
 
 
 if __name__ == "__main__":

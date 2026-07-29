@@ -46,11 +46,22 @@ def _gallery_names() -> tuple[str, ...]:
 
 
 @pytest.mark.parametrize("name", _gallery_names())
-def test_every_shipped_example_passes_qc(name: str) -> None:
-    """The gate runs on the gallery, so a regression cannot reach the README."""
+def test_every_shipped_example_passes_qc(name: str, tmp_path) -> None:
+    """The gate runs on the gallery, so a regression cannot reach the README.
+
+    Rendered into a temporary directory, never into `examples/out`. Each example ends in `save()`,
+    and this fixture pins DejaVu — so running the tests wrote thirteen DejaVu-rendered images over
+    an Arial-rendered gallery and left them staged. `just` hid it by regenerating afterwards; a
+    bare `pytest` did not.
+    """
     import examples.__main__ as gallery
 
-    getattr(gallery, name)()  # each calls save(), which asserts the gate
+    original = gallery.OUT
+    gallery.OUT = tmp_path
+    try:
+        getattr(gallery, name)()  # each calls save(), which asserts the gate
+    finally:
+        gallery.OUT = original
 
 
 def test_uneven_stars_are_caught() -> None:
