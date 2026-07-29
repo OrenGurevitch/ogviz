@@ -55,7 +55,6 @@ from ogviz import (
     coupling_panels,
     fit_under_header,
     group_violins,
-    hairline_grid,
     legend_pill,
     line_panel,
     save,
@@ -101,7 +100,6 @@ def _ticks(ax, data: dict[str, np.ndarray], count: int = 2) -> None:
         [f"Control\nn={len(data['control'])}", f"Treated\nn={len(data['treated'])}"], fontsize=15
     )
     ax.tick_params(axis="x", length=0)
-    hairline_grid(ax)
     baseline(ax)
 
 
@@ -174,7 +172,6 @@ def stacked_brackets() -> None:
     ax.set_xticks([0, 1, 2])
     ax.set_xticklabels(["low", "mid", "high"], fontsize=15)
     ax.tick_params(axis="x", length=0)
-    hairline_grid(ax)
     baseline(ax)
     header_bottom = titled(
         fig,
@@ -198,7 +195,6 @@ def grouped_bars() -> None:
         list(DOMAINS),
     )
     ax.set_ylabel("Domain score (z)", fontsize=17, fontweight="bold")
-    hairline_grid(ax)
     zero_baseline(ax)
     legend_pill(ax, loc="upper left", ncol=2)
     header_bottom = titled(
@@ -223,7 +219,6 @@ def bars_with_reference() -> None:
     )
     ax.set_ylabel("Expected goals per match", fontsize=17, fontweight="bold")
     ax.set_ylim(0, 2.15)
-    hairline_grid(ax)
     header_bottom = titled(
         fig,
         "Expected goals by formation",
@@ -250,7 +245,6 @@ def horizontal() -> None:
     left.set_yticks([0, 1])
     left.set_yticklabels(["Control", "Treated"], fontsize=15)
     left.set_xlabel("Measurement (units)", fontsize=16, fontweight="bold")
-    hairline_grid(left, axis="x")
     bar_panel(
         right,
         [
@@ -264,7 +258,6 @@ def horizontal() -> None:
     # labels are. Without the margin they touch, and the QC gate says so.
     right.set_xlim(right.get_xlim()[0] * 1.45, right.get_xlim()[1])
     right.set_xlabel("Domain score (z)", fontsize=16, fontweight="bold")
-    hairline_grid(right, axis="x")
     right.axvline(0.0, color="#141413", lw=2.0, zorder=4)
     right.legend(loc="lower right", frameon=False, bbox_to_anchor=(1.0, -0.26), ncol=2)
     titled(fig, "Laid on their side", subtitle="orientation='horizontal' on any mark or panel")
@@ -286,7 +279,6 @@ def split_violin_pair() -> None:
         mean_decimals=1,
     )
     ax.set_ylabel("Interval (ms)", fontsize=17, fontweight="bold")
-    hairline_grid(ax)
     baseline(ax)
     header_bottom = titled(
         fig,
@@ -316,7 +308,6 @@ def headline_bars() -> None:
     )
     ax.set_ylabel("Score", fontsize=17, fontweight="bold")
     ax.set_ylim(0, 0.86)
-    hairline_grid(ax)
     baseline(ax)
     legend_pill(ax, loc="upper center", bbox_to_anchor=(0.5, -0.10), ncol=2)
     header_bottom = titled(
@@ -408,15 +399,13 @@ def violin_grid() -> None:
             ax,
             [(0.0, control, CONTROL, CONTROL_EDGE), (1.0, treated, TREATED, TREATED_EDGE)],
             comparisons=[(0.0, 1.0, p)],
+            categories=["Novice", "Master"],
+            category_fontsize=15,
         )
-        ax.set_xticks([0, 1])
-        ax.set_xticklabels(["Novice", "Master"], fontsize=15)
         ax.set_title(name, fontsize=17, fontweight="bold", pad=14)
     # Each panel measured the headroom its own bracket needs; the shared scale is the union of
     # those answers rather than a number picked in advance.
     share_value_limits(axes.flat)
-    for ax in axes[:, 1]:
-        ax.set_yticklabels([])
     for ax in axes[:, 0]:
         ax.set_ylabel("Bending strength (arbitrary)", fontsize=16, fontweight="bold", labelpad=8)
     header_bottom = titled(
@@ -581,13 +570,11 @@ def violin_grid_tall() -> None:
             ax,
             [(0.0, companion, CONTROL, CONTROL_EDGE), (1.0, bearer, TREATED, TREATED_EDGE)],
             comparisons=[(0.0, 1.0, p)],
+            categories=["Companion", "Ring-bearer"],
+            category_fontsize=14,
         )
-        ax.set_xticks([0, 1])
-        ax.set_xticklabels(["Companion", "Ring-bearer"], fontsize=14)
         ax.set_title(stage, fontsize=16, fontweight="bold", pad=12)
     share_value_limits(axes.flat)
-    for ax in axes[:, 1]:
-        ax.set_yticklabels([])
     for ax in axes[:, 0]:
         ax.set_ylabel("Burden (arbitrary)", fontsize=15, fontweight="bold", labelpad=8)
     header_bottom = titled(

@@ -13,6 +13,7 @@ from ogviz.panels.grid import (
     align_brackets,
     align_mean_rows,
     align_ticks,
+    label_shared_scale_once,
     share_value_limits,
 )
 from ogviz.panels.lines import (
@@ -45,6 +46,7 @@ __all__ = [
     "group_violins",
     "half_marks",
     "half_violin",
+    "label_shared_scale_once",
     "line_panel",
     "money_ticks",
     "reference_line",

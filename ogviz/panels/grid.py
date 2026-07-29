@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 
 def share_value_limits(
-    axes: Iterable[Axes], *, orientation: Orientation = "vertical"
+    axes: Iterable[Axes], *, orientation: Orientation = "vertical", label_edge: bool = True
 ) -> tuple[float, float]:
     """Put every panel on one value scale: the union of the limits they each worked out.
 
@@ -41,6 +41,9 @@ def share_value_limits(
     three-bracket stack, so every panel carried two brackets' worth of empty page between its stars
     and its title. Ask each panel what it needs and take the widest answer, and a grid of
     single-bracket panels gets exactly one bracket's room.
+
+    `label_edge` prints the value numbers once, on the panels at the grid's edge. Pass False to keep
+    them under every panel.
 
     Returns the shared (low, high).
     """
@@ -61,7 +64,43 @@ def share_value_limits(
         align_brackets(panels)
         align_ticks(panels, orientation=orientation)
         align_mean_rows(panels, floor=low)
+    if label_edge:
+        label_shared_scale_once(panels, orientation=orientation)
     return low, high
+
+
+def label_shared_scale_once(
+    axes: Iterable[Axes], *, orientation: Orientation = "vertical"
+) -> list[Axes]:
+    """Print the value numbers on the panels at the grid's edge, and drop them from the rest.
+
+    Six panels on one scale repeating the same six numbers say nothing six times, and the inner
+    columns' numbers sit against the neighbouring panel's violins.
+
+    Which panels are at the edge comes from each one's own subplotspec, which is why this is not
+    left to the caller. The two callers it replaces looped over `axes[:, 1]`, right for the 2-wide
+    they were written against; on a 2x3 grid that blanks the MIDDLE column and leaves the right one
+    repeating every number. Nothing errors — the figure carries labels in two columns of three.
+
+    Returns the panels that kept their numbers.
+    """
+    panels = list(axes)
+    assert panels, "label_shared_scale_once needs at least one axes"
+    upright = orientation == "vertical"
+    kept: list[Axes] = []
+    for ax in panels:
+        spec = ax.get_subplotspec()
+        if spec is None:  # not in a grid; it has no neighbours to repeat
+            kept.append(ax)
+            continue
+        edge = spec.is_first_col() if upright else spec.is_last_row()
+        if edge:
+            kept.append(ax)
+        elif upright:
+            ax.yaxis.set_tick_params(labelleft=False)
+        else:
+            ax.xaxis.set_tick_params(labelbottom=False)
+    return kept
 
 
 def align_ticks(axes: Iterable[Axes], *, orientation: Orientation = "vertical") -> list[float]:

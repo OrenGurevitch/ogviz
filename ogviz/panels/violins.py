@@ -21,6 +21,8 @@ from ogviz.layout import hairline_grid, ticks_over_data
 from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin
 from ogviz.orientation import (
     category_limits,
+    category_tick_labels,
+    category_ticks,
     is_vertical,
     place_many,
     value_limits,
@@ -200,6 +202,8 @@ def group_violins(
     groups: Sequence[tuple[float, NDArray[np.float64], str, str]],
     *,
     comparisons: Sequence[tuple[float, float, float]] = (),
+    categories: Sequence[str] | None = None,
+    category_fontsize: float | None = None,
     anchor_value: float | None = None,
     seed: int = 0,
     show_means: bool | None = None,
@@ -315,6 +319,21 @@ def group_violins(
             orientation=orientation,
             scale=display_scale,
             thousands_separator=thousands_separator,
+        )
+
+    if categories is not None:
+        # `bar_panel` has always labelled its own categories and this did not, so every caller set
+        # the ticks and the labels by hand — the same four lines in three examples, and two panels
+        # of the same kind with different contracts.
+        assert len(categories) == len(groups), (
+            f"{len(categories)} categories for {len(groups)} groups"
+        )
+        # Every group's position, not `places` — an empty group is dropped from `places`, and
+        # labelling that shorter list would slide every later name onto the wrong violin.
+        category_ticks(ax, orientation)([position for position, *_rest in groups])
+        category_tick_labels(ax, orientation)(
+            list(categories),
+            **({} if category_fontsize is None else {"fontsize": category_fontsize}),
         )
 
     if not comparisons:

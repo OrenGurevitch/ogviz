@@ -188,3 +188,71 @@ def test_a_panel_draws_its_own_value_grid_and_can_be_asked_not_to() -> None:
     _fig2, bare = plt.subplots()
     group_violins(bare, [(0.0, values, "#E8A838", "#B97C10")], grid=False)
     assert not bare.yaxis.get_gridlines()[0].get_visible(), "and removable"
+
+
+def _numbered(ax) -> bool:
+    return any(label.get_text() for label in ax.get_yticklabels() if label.get_visible())
+
+
+def test_a_shared_scale_prints_its_numbers_on_the_edge_panels_only() -> None:
+    """Six panels on one scale repeating the same six numbers say nothing six times."""
+    import numpy as np
+
+    from ogviz import group_violins, share_value_limits
+
+    rng = np.random.default_rng(4)
+    fig, axes = plt.subplots(2, 3)
+    for ax in axes.flat:
+        group_violins(ax, [(0.0, rng.normal(0.0, 1.0, 30), "#E8A838", "#B97C10")])
+    share_value_limits(axes.flat)
+    fig.canvas.draw()
+    assert all(_numbered(ax) for ax in axes[:, 0]), "the first column carries the numbers"
+    assert not any(_numbered(ax) for ax in axes[:, 1:].flat), "the inner columns repeat nothing"
+
+
+def test_the_edge_is_read_from_the_grid_and_not_guessed_from_its_shape() -> None:
+    """The defect in the caller-side version: `axes[:, 1]` is a guess about how wide the grid is.
+
+    Written against a 2-wide grid, where column 1 IS the inner column. On a 2x3 grid it blanks
+    the middle column and leaves the right one repeating, with nothing to say it went wrong.
+    """
+    import numpy as np
+
+    from ogviz import group_violins, share_value_limits
+
+    rng = np.random.default_rng(5)
+    fig, axes = plt.subplots(2, 3)
+    for ax in axes.flat:
+        group_violins(ax, [(0.0, rng.normal(0.0, 1.0, 30), "#E8A838", "#B97C10")])
+    share_value_limits(axes.flat, label_edge=False)
+    for ax in axes[:, 1]:  # the caller-side way
+        ax.set_yticklabels([])
+    fig.canvas.draw()
+    guessed = [[_numbered(ax) for ax in row] for row in axes]
+    assert guessed == [[True, False, True], [True, False, True]], guessed
+
+    share_value_limits(axes.flat)  # the same grid, labelled from each panel's subplotspec
+    fig.canvas.draw()
+    assert [[_numbered(ax) for ax in row] for row in axes] == [[True, False, False]] * 2
+
+
+def test_a_panel_labels_its_own_categories() -> None:
+    """`bar_panel` always did; this did not, so three examples set the ticks and labels by hand."""
+    import numpy as np
+
+    from ogviz import group_violins
+
+    rng = np.random.default_rng(6)
+    # The middle group is empty: it is dropped from the drawn positions, and labelling that shorter
+    # list would slide "Moria" onto Bree's slot.
+    groups = [
+        (0.0, rng.normal(0.0, 1.0, 30), "#E8A838", "#B97C10"),
+        (1.0, np.array([]), "#7C9A6E", "#4A6136"),
+        (2.0, rng.normal(2.0, 1.0, 30), "#6E8CA0", "#3C566B"),
+    ]
+    fig, ax = plt.subplots()
+    group_violins(ax, groups, categories=["Shire", "Bree", "Moria"])
+    fig.canvas.draw()
+    positions = [float(tick) for tick in ax.get_xticks()]
+    placed = dict(zip(positions, [t.get_text() for t in ax.get_xticklabels()], strict=True))
+    assert placed == {0.0: "Shire", 1.0: "Bree", 2.0: "Moria"}, placed
