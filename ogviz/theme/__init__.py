@@ -83,6 +83,10 @@ def use_house_style(canvas: str = CANVAS) -> None:
     """
     mpl.rcParams.update(
         {
+            # A fixed salt makes matplotlib's clip-path ids a function of the figure instead of the
+            # run, so re-rendering an unchanged figure rewrites the same bytes and `git diff` on a
+            # committed gallery shows only what actually changed.
+            "svg.hashsalt": "ogviz",
             "figure.facecolor": canvas,
             "savefig.facecolor": canvas,
             "axes.facecolor": canvas,

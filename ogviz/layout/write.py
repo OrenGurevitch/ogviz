@@ -20,6 +20,20 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
+def _reproducible_metadata(path: Path) -> dict[str, None]:
+    """Drop the write date, so a re-render of an unchanged figure produces an unchanged file.
+
+    Two things in a matplotlib SVG change on every run: the `dc:date` stamp, and the random ids
+    matplotlib gives its clip paths (`svg.hashsalt` pins those; the house style sets it). Together
+    they made `git diff` on the committed gallery useless — thirteen files, every line touched,
+    2480 modifications of which none were real, so a diff could not answer "did this change the
+    figure". A generated artifact that cannot be diffed cannot be reviewed.
+
+    PNG takes the same treatment through its own key.
+    """
+    return {"Date": None} if path.suffix == ".svg" else {"Software": None}
+
+
 def save(
     fig: Figure,
     directory: Path,
@@ -50,7 +64,13 @@ def save(
     paths = [directory / f"{name}.{extension}" for extension in formats]
     with glyphs_must_render():
         for path in paths:
-            fig.savefig(path, bbox_inches="tight", facecolor=canvas, dpi=dpi)
+            fig.savefig(
+                path,
+                bbox_inches="tight",
+                facecolor=canvas,
+                dpi=dpi,
+                metadata=_reproducible_metadata(path),
+            )
     if close:
         plt.close(fig)
     return paths
