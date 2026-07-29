@@ -106,6 +106,7 @@ __all__ = [
     "Row",
     "Series",
     "__version__",
+    "align_brackets",
     "align_mean_rows",
     "annotate_clear",
     "assert_clean",

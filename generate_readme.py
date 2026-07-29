@@ -56,7 +56,8 @@ def _collapse(raw: str) -> str:
             lines[-1] = lines[-1].rstrip() + " " + body.strip()
             continue
         if lines and lines[-1].rstrip().endswith("->"):
-            lines[-1] = lines[-1].rstrip() + " " + body.strip()   # a return type left on its own line
+            # a return type left on its own line
+            lines[-1] = lines[-1].rstrip() + " " + body.strip()
             continue
         lines.append(stem + body)
     out = []

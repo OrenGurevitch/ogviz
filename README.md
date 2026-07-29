@@ -214,6 +214,7 @@ ogviz
 │   │   │   float]
 │   │   └── trend_line(...) -> ...
 │   ├── grid
+│   │   ├── align_brackets(axes: Iterable[Axes]) -> float | None
 │   │   ├── align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float |
 │   │   │   None
 │   │   └── share_value_limits(...) -> ...

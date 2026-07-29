@@ -1,5 +1,7 @@
 """Panels put on one scale, with their printed rows on one line."""
 
+from itertools import pairwise
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -68,3 +70,74 @@ def test_the_rows_align_whatever_the_grid_shape() -> None:
         }
         assert len(heights) == 1, f"{rows}x{columns} put its rows at {len(heights)} heights"
         plt.close(fig)
+
+
+def test_a_shared_scale_puts_every_bracket_on_one_line() -> None:
+    """The other end of the panel from the mean row, and the same argument.
+
+    Each panel anchors its bracket to ITS OWN data, which is right alone and wrong once the panels
+    share a ceiling: the lowest-data panel gets the lowest bracket and still inherits the tallest
+    panel's top, so it wears a gap several times its neighbour's. Measured on the six-panel grid
+    before this existed: 0.59 above the tightest bracket, 1.84 above the loosest.
+    """
+    import numpy as np
+
+    from ogviz import group_violins, share_value_limits
+
+    def crossbars(ax):
+        return [
+            float(np.asarray(line.get_ydata(), dtype=float).max())
+            for line in ax.lines
+            if getattr(line, "ogviz_bracket", False)
+        ]
+
+    rng = np.random.default_rng(9)
+    fig, axes = plt.subplots(1, 3, figsize=(12.0, 5.0))
+    for index, ax in enumerate(axes):
+        group_violins(
+            ax,
+            [
+                (0.0, rng.normal(0.0, 1.0, 30), "#E8A838", "#B97C10"),
+                (1.0, rng.normal(index * 0.9, 1.0, 30), "#7C9A6E", "#4A6136"),
+            ],
+            comparisons=[(0.0, 1.0, 0.01)],
+        )
+    assert len({round(max(crossbars(ax)), 6) for ax in axes}) > 1, "they start out at three heights"
+
+    share_value_limits(axes)
+    fig.canvas.draw()
+    heights = {round(max(crossbars(ax)), 6) for ax in axes}
+    assert len(heights) == 1, "one line for the whole grid"
+    gaps = {round(ax.get_ylim()[1] - max(crossbars(ax)), 6) for ax in axes}
+    assert len(gaps) == 1, "and therefore one gap to the ceiling"
+
+
+def test_aligning_a_stack_keeps_its_internal_spacing() -> None:
+    """A stack moves as a unit; `bracket_stack` measured the spacing inside it and owns it."""
+    import numpy as np
+
+    from ogviz import group_violins
+    from ogviz.panels.grid import align_brackets
+
+    rng = np.random.default_rng(10)
+    fig, (left, right) = plt.subplots(1, 2, figsize=(11.0, 5.0))
+    for ax, shift in ((left, 0.0), (right, 2.0)):
+        group_violins(
+            ax,
+            [(float(i), rng.normal(shift, 1.0, 25), "#E8A838", "#B97C10") for i in range(3)],
+            comparisons=[(0.0, 1.0, 0.001), (0.0, 2.0, 0.01), (1.0, 2.0, 0.04)],
+        )
+    fig.canvas.draw()
+
+    def spacing(ax):
+        tops = sorted(
+            float(np.asarray(line.get_ydata(), dtype=float).max())
+            for line in ax.lines
+            if getattr(line, "ogviz_bracket", False)
+        )
+        return [round(b - a, 6) for a, b in pairwise(tops)]
+
+    before = spacing(left)
+    align_brackets([left, right])
+    fig.canvas.draw()
+    assert spacing(left) == before, "shifting a stack must not change the gaps inside it"
