@@ -181,7 +181,7 @@ def stacked_brackets() -> None:
         subtitle="each star is anchored by its ink, not its box",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "03_stacked_brackets")
+    render(fig, "06_stacked_brackets")
 
 
 def grouped_bars() -> None:
@@ -206,7 +206,7 @@ def grouped_bars() -> None:
         subtitle="value labels clear the whisker cap, on the correct side",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "07_grouped_bars")
+    render(fig, "08_grouped_bars")
 
 
 def bars_with_reference() -> None:
@@ -229,7 +229,7 @@ def bars_with_reference() -> None:
         subtitle="invented numbers; the label masks the reference line it crosses",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "08_bars_with_reference")
+    render(fig, "07_bars_with_reference")
 
 
 def horizontal() -> None:
@@ -293,7 +293,7 @@ def split_violin_pair() -> None:
         subtitle="a shared spine, so a pair that agrees looks like it agrees",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "04_split_violins")
+    render(fig, "05_split_violins")
 
 
 def headline_bars() -> None:
@@ -382,7 +382,7 @@ def coupling_triangle() -> None:
         top=header_bottom - 34.0 / figure_points,
         bottom=62.0 / figure_points,
     )
-    render(fig, "11_coupling_panels")
+    render(fig, "12_coupling_panels")
 
 
 def violin_grid() -> None:
@@ -424,7 +424,7 @@ def violin_grid() -> None:
         subtitle="four nations on one scale, so the panels read against each other",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "05_violin_grid")
+    render(fig, "03_violin_grid")
 
 
 def effort_curves() -> None:
@@ -455,7 +455,7 @@ def effort_curves() -> None:
         subtitle="a made-up benchmark, four made-up systems",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "12_effort_curves")
+    render(fig, "11_effort_curves")
 
 
 def comparison_table() -> None:
@@ -595,27 +595,27 @@ def violin_grid_tall() -> None:
         subtitle="invented numbers; the burden grows toward Mordor and is gone at the Havens",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "06_violin_grid_tall")
+    render(fig, "04_violin_grid_tall")
 
 
 EXAMPLES = (
-    # violins
+    # Violins: one panel, then two, then a grid, then a taller grid, then the two special marks.
+    # The order is the order a reader builds the idea up in, not the order these were written.
     two_group_violin,
     display_units,
-    stacked_brackets,
-    split_violin_pair,
     violin_grid,
     violin_grid_tall,
-    # bars
-    grouped_bars,
+    split_violin_pair,
+    stacked_brackets,
+    # Bars: one series, then two, then a decorated one, then the other orientation.
     bars_with_reference,
+    grouped_bars,
     headline_bars,
-    # either orientation
     horizontal,
-    # relationships over a continuous axis
-    coupling_triangle,
+    # Relationships over a continuous axis: one panel of series, then the composite built from them.
     effort_curves,
-    # a table drawn as a figure
+    coupling_triangle,
+    # A table drawn as a figure.
     comparison_table,
 )
 

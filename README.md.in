@@ -32,21 +32,23 @@ Source: `examples/__main__.py`.
 
 ### Violins
 
+Each row adds one thing to the row above it.
+
 | | |
 |---|---|
 | ![](examples/out/01_two_group_violin.png) | ![](examples/out/02_display_units.png) |
-| `group_violins` — marks, limits, printed means, bracket | `display_scale` — stored in ppm, drawn in ppb |
-| ![](examples/out/03_stacked_brackets.png) | ![](examples/out/04_split_violins.png) |
-| `bracket_stack` — stars anchored by their ink | `split_violins` — one quantity, two measurements |
-| ![](examples/out/05_violin_grid.png) | ![](examples/out/06_violin_grid_tall.png) |
-| 2x2 — `share_value_limits`, one scale and one line of means | 2 columns by 3 rows — the same rules, six panels |
+| one panel — marks, limits, printed means, bracket | two panels — `display_scale`, stored in ppm and drawn in ppb |
+| ![](examples/out/03_violin_grid.png) | ![](examples/out/04_violin_grid_tall.png) |
+| 2x2 — `share_value_limits` puts the panels on one scale, one line of means | 2 columns by 3 rows — the same rules, six panels |
+| ![](examples/out/05_split_violins.png) | ![](examples/out/06_stacked_brackets.png) |
+| `split_violins` — one quantity measured two ways, sharing a spine | three groups — `bracket_stack`, stars anchored by their ink |
 
 ### Bars
 
 | | |
 |---|---|
-| ![](examples/out/07_grouped_bars.png) | ![](examples/out/08_bars_with_reference.png) |
-| `bar_panel` — signed bars, sign-aware labels | asymmetric CI, a threshold drawn over the bars |
+| ![](examples/out/07_bars_with_reference.png) | ![](examples/out/08_grouped_bars.png) |
+| one series, an asymmetric CI, a threshold drawn over the bars | two series — signed bars, sign-aware labels |
 | ![](examples/out/09_headline_bars.png) | ![](examples/out/10_horizontal.png) |
 | `rounded` / `highlight` / `reference_band` | `orientation="horizontal"`, for names too long for a tick |
 
@@ -54,8 +56,8 @@ Source: `examples/__main__.py`.
 
 | | |
 |---|---|
-| ![](examples/out/11_coupling_panels.png) | ![](examples/out/12_effort_curves.png) |
-| `coupling_panels` — pairs above, estimates and stars on one scale below | `line_panel` — measured points, log money axis, `broken_zero` |
+| ![](examples/out/11_effort_curves.png) | ![](examples/out/12_coupling_panels.png) |
+| `line_panel` — measured points, log money axis, `broken_zero` | `coupling_panels` — pairs above, their estimates and stars below |
 
 ### A table drawn as a figure
 
