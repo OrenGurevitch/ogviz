@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ogviz.layout import ticks_over_data
+from ogviz.layout import hairline_grid, ticks_over_data
 from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin
 from ogviz.orientation import (
     category_limits,
@@ -100,7 +100,7 @@ def _printed_means(
         printed.ogviz_mean_row = True  # type: ignore[attr-defined]
 
 
-def _finish(ax: Axes, high: float, orientation: Orientation) -> None:
+def _finish(ax: Axes, high: float, orientation: Orientation, *, grid: bool) -> None:
     """Tidy the ticks and the mean row, and check the limits survived it.
 
     A POST-CONDITION, not a style check. This function fitted the value axis to the data and its
@@ -113,6 +113,11 @@ def _finish(ax: Axes, high: float, orientation: Orientation) -> None:
     Asserted here rather than checked later because this is the one place that knows what the
     limits are supposed to be.
     """
+    if grid:
+        # Drawn by the panel, not by the caller. Every example had to remember `hairline_grid`, and
+        # the two grid examples did not — six panels shipped with no rule to read a violin against.
+        # A default that has to be re-applied at every call site is not a default.
+        hairline_grid(ax, axis="y" if is_vertical(orientation) else "x")
     before = value_span(ax, orientation)
     # No argument: it measures the drawn marks. Handing it `high`, the data maximum, dropped
     # the tick a violin's own body reaches past.
@@ -205,6 +210,7 @@ def group_violins(
     label_for: Callable[[float], str] | None = None,
     mean_row_offset: float = MEAN_ROW_OFFSET,
     bottom_pad: float = BOTTOM_PAD,
+    grid: bool = True,
     headroom: float | None = None,
     bracket_inset: float = BRACKET_INSET,
     violin_kwargs: Mapping[str, object] | None = None,
@@ -312,7 +318,7 @@ def group_violins(
         )
 
     if not comparisons:
-        _finish(ax, high, orientation)
+        _finish(ax, high, orientation, grid=grid)
         return high
     reached = bracket_stack(
         ax,
@@ -329,5 +335,5 @@ def group_violins(
         "clips the bracket LINES and not their stars, so this would have shipped as stars "
         "floating over nothing. Raise `headroom`."
     )
-    _finish(ax, high, orientation)
+    _finish(ax, high, orientation, grid=grid)
     return reached

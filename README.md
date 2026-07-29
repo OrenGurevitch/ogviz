@@ -129,6 +129,7 @@ bracket — say nothing about a figure that has none. The rest apply to anything
 - a mark clipped outside the axes
 - a spine or a threshold buried under the marks it is read against
 - a value tick in the space held open for a bracket stack
+- panels on one scale carrying different value ticks
 - stars at different distances from their brackets, or an uneven stack
 - a jittered dot on the mean line, the box or the median
 - a glyph missing from the resolved font
@@ -249,6 +250,7 @@ ogviz
 │   │   ├── align_brackets(axes: Iterable[Axes]) -> float | None
 │   │   ├── align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float |
 │   │   │   None
+│   │   ├── align_ticks(axes: Iterable[Axes], *, orientation: Orientation) -> list[float]
 │   │   └── share_value_limits(...) -> ...
 │   ├── lines
 │   │   ├── Line(...) -> ...
@@ -279,6 +281,7 @@ ogviz
 │   ├── layout_not_applied(fig: Figure) -> list[str]
 │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
 │   ├── one_minus_sign(fig: Figure) -> list[str]
+│   ├── panels_disagree_about_ticks(fig: Figure) -> list[str]
 │   ├── rows_outside_their_panel(fig: Figure) -> list[str]
 │   ├── series_confusable_under_cvd(fig: Figure) -> list[str]
 │   ├── significance_gaps(fig: Figure) -> list[str]

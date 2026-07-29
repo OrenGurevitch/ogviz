@@ -380,6 +380,35 @@ def layout_not_applied(fig: Figure) -> list[str]:
     return []
 
 
+def panels_disagree_about_ticks(fig: Figure) -> list[str]:
+    """Panels on one value scale must carry the same value ticks.
+
+    The rules are what a reader compares panels with, so different rules in each panel make the
+    same height look like different heights. A grid arrived with five in one row and eight in the
+    next, because each panel chose its own from its own data before the scale was shared.
+
+    Only checked where the panels genuinely share a scale — panels on different scales are separate
+    figures that happen to share a page.
+    """
+    scales: dict[tuple[float, float], set[tuple[float, ...]]] = {}
+    for ax in fig.axes:
+        if not ax.axison or not ax.collections:
+            continue
+        low, high = ax.get_ylim()
+        key = (round(low, 9), round(high, 9))
+        ticks = tuple(round(float(t), 9) for t in ax.get_yticks() if low <= t <= high)
+        scales.setdefault(key, set()).add(ticks)
+    complaints = []
+    for (low, high), sets in scales.items():
+        if len(sets) > 1:
+            counts = sorted(len(one) for one in sets)
+            complaints.append(
+                f"panels sharing the scale {low:g}..{high:g} carry different value ticks "
+                f"({counts} of them) — the rules a reader compares the panels with disagree"
+            )
+    return complaints
+
+
 def ticks_in_the_headroom(fig: Figure) -> list[str]:
     """A value tick above every mark on the panel, in the space reserved for brackets.
 
@@ -562,6 +591,7 @@ def _name(artist) -> str:
 
 CHECKS = (
     text_overlaps,
+    panels_disagree_about_ticks,
     layout_not_applied,
     series_confusable_under_cvd,
     rows_outside_their_panel,

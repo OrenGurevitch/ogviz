@@ -128,6 +128,7 @@ bracket — say nothing about a figure that has none. The rest apply to anything
 - a mark clipped outside the axes
 - a spine or a threshold buried under the marks it is read against
 - a value tick in the space held open for a bracket stack
+- panels on one scale carrying different value ticks
 - stars at different distances from their brackets, or an uneven stack
 - a jittered dot on the mean line, the box or the median
 - a glyph missing from the resolved font

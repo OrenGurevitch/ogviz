@@ -141,3 +141,50 @@ def test_aligning_a_stack_keeps_its_internal_spacing() -> None:
     align_brackets([left, right])
     fig.canvas.draw()
     assert spacing(left) == before, "shifting a stack must not change the gaps inside it"
+
+
+def test_panels_on_one_scale_carry_one_set_of_ticks() -> None:
+    """Reported on a 2x2 that arrived with five rules in one row and eight in the next.
+
+    Each panel chose its ticks from its own data before the scale was shared. The rules are what a
+    reader compares panels with, so different rules per panel make the same height look different.
+    """
+    import numpy as np
+
+    from ogviz import group_violins, share_value_limits
+    from ogviz.qc import panels_disagree_about_ticks
+
+    def tick_sets(axes):
+        sets = set()
+        for ax in axes:
+            low, high = ax.get_ylim()
+            sets.add(tuple(round(float(t), 6) for t in ax.get_yticks() if low <= t <= high))
+        return sets
+
+    rng = np.random.default_rng(12)
+    fig, axes = plt.subplots(2, 2, figsize=(9.0, 9.0))
+    for index, ax in enumerate(axes.flat):
+        group_violins(ax, [(0.0, rng.normal(index * 1.2, 1.0, 30), "#E8A838", "#B97C10")])
+    fig.canvas.draw()
+    assert len(tick_sets(axes.flat)) > 1, "they start out disagreeing"
+
+    share_value_limits(axes.flat)
+    fig.canvas.draw()
+    assert len(tick_sets(axes.flat)) == 1, "one set for the whole grid"
+    assert not panels_disagree_about_ticks(fig)
+
+
+def test_a_panel_draws_its_own_value_grid_and_can_be_asked_not_to() -> None:
+    """Every example had to remember `hairline_grid`, and the two grid examples did not."""
+    import numpy as np
+
+    from ogviz import group_violins
+
+    values = np.random.default_rng(3).normal(0.0, 1.0, 30)
+    _fig, ax = plt.subplots()
+    group_violins(ax, [(0.0, values, "#E8A838", "#B97C10")])
+    assert ax.yaxis.get_gridlines()[0].get_visible(), "on by default"
+
+    _fig2, bare = plt.subplots()
+    group_violins(bare, [(0.0, values, "#E8A838", "#B97C10")], grid=False)
+    assert not bare.yaxis.get_gridlines()[0].get_visible(), "and removable"

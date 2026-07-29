@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout import hairline_grid
 from ogviz.marks import (
     BOX_COLOR,
     MEAN_HALF_WIDTH,
@@ -125,6 +126,7 @@ def split_violins(
     mean_decimals: int | None = None,
     display_scale: float = 1.0,
     bottom_pad: float = 0.28,
+    grid: bool = True,
     headroom: float = 0.12,
 ) -> None:
     """A back-to-back pair of half-violins per category, each half with its own marks.
@@ -144,6 +146,8 @@ def split_violins(
                 "or impute them in the project, where the choice is visible."
             )
 
+    if grid:
+        hairline_grid(ax, axis="y")
     positions = np.arange(len(categories), dtype=float)
     every = np.concatenate([np.asarray(v, dtype=float) for v in (*left, *right)])
     low, high = float(every.min()), float(every.max())

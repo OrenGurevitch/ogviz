@@ -9,7 +9,12 @@ from ogviz.panels.coupling import (
     shared_limits,
     trend_line,
 )
-from ogviz.panels.grid import align_brackets, align_mean_rows, share_value_limits
+from ogviz.panels.grid import (
+    align_brackets,
+    align_mean_rows,
+    align_ticks,
+    share_value_limits,
+)
 from ogviz.panels.lines import (
     Line,
     broken_zero,
@@ -32,6 +37,7 @@ __all__ = [
     "Series",
     "align_brackets",
     "align_mean_rows",
+    "align_ticks",
     "bar_panel",
     "broken_zero",
     "coupling_panels",

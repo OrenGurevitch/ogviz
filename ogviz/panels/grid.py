@@ -59,8 +59,52 @@ def share_value_limits(
         # Both ends of the panel. A shared scale that leaves the brackets at six heights and the
         # printed means at six others is a shared scale in name only.
         align_brackets(panels)
+        align_ticks(panels, orientation=orientation)
         align_mean_rows(panels, floor=low)
     return low, high
+
+
+def align_ticks(axes: Iterable[Axes], *, orientation: Orientation = "vertical") -> list[float]:
+    """Give every panel the same value ticks, and return them.
+
+    Each panel chose its own before the scale was shared, from its own data, so a grid arrived with
+    five rules in one row and eight in the next — measured on a 2x2, and 7/4/4/4/4/7 on a 2x3. On a
+    shared scale that is simply wrong: the panels are being compared, the rules are the thing a
+    reader compares them with, and different rules in each panel make the same height look like
+    different heights.
+
+    The ticks are chosen once, for the shared range, and trimmed against the marks of the WHOLE
+    grid so the bracketing tick clears the tallest panel rather than the first one.
+    """
+    from matplotlib.ticker import AutoLocator
+
+    from ogviz.layout import ticks_over_data
+
+    panels = list(axes)
+    assert panels, "align_ticks needs at least one axes"
+    upright = orientation == "vertical"
+    reaches = [extent[1] for extent in (drawn_value_extent(ax) for ax in panels) if extent]
+    if not reaches:
+        return []
+
+    reference = panels[0]
+    axis = reference.yaxis if upright else reference.xaxis
+    axis.set_major_locator(AutoLocator())
+    reference.figure.canvas.draw()
+    ticks_over_data(reference, max(reaches), orientation=orientation)
+    picked = reference.get_yticks() if upright else reference.get_xticks()
+    chosen = [float(tick) for tick in picked]
+
+    for ax in panels:
+        # `set_ticks` grows the view to contain fixed ticks, so the limits are put back after.
+        limits = ax.get_ylim() if upright else ax.get_xlim()
+        if upright:
+            ax.set_yticks(chosen)
+            ax.set_ylim(*limits)
+        else:
+            ax.set_xticks(chosen)
+            ax.set_xlim(*limits)
+    return chosen
 
 
 def align_brackets(axes: Iterable[Axes]) -> float | None:

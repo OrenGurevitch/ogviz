@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from matplotlib.patches import FancyBboxPatch
 
+from ogviz.layout.frame import hairline_grid
 from ogviz.layout.panels import text_width_points
 from ogviz.layout.ticks import typeset
 from ogviz.orientation import (
@@ -322,6 +323,7 @@ def bar_panel(
     show_values: bool = True,
     reference: tuple[float, str] | None = None,
     reference_side: Literal["left", "right"] = "left",
+    grid: bool = True,
     reference_band: tuple[float, float, str] | None = None,
     highlight: int | None = None,
     emphasis: int | None = None,
@@ -414,6 +416,8 @@ def bar_panel(
         shade = ax.axvspan if upright else ax.axhspan
         column = shade(highlight - 0.46, highlight + 0.46, color=HIGHLIGHT_FILL, zorder=0)
         column.ogviz_backdrop = True  # type: ignore[attr-defined]
+    if grid:
+        hairline_grid(ax, axis="y" if upright else "x")
     threshold_label = None
     if reference is not None:
         threshold_label = reference_line(
