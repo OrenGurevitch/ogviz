@@ -46,6 +46,7 @@ from ogviz.panels import (
     Line,
     Row,
     Series,
+    align_brackets,
     align_mean_rows,
     bar_panel,
     broken_zero,

@@ -144,16 +144,9 @@ ogviz
 │   ├── separation(first: str, second: str, deficiency: Deficiency | None) -> float
 │   └── simulate(...) -> ...
 ├── layout
-│   ├── baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
-│   ├── drawn_value_extent(ax: Axes) -> tuple[float, float] | None
-│   ├── fit_under_header(...) -> ...
-│   ├── hairline_grid(ax: Axes, *, axis: "Literal[x, y]") -> None
-│   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
-│   ├── pill_frame(legend: Legend) -> Legend
-│   ├── save(...) -> ...
-│   ├── ticks_over_data(ax: Axes, data_high: float, *, orientation: Orientation) -> None
-│   ├── titled(...) -> ...
-│   ├── zero_baseline(ax: Axes) -> None
+│   ├── axis
+│   │   ├── drawn_value_extent(ax: Axes) -> tuple[float, float] | None
+│   │   └── ticks_over_data(ax: Axes, data_high: float, *, orientation: Orientation) -> None
 │   ├── caption
 │   │   ├── caption(...) -> ...
 │   │   ├── longest_unbreakable(text: str, size: float) -> float
@@ -177,6 +170,15 @@ ogviz
 │   │   ├── measure(fig: Figure) -> Density
 │   │   ├── panel_emptiness(fig: Figure, ax: Axes) -> dict[str, float]
 │   │   └── trim_margins(fig: Figure, *, pad_px: float) -> bool
+│   ├── frame
+│   │   ├── baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
+│   │   ├── hairline_grid(ax: Axes, *, axis: "Literal[x, y]") -> None
+│   │   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
+│   │   ├── pill_frame(legend: Legend) -> Legend
+│   │   └── zero_baseline(ax: Axes) -> None
+│   ├── header
+│   │   ├── fit_under_header(...) -> ...
+│   │   └── titled(...) -> ...
 │   ├── ink
 │   │   ├── artist_ink(fig: Figure, artist: Artist, *, others: list[Artist] | None)
 │   │   └── exact_overlaps(...) -> ...
@@ -188,14 +190,17 @@ ogviz
 │   │   └── text_overlaps(fig: Figure, *, min_overlap: float, min_gap: float) -> list[str]
 │   ├── panels
 │   │   ├── panel_row(...) -> ...
+│   │   ├── settle_caption(fig: Figure, *, gap_px: float) -> bool
 │   │   ├── text_width_points(text: str, fontsize: float) -> float
 │   │   └── wrap_to_width(text: str, width_points: float, fontsize: float) -> list[str]
-│   └── ticks
-│       ├── auto_decimals(value: float) -> int
-│       ├── format_value(...) -> ...
-│       ├── round_ticks(low: float, high: float, count: int) -> list[float]
-│       ├── typeset(text: str) -> str
-│       └── value_ticks(...) -> ...
+│   ├── ticks
+│   │   ├── auto_decimals(value: float) -> int
+│   │   ├── format_value(...) -> ...
+│   │   ├── round_ticks(low: float, high: float, count: int) -> list[float]
+│   │   ├── typeset(text: str) -> str
+│   │   └── value_ticks(...) -> ...
+│   └── write
+│       └── save(...) -> ...
 ├── marks
 │   ├── central_clearance(...) -> ...
 │   ├── iqr_box(...) -> ...

@@ -10,93 +10,65 @@ the bottom with the commit that fixed them.
 
 ## Open
 
-### Audit 2026-07-29 — read-through of the whole package
+- **§22 — both overlap checks kept; half of one is still a duplicate.** Measured on three
+  constructed pairs, so this is settled rather than assumed. They are not interchangeable: two
+  labels 5 px apart with glyphs not touching are reported by the box test and invisible to the ink
+  test — "cognition" ending 3 px before "autonomic" renders as one word while sharing no pixel.
+  That gap rule is unique and stays. Its OTHER half, boxes intersecting by more than a fraction of
+  the smaller area, asks `colliding_ink`'s question with a threshold instead of an answer and is
+  the weaker instrument. Left in place because removing it would drop the non-same-row case it also
+  covers, and no figure currently distinguishes them.
+  **Trigger to act:** the first time it reports a pair `colliding_ink` passes. At that point the
+  threshold is deciding, and it should go.
 
-Opened after `02_display_units` shipped visibly broken and none of thirteen checks noticed. The
-defect is fixed; these are what the read-through found around it. Each says what is wrong and why
-it matters, not what to do about it.
-
-- **§16 — FIXED. 🐛 the `layout` docstring contradicted the module.** It says "No caption helper. … A
-  caption baked into an image is a second copy that drifts", and the file's own imports bring in
-  `caption` from `ogviz.layout.caption`. The policy changed when captions were added and the
-  docstring did not. A reader is told the opposite of what the package does.
-
-- **§17 — FIXED (and the count was wrong: two, not three). 🔀 copies of "scatter or shape".** `layout.drawn_value_extent`,
-  `collision._collection_paths` and `qc.dots_off_the_marks` each decide separately whether to read
-  `get_offsets()` or `get_paths()`. That distinction is exactly what broke `02_display_units`, and
-  the fix for it unified two of the three while leaving the third. One of them will drift again.
-
-- **§18 — 🔀 `layout/__init__.py` is a package facade AND twelve function bodies.** It re-exports
-  from six submodules and also defines `titled`, `save`, `baseline`, `hairline_grid`,
-  `zero_baseline`, `legend_pill`, `pill_frame`, `ticks_over_data`, `share_value_limits`,
-  `drawn_value_extent`, `align_mean_rows` and `fit_under_header`. `__all__` sits between two import
-  blocks. Nothing tells a reader which names live here and which are passing through.
-
-- **§19 — FIXED. 🔀 `align_mean_rows` was violin logic living in `layout`.** It knows the
-  `ogviz_mean_row` tag, which only the violin panels set, and `layout` is imported BY panels — so a
-  panel concept sat there with the dependency pointing the wrong way. Moved with
-  `share_value_limits`, which calls it, into `ogviz/panels/grid.py`; their tests moved to
-  `ogviz/panels/test_grid.py`. `layout` keeps `drawn_value_extent` and `ticks_over_data`, which are
-  artist and axis primitives with no panel knowledge.
-
-- **§20 — FIXED. ⚠️ two modules reached into another's privates.** `qc` imports `overlap._drawn_tick_labels`
-  and `density` imports `collision._decoration`. Both are needed by more than their own module,
-  which means neither should be private — the underscore is now a lie rather than a boundary.
-
-- **§21 — FIXED. 🐛 four functions in `layout` were untyped.**
-  `ticks_over_data(ax, ...)`, `share_value_limits(axes, ...)`, `drawn_value_extent(ax)` and
-  `align_mean_rows(axes, ...)` take bare `ax`/`axes` and spell orientation `str` rather than the
-  `Orientation` literal every other module uses. basedpyright cannot check any of their call sites.
-
-- **§22 — EVALUATED, both kept; half of it is still a duplicate.** Measured on three constructed
-  pairs. They are NOT interchangeable: two labels 5 px apart on one row, glyphs not touching, are
-  reported by the box test and invisible to the ink test — "cognition" ending 3 px before
-  "autonomic" begins renders as one word and shares no pixel. That gap rule is unique and stays.
-  Its OTHER half — boxes intersecting by more than a fraction of the smaller area — asks the same
-  question as `colliding_ink` with a threshold instead of an answer, and it is the weaker
-  instrument of the two. Left in place because removing it would also drop the non-same-row case it
-  covers, and no example currently distinguishes them. Revisit the moment it reports a pair that
-  `colliding_ink` passes: at that point the threshold is deciding, and it should not be.
-
-- **§23 — WITHDRAWN, the finding was wrong.** I reported `pill_frame` and `PANEL_FILL` as exported
-  and called by nothing. They are not: `legend_pill` calls `pill_frame`, which uses `PANEL_FILL`,
-  and `pill_frame` is public on purpose so a caller who has already built a legend can restyle it
-  without handing its handles to a helper.
-  The check that produced the finding excluded `__init__.py` files while both names are DEFINED in
-  one, so every use of them was invisible to it. Recorded rather than deleted: a dead-code sweep
-  that cannot see intra-module use will report the same two names again.
-
-
-### §15 — RESOLVED. `fit_under_header`'s refusal is now read, and no example triggers it
-
-`tight_layout` declines, with a warning and no effect, when axis decorations cannot fit the rect;
-`02_display_units` hits it through its two-line x tick labels, which is §8 in a second place. The
-figure then keeps default margins, which is survivable — the top pin is applied either way and the
-checks still run on the result — and `fit_under_header` now returns whether the layout ran rather
-than letting the warning vanish into a build log.
-
-**Both halves closed, and the second was a surprise.** The gate reads it now: the refusal is
-recorded on the figure and `layout_not_applied` says so out loud, because a return value nobody
-reads is the same as a swallowed warning.
-
-And `02_display_units` no longer refuses. Re-measured across all thirteen examples with warnings
-captured: none of them trips it. Nothing was aimed at this — the bracket alignment and the mean-row
-placement both changed what grows out of the axes, and between them the decorations now fit. The
-check stays, since the condition is real and will return the moment a figure is crowded again.
-
-
-### §8 — 🎨 the caption row can still be reached by a two-line x-label
-
-Held as an xfail (`test_a_two_line_x_label_still_reaches_the_caption_row`). The reserved row is
-sized from the caption's own line count, so decorations that grow downward past their allotment
-still reach it. `constrained` layout reserves correctly but then overrides the row height ratios
-and pushes the caption up into the tick labels, so it is not the fix either.
-
-**Fix:** unknown. Measure the axes' rendered bottom after a draw and grow the figure to suit.
-
----
+- **§27 — a companion ink check is written, disagrees with itself, and is NOT shipped.**
+  "This artist is drawn and contributes no pixel, so something covers it" is the obvious next use
+  of `ogviz.layout.ink` and would catch a mark hidden behind another. Written, it returned indices
+  for artists that `artist_ink` reported hundreds of pixels for, in the same process, from the same
+  list.
+  Half the cause is understood and is written into the module: a DIFFERENCE render gives an
+  artist's marginal contribution, not its footprint, so anything whose pixels are also painted by
+  something else measures as zero. `artist_ink` renders alone now and subtracts a bare render.
+  What is still unexplained is the disagreement itself. Renders were measured stable at 0 px
+  between consecutive draws, so the cold-font-cache theory raised at the time was wrong.
+  **Before shipping it:** reproduce the disagreement against the current `artist_ink` and explain
+  it. A check whose failures cannot be explained teaches people to ignore output.
 
 ## Resolved
+
+### Audit round, 2026-07-29
+
+Found by reading the package through after `02_display_units` shipped visibly broken and none of
+the checks noticed. Five fixed, one withdrawn, two carried to Open above.
+
+- **§8 — the caption row could be reached by a two-line x-label**, an xfail for as long as the row
+  existed. It is sized when `panel_row` builds it, before the caller has plotted, so build-time care
+  could never have got it right. `settle_caption` measures the panels' rendered `get_tightbbox` and
+  drops the caption below them; `save` calls it.
+- **§17 — two functions decided "scatter or filled shape" with DIFFERENT conditions**, so they could
+  disagree about the same collection — and that decision is what broke `02_display_units`.
+  `collision.point_offsets` is the single predicate now. My finding said three copies; the third
+  reads offsets only for collections it tagged itself and never decides.
+- **§18 — `layout/__init__.py` was a facade AND ten function bodies**, with `__all__ ` between two
+  import blocks. Split into `header`, `frame`, `axis`, `write`; the facade defines nothing and a
+  test holds that.
+- **§19 — `align_mean_rows` was violin logic in `layout`**, which panels import, so the dependency
+  pointed the wrong way. Moved with `share_value_limits` to `panels/grid.py`.
+- **§20 — `qc` and `density` reached into other modules' privates.** A private two modules need is
+  not private; both renamed.
+- **§21 — four `layout` functions took bare `ax`/`axes` and `orientation: str`**, so no call site of
+  theirs was typechecked.
+- **§24 — `fit_under_header` returned whether the layout ran and nothing read it.** Now recorded on
+  the figure and reported by `layout_not_applied`. `02_display_units` no longer refuses at all —
+  the bracket alignment and mean-row placement changed what grows out of the axes.
+- **§25 — the `layout` docstring said "No caption helper" while importing one.** The policy changed
+  when captions were added and the prose did not.
+- **§26 — `align_brackets` was in `__all__` and never imported**, so the export raised while the
+  package looked complete. A test now walks `__all__` and asserts every name resolves.
+- **§23 — WITHDRAWN.** `pill_frame` and `PANEL_FILL` were reported dead and are not: `legend_pill`
+  calls one, which uses the other. The sweep that found them excluded `__init__.py` files while both
+  are defined in one. Kept as a note because the same sweep would report them again.
+
 
 Each has a regression test in `ogviz/test_audit_regressions.py`, named for the failure rather than
 the fix, so none of them can come back quietly.
@@ -157,21 +129,3 @@ the fix, so none of them can come back quietly.
   reference line still showed through the gaps between and inside the digits. Replaced the stroke
   halo with an opaque page-coloured box: invisible on a plain page, a clean knockout where
   something runs behind it.
-
-## Ink measurement — a companion check that is NOT shipped (2026-07-28)
-
-`ogviz/layout/ink.py` measures overlap on rendered pixels. The obvious companion — "this artist is
-drawn and contributes no pixel, so something covers it" — was written, disagreed with `artist_ink`
-called directly on the same artists, and is not shipped.
-
-Part of the cause is now understood and is written into the module: a DIFFERENCE render (with minus
-without) gives an artist's marginal contribution, not its footprint, so anything whose pixels are
-also painted by something else measures as zero. That is why the first version reported nearly every
-label as buried. `artist_ink` renders alone instead, and subtracts a bare render so the axes frame
-does not appear in every mask.
-
-What is still unexplained: with the difference implementation, `buried_artists` returned indices for
-artists that `artist_ink` reported hundreds of pixels for, in the same process, from the same list.
-Renders were measured stable (0 px between consecutive draws), so it was not a cold-font-cache
-effect — a theory raised and disproved on the way. Before shipping the check, reproduce that
-disagreement and explain it.

@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 CAPTION_SIZE = 8.0
+CAPTION_CLEARANCE_PX = 6.0  # between the lowest panel decoration and the caption's first line
 CAPTION_LINE_SPACING = 1.45
 LEFT_MARGIN = 0.055
 TOP_MARGIN = 0.88  # above this is the suptitle band
@@ -125,7 +126,7 @@ def panel_row(
         # axis("off") alone leaves tick LABELS, which reappear on the next draw.
         caption_axes.set_xticks([])
         caption_axes.set_yticks([])
-        caption_axes.text(
+        drawn = caption_axes.text(
             0.5,
             1.0,
             "\n".join(lines),
@@ -136,4 +137,50 @@ def panel_row(
             color=MUTED_INK,
             linespacing=CAPTION_LINE_SPACING,
         )
+        drawn.ogviz_caption_row = True  # type: ignore[attr-defined]  # `settle_caption` finds it
     return figure, axes
+
+
+def settle_caption(fig: Figure, *, gap_px: float = CAPTION_CLEARANCE_PX) -> bool:
+    """Push the caption below whatever the panels actually grew downward. Returns whether it moved.
+
+    The reservation cannot be right when `panel_row` makes it: the row is sized from the caption's
+    own line count, and the caller has not plotted yet — the x-label that reaches into it does not
+    exist. A two-line x-label was enough, and the case was held open as an xfail for exactly that
+    reason.
+
+    So it is settled afterwards, from the rendered panels: take the lowest ink of every panel
+    including its decorations, and drop the caption below it. Measured, so a three-line label or a
+    rotated tick row is handled by the same code that handles none.
+    """
+    fig.canvas.draw()
+    captions = [
+        text for ax in fig.axes for text in ax.texts if getattr(text, "ogviz_caption_row", False)
+    ]
+    if not captions:
+        return False
+    panels = [ax for ax in fig.axes if ax.axison]
+    if not panels:
+        return False
+    # `get_tightbbox` returns None for an axes with nothing drawn in it; such a panel has no
+    # decorations to reach the caption and simply does not constrain it.
+    boxes = [ax.get_tightbbox() for ax in panels]
+    reaching = [float(box.y0) for box in boxes if box is not None]
+    if not reaching:
+        return False
+    lowest = min(reaching)
+    moved = False
+    for caption_text in captions:
+        top = float(caption_text.get_window_extent().y1)
+        overlap = top - (lowest - gap_px)
+        if overlap <= 0:
+            continue
+        axes = caption_text.axes
+        assert axes is not None
+        shift = overlap / max(axes.get_window_extent().height, 1.0)
+        x, y = caption_text.get_position()
+        caption_text.set_position((x, float(y) - shift))
+        moved = True
+    if moved:
+        fig.canvas.draw()
+    return moved

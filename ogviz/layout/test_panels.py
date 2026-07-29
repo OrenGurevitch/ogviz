@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pytest
 
 from ogviz.layout import text_overlaps
-from ogviz.layout.panels import panel_row, text_width_points, wrap_to_width
+from ogviz.layout.panels import panel_row, settle_caption, text_width_points, wrap_to_width
 from ogviz.theme import use_house_style
 
 CAPTION = (
@@ -68,15 +68,41 @@ def test_two_panels_need_width_for_a_long_x_label():
     assert text_overlaps(build(18.0)) == []
 
 
-@pytest.mark.xfail(reason="the reserved row is sized from the caption, not from what grows into it")
-def test_a_two_line_x_label_still_reaches_the_caption_row():
-    """Holds the known limit open. The ported docstring claimed the row "CANNOT overlap ...
-    regardless of how many tick/label lines the axes grow"; the overlap check falsified that."""
+def test_a_two_line_x_label_no_longer_reaches_the_caption_row():
+    """Was an xfail for as long as the caption row existed.
+
+    The row is sized when the panels are created, from the caption's own line count, and at that
+    moment the caller has not plotted — the x-label that grows into it does not exist yet. So it is
+    settled afterwards instead, from the rendered panels: `settle_caption` takes the lowest ink of
+    every panel including its decorations and drops the caption below it. `save` calls it, so a
+    figure written the normal way never has to know.
+    """
     fig, axes = panel_row(3, caption=CAPTION)
     for ax in axes:
         ax.plot([0, 1, 2], [1.0, 2.0, 1.5])
         ax.set_xlabel("category\n(with a qualifying second line)")
-    assert text_overlaps(fig) == []
+
+    def caption_collisions(figure):
+        return [one for one in text_overlaps(figure) if "Each dot is one" in one]
+
+    fig.canvas.draw()
+    assert caption_collisions(fig), "the label does reach the caption before it is settled"
+
+    assert settle_caption(fig) is True
+    assert caption_collisions(fig) == []
+    # Scoped to the caption on purpose. Three 40-character two-line labels across a 12.8-inch row
+    # also collide with EACH OTHER, which is a real defect of this test's figure and not something
+    # a caption row can fix — the check reports it, correctly, and it is not what §8 was about.
+
+
+def test_settle_caption_leaves_a_figure_that_already_clears_alone():
+    fig, axes = panel_row(3, caption=CAPTION)
+    for ax in axes:
+        ax.plot([0, 1, 2], [1.0, 2.0, 1.5])
+        ax.set_xlabel("category")
+    fig.canvas.draw()
+    assert settle_caption(fig) is False
+    assert [one for one in text_overlaps(fig) if "Each dot is one" in one] == []
 
 
 def test_wrapped_lines_never_exceed_the_measured_width():
