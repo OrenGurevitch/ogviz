@@ -22,6 +22,7 @@ from examples.data import (
     FORMATIONS,
     LEAGUE_AVERAGE_XG,
     NATIONS,
+    TRAINING_STATES,
     TREATED,
     TREATED_EDGE,
     bending_by_nation,
@@ -33,6 +34,7 @@ from examples.data import (
     expected_goals,
     headline_arms,
     large_magnitudes,
+    output_by_state,
     paired_sensors,
     skewed_groups,
     two_groups,
@@ -204,7 +206,7 @@ def grouped_bars() -> None:
         subtitle="value labels clear the whisker cap, on the correct side",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "06_grouped_bars")
+    render(fig, "07_grouped_bars")
 
 
 def bars_with_reference() -> None:
@@ -227,7 +229,7 @@ def bars_with_reference() -> None:
         subtitle="invented numbers; the label masks the reference line it crosses",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "07_bars_with_reference")
+    render(fig, "08_bars_with_reference")
 
 
 def horizontal() -> None:
@@ -266,7 +268,7 @@ def horizontal() -> None:
     right.legend(loc="lower right", frameon=False, bbox_to_anchor=(1.0, -0.26), ncol=2)
     titled(fig, "Laid on their side", subtitle="orientation='horizontal' on any mark or panel")
     fig.subplots_adjust(top=0.82, bottom=0.17, left=0.09, right=0.985, wspace=0.72)
-    render(fig, "09_horizontal")
+    render(fig, "10_horizontal")
 
 
 def split_violin_pair() -> None:
@@ -322,7 +324,7 @@ def headline_bars() -> None:
         subtitle="rounded bars, the arm in question shaded, the reference as a band not a line",
     )
     fit_under_header(fig, header_bottom, bottom=0.06)
-    render(fig, "08_headline_bars")
+    render(fig, "09_headline_bars")
 
 
 def coupling_triangle() -> None:
@@ -380,7 +382,7 @@ def coupling_triangle() -> None:
         top=header_bottom - 34.0 / figure_points,
         bottom=62.0 / figure_points,
     )
-    render(fig, "10_coupling_panels")
+    render(fig, "11_coupling_panels")
 
 
 def violin_grid() -> None:
@@ -453,7 +455,7 @@ def effort_curves() -> None:
         subtitle="a made-up benchmark, four made-up systems",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "11_effort_curves")
+    render(fig, "12_effort_curves")
 
 
 def comparison_table() -> None:
@@ -557,12 +559,45 @@ def comparison_table() -> None:
         "every row but hair.",
         heading="Super Saiyan forms, compared",
     )
-    render(fig, "12_comparison_table")
+    render(fig, "13_comparison_table")
 
 
 # Grouped by what the panel IS, and numbered to match. A gallery ordered by the date each example
 # was written asks the reader to hold twelve unrelated things in mind; ordered by kind, the violin
 # panels are one idea with five variations.
+def violin_grid_tall() -> None:
+    """Six panels, two columns by three rows — the shape a condition grid takes.
+
+    Same rules as the square grid and a different arrangement: every panel fits its own bracket,
+    then one shared scale and one line of printed means across all six. Two columns rather than
+    three because the panel has to stay wide enough for its two violins and their labels.
+    """
+    states = output_by_state()
+    fig, axes = plt.subplots(3, 2, figsize=(11.0, 15.0))
+    for ax, state in zip(axes.flat, TRAINING_STATES, strict=True):
+        control, treated, p = states[state]
+        group_violins(
+            ax,
+            [(0.0, control, CONTROL, CONTROL_EDGE), (1.0, treated, TREATED, TREATED_EDGE)],
+            comparisons=[(0.0, 1.0, p)],
+        )
+        ax.set_xticks([0, 1])
+        ax.set_xticklabels(["Control", "Treated"], fontsize=14)
+        ax.set_title(state, fontsize=16, fontweight="bold", pad=12)
+    share_value_limits(axes.flat)
+    for ax in axes[:, 1]:
+        ax.set_yticklabels([])
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Output (arbitrary)", fontsize=15, fontweight="bold", labelpad=8)
+    header_bottom = titled(
+        fig,
+        "Six conditions on one scale",
+        subtitle="invented numbers; the separation rises across the six and the last is null",
+    )
+    fit_under_header(fig, header_bottom, bottom=0.0)
+    render(fig, "06_violin_grid_tall")
+
+
 EXAMPLES = (
     # violins
     two_group_violin,
@@ -570,6 +605,7 @@ EXAMPLES = (
     stacked_brackets,
     split_violin_pair,
     violin_grid,
+    violin_grid_tall,
     # bars
     grouped_bars,
     bars_with_reference,

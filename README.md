@@ -39,30 +39,30 @@ Source: `examples/__main__.py`.
 | `group_violins` — marks, limits, printed means, bracket | `display_scale` — stored in ppm, drawn in ppb |
 | ![](examples/out/03_stacked_brackets.png) | ![](examples/out/04_split_violins.png) |
 | `bracket_stack` — stars anchored by their ink | `split_violins` — one quantity, two measurements |
-| ![](examples/out/05_violin_grid.png) | |
-| `share_value_limits` — one scale, one line of printed means | |
+| ![](examples/out/05_violin_grid.png) | ![](examples/out/06_violin_grid_tall.png) |
+| 2x2 — `share_value_limits`, one scale and one line of means | 2 columns by 3 rows — the same rules, six panels |
 
 ### Bars
 
 | | |
 |---|---|
-| ![](examples/out/06_grouped_bars.png) | ![](examples/out/07_bars_with_reference.png) |
+| ![](examples/out/07_grouped_bars.png) | ![](examples/out/08_bars_with_reference.png) |
 | `bar_panel` — signed bars, sign-aware labels | asymmetric CI, a threshold drawn over the bars |
-| ![](examples/out/08_headline_bars.png) | ![](examples/out/09_horizontal.png) |
+| ![](examples/out/09_headline_bars.png) | ![](examples/out/10_horizontal.png) |
 | `rounded` / `highlight` / `reference_band` | `orientation="horizontal"`, for names too long for a tick |
 
 ### Relationships over a continuous axis
 
 | | |
 |---|---|
-| ![](examples/out/10_coupling_panels.png) | ![](examples/out/11_effort_curves.png) |
+| ![](examples/out/11_coupling_panels.png) | ![](examples/out/12_effort_curves.png) |
 | `coupling_panels` — pairs above, estimates and stars on one scale below | `line_panel` — measured points, log money axis, `broken_zero` |
 
 ### A table drawn as a figure
 
 | | |
 |---|---|
-| ![](examples/out/12_comparison_table.png) | |
+| ![](examples/out/13_comparison_table.png) | |
 | `table_panel` — highlighted column, shaded best value, `caption` | |
 
 ## Captions
@@ -78,6 +78,7 @@ until they fit, at any figure size. A word too long to break is reported by name
 - text that collides, or sits under 5 px from its neighbour on the same row
 - text sitting on the marks, or crossing a gridline with nothing behind it
 - a caption wider than the figure it belongs to
+- two legend series that separate now and merge under colour-vision deficiency
 - a mark clipped outside the axes
 - a spine or a threshold buried under the marks it is read against
 - a value tick in the space held open for a bracket stack

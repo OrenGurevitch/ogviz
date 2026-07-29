@@ -395,6 +395,54 @@ def _data_reach(ax: Axes) -> float | None:
     return extent[1] if extent is not None else None
 
 
+def series_confusable_under_cvd(fig: Figure) -> list[str]:
+    """Legend entries that separate for normal vision and merge under colour-vision deficiency.
+
+    Read off the LEGEND, because that is the set the reader is asked to tell apart. Marks with no
+    legend entry are not being distinguished by colour in the first place — a violin's fill and its
+    edge are one series in two tones, and reporting them would be noise.
+
+    Advisory in spirit but fails the build like the rest: a pair that merges is a figure a reader
+    cannot use, and "add a marker or a dash" is a small change to make while the figure is open.
+    """
+    from ogviz.color import indistinguishable_series
+
+    complaints: list[str] = []
+    for ax in fig.axes:
+        legend = ax.get_legend()
+        if legend is None:
+            continue
+        entries: dict[str, str] = {}
+        for text, handle in zip(legend.get_texts(), legend.legend_handles, strict=False):
+            color = _handle_color(handle)
+            if color is not None:
+                entries[text.get_text()] = color
+        if len(entries) > 1:
+            complaints.extend(indistinguishable_series(entries))
+    return complaints
+
+
+def _handle_color(handle) -> str | None:
+    """The one colour a legend handle stands for, or None if it does not stand for one."""
+    from matplotlib.colors import to_hex
+
+    for getter in ("get_color", "get_facecolor", "get_markerfacecolor"):
+        found = getattr(handle, getter, None)
+        if found is None:
+            continue
+        try:
+            value = found()
+        except (TypeError, ValueError):
+            continue
+        flat = np.asarray(value, dtype=object).ravel()
+        if flat.size in (3, 4) and all(isinstance(v, (int, float)) for v in flat):
+            red, green, blue = (float(flat[index]) for index in range(3))
+            return to_hex((red, green, blue))
+        if flat.size == 1 and isinstance(flat[0], str):
+            return to_hex(str(flat[0]))
+    return None
+
+
 def colliding_ink(fig: Figure) -> list[str]:
     """Artists that genuinely share pixels, decided by the renderer rather than by their boxes.
 
@@ -467,6 +515,7 @@ def _name(artist) -> str:
 
 CHECKS = (
     text_overlaps,
+    series_confusable_under_cvd,
     rows_outside_their_panel,
     mean_rows_unaligned,
     ticks_in_the_headroom,

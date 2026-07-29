@@ -1,0 +1,93 @@
+"""One place that converts between the coordinate systems, because mixing them is the bug.
+
+Every layout question in this package is asked in one of five systems, and the answer is wrong if
+it is computed in a different one:
+
+  data          what the numbers mean. Non-linear on a log axis
+  axes fraction 0 to 1 across the panel. Linear whatever the scale
+  display px    what the reader sees. The only system in which "looks halfway" is true
+  points        physical, 1/72 inch. Type sizes and line widths live here
+  em            relative to a type size. What a gap "beside a label" should be measured in
+
+The failures this session were all one mistake: answering a question posed in one system using
+arithmetic from another. A midpoint averaged in DATA units is the visual midpoint only while the
+axis is linear — on a log axis from 1 to 1000 it lands a third of the way along. A gap chosen as a
+fraction of the data span changes meaning when the limits change. A search that walks a fixed
+number of PIXELS covers a tenth of one panel and the whole of another.
+
+ProPlot and UltraPlot solved this by specifying every spacing in physical units and converting
+once; matplotlib itself keeps the transforms but leaves the choice to the caller. This module is
+the small version of that idea: name the system, convert through the transform that is defined for
+it, and never divide two numbers that came from different ones.
+
+Nothing here is clever. It exists so the conversion is written once and can be read.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+
+Unit = Literal["px", "pt", "in", "cm", "mm", "em"]
+POINTS_PER_INCH = 72.0
+CM_PER_INCH = 2.54
+
+
+def to_px(value: float, unit: Unit, *, fig: Figure, em: float | None = None) -> float:
+    """A length in any physical unit, as display pixels on this figure.
+
+    `em` is the type size the value is relative to, and is required for `"em"` — an em with no font
+    behind it is not a length.
+    """
+    dpi = fig.dpi
+    if unit == "px":
+        return value
+    if unit == "pt":
+        return value / POINTS_PER_INCH * dpi
+    if unit == "in":
+        return value * dpi
+    if unit == "cm":
+        return value / CM_PER_INCH * dpi
+    if unit == "mm":
+        return value / 10.0 / CM_PER_INCH * dpi
+    assert em is not None, "an em is relative to a type size; pass the size it is relative to"
+    return value * em / POINTS_PER_INCH * dpi
+
+
+def value_to_px(ax: Axes, value: float, *, orientation: str = "vertical") -> float:
+    """A data value as a display pixel, through the axis's own transform.
+
+    Through the transform rather than by scaling a ratio, because a ratio only exists on a linear
+    axis. This is defined on every scale the axis can have.
+    """
+    point = (0.0, value) if orientation == "vertical" else (value, 0.0)
+    index = 1 if orientation == "vertical" else 0
+    return float(ax.transData.transform(point)[index])
+
+
+def px_to_value(ax: Axes, pixels: float, *, orientation: str = "vertical") -> float:
+    """The inverse of `value_to_px`, so a decision made in pixels can be applied in data."""
+    point = (0.0, pixels) if orientation == "vertical" else (pixels, 0.0)
+    index = 1 if orientation == "vertical" else 0
+    return float(ax.transData.inverted().transform(point)[index])
+
+
+def midpoint(ax: Axes, low: float, high: float, *, orientation: str = "vertical") -> float:
+    """The data value halfway between two data values AS THE READER SEES IT.
+
+    The whole reason this module exists. `(low + high) / 2` is the visual midpoint only on a linear
+    axis; on a log axis running 1 to 1000, the arithmetic midpoint of 1 and 100 is 50.5, which sits
+    a third of the way up a gap the eye reads as centred at 10.
+    """
+    low_px = value_to_px(ax, low, orientation=orientation)
+    high_px = value_to_px(ax, high, orientation=orientation)
+    return px_to_value(ax, (low_px + high_px) / 2.0, orientation=orientation)
+
+
+def panel_px(ax: Axes, *, orientation: str = "vertical") -> float:
+    """How many pixels tall (or wide) the panel is — the scale a search should be sized against."""
+    box = ax.get_window_extent()
+    return float(box.height if orientation == "vertical" else box.width)

@@ -52,7 +52,10 @@ WORD_LABEL_SIZE = 13
 KNOCKOUT_PAD = 0.18
 
 # Categorical series with no intrinsic meaning. Ordered for maximum separation at n=2 and n=3.
-SERIES: tuple[str, ...] = ("#2E7CE0", "#EFA607", "#14A97C", "#ED6B3B", "#8A63D2")
+# The fifth is a plum rather than the violet it used to be: violet and the first blue read as
+# distinct here and land 0.10 apart under deuteranopia, which is a single colour to a reader.
+# Checked by `ogviz.color.indistinguishable_series`, which found it.
+SERIES: tuple[str, ...] = ("#2E7CE0", "#EFA607", "#14A97C", "#ED6B3B", "#9B3B8F")
 REFERENCE = "#D9D7CE"  # a de-emphasised comparison series
 
 

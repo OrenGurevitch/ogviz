@@ -236,3 +236,28 @@ def expected_goals(seed: int = 14) -> tuple[np.ndarray, np.ndarray]:
     means = np.array([1.18, 1.36, 1.61, 1.74]) + rng.normal(0.0, 0.01, 4)
     errors = np.array([[0.16, 0.14, 0.13, 0.11], [0.19, 0.17, 0.15, 0.13]])
     return means, errors
+
+
+TRAINING_STATES = (
+    "Base",
+    "Weighted gear",
+    "Gravity x10",
+    "Gravity x100",
+    "Time chamber",
+    "Post-Zenkai",
+)
+
+
+def output_by_state(seed: int = 15) -> dict[str, tuple[np.ndarray, np.ndarray, float]]:
+    """Two cohorts measured under six conditions. Six panels of one comparison, all invented.
+
+    The separations rise across the six so a reader can see a gradient rather than six versions of
+    the same picture, and the last one is deliberately null.
+    """
+    rng = np.random.default_rng(seed)
+    separations = (0.12, 0.38, 0.62, 0.95, 1.30, 0.05)
+    p_values = (0.62, 0.09, 0.02, 0.001, 0.0002, 0.81)
+    return {
+        state: (rng.normal(0.0, 1.0, 34), rng.normal(shift, 1.05, 46), p)
+        for state, shift, p in zip(TRAINING_STATES, separations, p_values, strict=True)
+    }

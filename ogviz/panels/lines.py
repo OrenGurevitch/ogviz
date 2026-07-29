@@ -213,7 +213,8 @@ def value_floor(lines: Sequence[Line], *, gap: float = FLOOR_GAP) -> float:
 
 def series_colors(count: int) -> tuple[str, ...]:
     """The benchmark-chart order: warm lead, amber, blue, then a near-grey for a baseline."""
-    wheel = ("#E8552D", "#F0A800", "#2E7CE0", "#8A63D2", "#14A97C")
+    # The fourth was a violet that collapses onto the blue beside it under deuteranopia.
+    wheel = ("#E8552D", "#F0A800", "#2E7CE0", "#9B3B8F", "#14A97C")
     return tuple(wheel[index % len(wheel)] for index in range(count))
 
 
