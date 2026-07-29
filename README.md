@@ -71,6 +71,29 @@ Off unless asked for. `caption(fig, note, heading=...)` puts a bold claim above 
 grey source note below, both wrapped to the figure width — measured from the render and re-wrapped
 until they fit, at any figure size. A word too long to break is reported by name rather than shrunk.
 
+## Checks on someone else's figures
+
+The checks do not need the rest of the package. Point them at any matplotlib figure:
+
+```bash
+uv run python -m ogviz.qc mypackage.figures:build_panel   # a callable that returns a figure
+uv run python -m ogviz.qc scripts/make_figures.py         # a script; every figure it leaves open
+uv run python -m ogviz.qc --list-checks
+```
+
+Exit 0 when every figure is clean, 1 otherwise, so it sits in CI beside the tests. The target is
+executed — it is the project's own figure code, and artists have to exist to be measured.
+
+Checks that read an ogviz tag, such as where a printed mean should sit, simply say nothing about a
+figure that has none. The rest — overlap, clipping, buried lines, caption width, colour-vision
+separation — apply to anything.
+
+```python
+from ogviz.qc import audit, assert_clean
+audit(fig)          # every complaint, as strings
+assert_clean(fig)   # raise instead of shipping it
+```
+
 ## Checks
 
 `save` runs `ogviz.qc.assert_clean` and raises instead of writing. It catches:
@@ -225,7 +248,9 @@ ogviz
 │   ├── series_confusable_under_cvd(fig: Figure) -> list[str]
 │   ├── significance_gaps(fig: Figure) -> list[str]
 │   ├── stack_spacing(fig: Figure) -> list[str]
-│   └── ticks_in_the_headroom(fig: Figure) -> list[str]
+│   ├── ticks_in_the_headroom(fig: Figure) -> list[str]
+│   └── __main__
+│       └── main(argv: Sequence[str] | None) -> int
 ├── significance
 │   ├── bracket_stack(...) -> ...
 │   ├── ink_bounds_points(text: str, fontsize: float, *, weight: str) -> tuple[float, float]

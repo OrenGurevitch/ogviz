@@ -144,3 +144,46 @@ def test_a_positive_only_series_prints_no_plus() -> None:
 
     assert default_value_format(np.array([0.3, 0.5])).format(0.5) == "0.500"
     assert default_value_format(np.array([-0.3, 0.5])).format(0.5) == "+0.500"
+
+
+def test_the_checks_run_against_a_figure_that_knows_nothing_about_ogviz(tmp_path) -> None:
+    """The detection-only case: a plain matplotlib script, from a project that never imported us.
+
+    Checks that read an ogviz tag stay quiet; the ones that measure geometry and colour do not.
+    """
+    from ogviz.qc.__main__ import main
+
+    script = tmp_path / "someone_elses_figure.py"
+    script.write_text(
+        "import matplotlib\n"
+        "matplotlib.use('Agg')\n"
+        "import matplotlib.pyplot as plt\n"
+        "import numpy as np\n"
+        "fig, ax = plt.subplots(figsize=(6, 4))\n"
+        "x = np.linspace(0, 10, 100)\n"
+        "ax.plot(x, np.sin(x), color='#2E7CE0', label='alpha')\n"
+        "ax.plot(x, np.cos(x), color='#8A63D2', label='beta')\n"
+        "ax.text(5.0, 0.0, 'a label right on the curves', ha='center')\n"
+        "ax.legend()\n"
+    )
+    assert main([str(script)]) == 1, "this figure has defects and the exit code must say so"
+
+
+def test_a_clean_figure_exits_zero(tmp_path) -> None:
+    from ogviz.qc.__main__ import main
+
+    script = tmp_path / "fine.py"
+    script.write_text(
+        "import matplotlib\n"
+        "matplotlib.use('Agg')\n"
+        "import matplotlib.pyplot as plt\n"
+        "fig, ax = plt.subplots(figsize=(6, 4))\n"
+        "ax.plot([0, 1, 2], [0, 1, 0], color='#2E7CE0')\n"
+    )
+    assert main([str(script)]) == 0
+
+
+def test_listing_the_checks_needs_no_target() -> None:
+    from ogviz.qc.__main__ import main
+
+    assert main(["--list-checks"]) == 0
