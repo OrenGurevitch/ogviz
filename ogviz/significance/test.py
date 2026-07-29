@@ -143,3 +143,77 @@ def test_label_for_lets_a_project_keep_its_own_star_convention():
     assert labels == ["**"], "a blank label must draw no bracket at all, not an empty one"
     assert len(ax.lines) == 1
     plt.close(fig)
+
+
+def test_a_row_puts_every_bracket_on_one_line() -> None:
+    """One comparison per category is a row of siblings, not a stack."""
+    import numpy as np
+
+    from ogviz import bar_panel, significance_row
+    from ogviz.panels.bars import Series
+
+    values = [0.9, 0.75, 0.6, 0.5]
+    fig, ax = plt.subplots(figsize=(10.0, 6.0))
+    bar_panel(ax, [Series("s", values, "#7C9A6E", [0.08] * 4)], [f"c{i}" for i in range(4)])
+    significance_row(
+        ax,
+        [(index - 0.2, index + 0.2, p) for index, p in enumerate([1e-5, 1e-3, 0.03, 0.7])],
+        start=1.05,
+        span=1.0,
+    )
+    fig.canvas.draw()
+    tops = {
+        round(float(np.max(line.get_ydata())), 6)
+        for line in ax.lines
+        if getattr(line, "ogviz_bracket", False)
+    }
+    assert len(tops) == 1, f"a row sits at one height, got {sorted(tops)}"
+
+
+def test_a_row_is_not_reported_as_a_crowded_stack() -> None:
+    """Brackets on one line used to read as steps of 0 px, which is what makes it a row."""
+    from ogviz import bar_panel, significance_row
+    from ogviz.panels.bars import Series
+    from ogviz.qc import stack_spacing
+
+    fig, ax = plt.subplots(figsize=(10.0, 6.0))
+    bar_panel(
+        ax,
+        [Series("s", [0.9, 0.75, 0.6, 0.5], "#7C9A6E", [0.08] * 4)],
+        [f"c{i}" for i in range(4)],
+        show_values=False,
+    )
+    significance_row(
+        ax,
+        [(index - 0.2, index + 0.2, p) for index, p in enumerate([1e-5, 1e-3, 0.03, 0.7])],
+        start=1.05,
+        span=1.0,
+    )
+    ax.set_ylim(0.0, 1.4)
+    fig.canvas.draw()
+    assert not stack_spacing(fig)
+
+
+def test_a_crowded_stack_is_still_caught() -> None:
+    """The other direction: clustering heights must not blind the check to a real defect."""
+    import numpy as np
+
+    from ogviz import group_violins
+    from ogviz.qc import stack_spacing
+
+    rng = np.random.default_rng(0)
+    groups = [
+        (float(index), rng.normal(index * 0.3, 1.0, 30), "#E8A838", "#B97C10") for index in range(3)
+    ]
+    fig, ax = plt.subplots(figsize=(8.0, 7.0))
+    group_violins(ax, groups, comparisons=[(0.0, 1.0, 1e-4), (1.0, 2.0, 1e-3), (0.0, 2.0, 1e-5)])
+    fig.canvas.draw()
+    assert not stack_spacing(fig), "as drawn it is even"
+
+    brackets = [line for line in ax.lines if getattr(line, "ogviz_bracket", False)]
+    heights = sorted({float(np.max(line.get_ydata())) for line in brackets})
+    highest = max(brackets, key=lambda line: np.max(line.get_ydata()))
+    crowd = (heights[-1] - heights[-2]) * 0.85
+    highest.set_ydata(np.asarray(highest.get_ydata(), dtype=float) - crowd)
+    fig.canvas.draw()
+    assert any("closer than a star" in c for c in stack_spacing(fig))

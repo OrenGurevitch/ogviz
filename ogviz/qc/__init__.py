@@ -160,12 +160,29 @@ def significance_gaps(fig: Figure) -> list[str]:
     return complaints
 
 
+def _levels(tops: list[float]) -> list[float]:
+    """The distinct heights brackets sit at, brackets on one line counted once.
+
+    A panel with one comparison per category puts every bracket at the SAME height — siblings on one
+    line, which is what `significance_row` draws. Treating each bracket as a step of its own then
+    reported "brackets are 0 px apart", a complaint about the very thing that made the row a row.
+
+    Clustering by height covers all three arrangements with one rule: a stack has one bracket per
+    level, a row has one level, and a row of stacks has several brackets on each of several levels.
+    """
+    levels: list[float] = []
+    for top in sorted(tops):
+        if not levels or top - levels[-1] > GAP_TOLERANCE_PX:
+            levels.append(top)
+    return levels
+
+
 def stack_spacing(fig: Figure) -> list[str]:
     """Stacked brackets must be even, and further apart than a star is from its own line."""
     fig.canvas.draw()
     complaints: list[str] = []
     for ax in fig.axes:
-        tops = _bracket_tops_px(ax)
+        tops = _levels(_bracket_tops_px(ax))
         if len(tops) < 2:
             continue
         steps = np.diff(tops)

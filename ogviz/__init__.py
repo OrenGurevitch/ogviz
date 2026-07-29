@@ -69,7 +69,7 @@ from ogviz.panels import (
     value_labels,
 )
 from ogviz.qc import assert_clean, audit
-from ogviz.significance import bracket_stack, spaced_stars, stars
+from ogviz.significance import bracket_stack, significance_row, spaced_stars, stars
 from ogviz.theme import (
     CANVAS,
     GRID,
@@ -151,6 +151,7 @@ __all__ = [
     "series_colors",
     "share_value_limits",
     "shared_limits",
+    "significance_row",
     "spaced_stars",
     "split_violins",
     "stars",

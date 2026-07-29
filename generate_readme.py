@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 MARKER = "{{MODULE_TREE}}"
 WIDTH = 96  # a signature longer than this is collapsed; the code carries the full one
+BRANCH = re.compile(r"[├└]──")  # what pypatree puts in front of a real entry, and only those
 
 
 def main() -> None:
@@ -49,15 +50,14 @@ def _collapse(raw: str) -> str:
         body = line[len(stem) :]
         if lines and not body.strip():
             continue
-        if lines and re.match(r"^[\s│]*$", stem) and not re.match(r"^[a-zA-Z_]", body):
-            lines[-1] = lines[-1].rstrip() + " " + body.strip()  # a wrapped continuation
-            continue
-        if lines and lines[-1].count("(") > lines[-1].count(")"):
-            lines[-1] = lines[-1].rstrip() + " " + body.strip()
-            continue
-        if lines and lines[-1].rstrip().endswith("->"):
-            # a return type left on its own line
-            lines[-1] = lines[-1].rstrip() + " " + body.strip()
+        # pypatree prefixes every real entry with a branch and never puts one on a
+        # continuation, so that is the discriminator. Guessing from the text instead — does it
+        # start with a letter, are the parens balanced, did the last line end with an arrow —
+        # agreed with it often enough to look right, then failed on a signature wrapping onto
+        # `Any]` or `float]`: starts with a letter, closes no paren, follows no arrow. Four
+        # signatures in this repo's own tree came out split with the indent guides inside them.
+        if lines and not BRANCH.search(stem):
+            lines[-1] = lines[-1].rstrip() + " " + body.strip(" │")
             continue
         lines.append(stem + body)
     out = []

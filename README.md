@@ -226,8 +226,7 @@ ogviz
 │   ├── read_orientation(ax: Axes) -> Orientation | None
 │   ├── require_linear_value_axis(ax: Axes, orientation: Orientation, what: str) -> None
 │   ├── stamp_orientation(ax: Axes, orientation: Orientation) -> None
-│   ├── value_limits(ax: Axes, orientation: Orientation) -> Callable[...,
-│   │   object]
+│   ├── value_limits(ax: Axes, orientation: Orientation) -> Callable[..., object]
 │   ├── value_scale(ax: Axes, orientation: Orientation) -> str
 │   ├── value_span(ax: Axes, orientation: Orientation) -> tuple[float, float]
 │   ├── value_transform(ax: Axes, orientation: Orientation)
@@ -246,13 +245,11 @@ ogviz
 │   │   ├── coupling_panels(...) -> ...
 │   │   ├── estimate_strip(...) -> ...
 │   │   ├── scatter_panel(...) -> ...
-│   │   ├── shared_limits(legs: Sequence[Leg], *, pad: float) -> tuple[float,
-│   │   │   float]
+│   │   ├── shared_limits(legs: Sequence[Leg], *, pad: float) -> tuple[float, float]
 │   │   └── trend_line(...) -> ...
 │   ├── grid
 │   │   ├── align_brackets(axes: Iterable[Axes]) -> float | None
-│   │   ├── align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float |
-│   │   │   None
+│   │   ├── align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float | None
 │   │   ├── align_ticks(axes: Iterable[Axes], *, orientation: Orientation) -> list[float]
 │   │   ├── label_shared_scale_once(...) -> ...
 │   │   └── share_value_limits(...) -> ...
@@ -271,8 +268,7 @@ ogviz
 │   │   ├── Cell(value: str, sub: str | None, best: bool) -> None
 │   │   ├── Row(label: str, cells: tuple[Cell, ...], sub: str | None, height: float) -> None
 │   │   ├── table_panel(...) -> ...
-│   │   └── tint(color: str, *, strength: float) -> tuple[float, float, float,
-│   │       float]
+│   │   └── tint(color: str, *, strength: float) -> tuple[float, float, float, float]
 │   └── violins
 │       └── group_violins(...) -> ...
 ├── qc
@@ -306,6 +302,7 @@ ogviz
 │   ├── ink_bounds_points(text: str, fontsize: float, *, weight: str) -> tuple[float, float]
 │   ├── ink_extents_points(...) -> ...
 │   ├── label_size(label: str, star_size: float) -> float
+│   ├── significance_row(...) -> ...
 │   ├── spaced_stars(p: float) -> str
 │   └── stars(p: float) -> str
 ├── theme

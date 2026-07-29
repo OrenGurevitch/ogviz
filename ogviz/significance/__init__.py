@@ -128,6 +128,7 @@ def bracket_stack(
     linewidth: float = 1.6,
     line_color: str = MUTED_INK,
     text_color: str = INK,
+    fontweight: str = "bold",
     spaced: bool = True,
     label_for: Callable[[float], str] | None = None,
     orientation: Orientation = "vertical",
@@ -185,7 +186,13 @@ def bracket_stack(
             )
             bracket.ogviz_bracket = True  # type: ignore[attr-defined]
         size = label_size(label, fontsize)
-        ink_low, ink_high = (v * px_per_pt for v in ink_extents_points(label, size, axis=axis))
+        ink_low, ink_high = (
+            v * px_per_pt
+            # The same weight the label is set in: the placement is measured from the glyph's ink,
+            # and a lighter weight is a different glyph shape. Measuring bold and drawing regular
+            # would offset every label in the stack by the difference.
+            for v in ink_extents_points(label, size, axis=axis, weight=fontweight)
+        )
         # Place the BASELINE so that the ink bottom lands INK_GAP_PX beyond this bracket.
         anchor = to_pixels.transform(place_many(orientation, 0.0, y))[axis]
         baseline_px = anchor + INK_GAP_PX - ink_low
@@ -203,7 +210,7 @@ def bracket_stack(
                 ha="center" if upright else "left",
                 va="baseline" if upright else "center",
                 fontsize=size,
-                fontweight="bold",
+                fontweight=fontweight,
                 color=text_color,
                 zorder=10,
             )
@@ -215,3 +222,28 @@ def bracket_stack(
         top = at(baseline_px + ink_high)
         y = at(baseline_px + ink_high + STACK_GAP_PX)
     return top
+
+
+def significance_row(
+    ax: Axes,
+    comparisons: Sequence[tuple[float, float, float]],
+    *,
+    start: float,
+    span: float,
+    **kwargs,
+) -> float:
+    """Every bracket at ONE height, for one comparison per category across a panel.
+
+    `bracket_stack` stacks bottom-up, right for several comparisons WITHIN a group and wrong for a
+    panel of seven categories each carrying its own test: those brackets are siblings and belong on
+    one line. Getting that from the stack meant seven separate calls of one comparison each — the
+    workaround a project wrote, and the one that surfaced the orientation bug, since seven
+    one-bracket stacks is not a shape the checks were built to read.
+
+    Returns the topmost ink top, so a caller can reserve room the same way.
+    """
+    tops = [
+        bracket_stack(ax, [comparison], start=start, span=span, **kwargs)
+        for comparison in comparisons
+    ]
+    return max(tops, default=start)
