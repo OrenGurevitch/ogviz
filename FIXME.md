@@ -10,18 +10,25 @@ the bottom with the commit that fixed them.
 
 ## Open
 
-- **§22 — both overlap checks kept; half of one is still a duplicate.** Measured on three
-  constructed pairs, so this is settled rather than assumed. They are not interchangeable: two
-  labels 5 px apart with glyphs not touching are reported by the box test and invisible to the ink
-  test — "cognition" ending 3 px before "autonomic" renders as one word while sharing no pixel.
-  That gap rule is unique and stays. Its OTHER half, boxes intersecting by more than a fraction of
-  the smaller area, asks `colliding_ink`'s question with a threshold instead of an answer and is
-  the weaker instrument. Left in place because removing it would drop the non-same-row case it also
-  covers, and no figure currently distinguishes them.
-  **Trigger to act:** the first time it reports a pair `colliding_ink` passes. At that point the
-  threshold is deciding, and it should go.
+Nothing. Every item below is closed; the file is kept for what the failures taught, not as a queue.
+
 
 ## Resolved
+
+- **§22 — the bounding-box OVERLAP rule is gone; its spacing rule stays.** They were kept together
+  for a while on the grounds that no figure distinguished them, which is an argument for removing
+  the redundant one as much as for keeping it. `colliding_ink` answers "do these two collide" on
+  rendered pixels and needs no threshold; the box rule answered the same question with a fraction
+  of the smaller box's AREA, and could report a pair whose boxes intersect while no glyph does.
+  That false positive is what led me to exempt whole classes of artist from the checks earlier,
+  and a real defect then hid behind one of those exemptions.
+  The SPACING half is untouched and is why the function still exists: two labels 5 px apart with
+  glyphs not touching share no pixel and read as one word, which no overlap test of any kind can
+  see.
+  One claim withdrawn on the way: I had a constructed case where the box rule missed a real
+  collision across a 3% overlap. It reproduced in Arial and not in DejaVu, which the suite pins, so
+  it was font-dependent and is not part of the argument.
+
 
 - **§27 — the "drawn but invisible" check works now, and is opt-in.** Two attempts, and the first
   is the interesting half: it measured with a boolean INK mask, and green drawn over blue is ink

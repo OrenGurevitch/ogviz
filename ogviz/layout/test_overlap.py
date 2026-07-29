@@ -83,7 +83,7 @@ def test_adjacent_labels_that_read_as_one_word_are_reported():
 
 
 def test_labels_that_run_into_each_other_are_reported_too():
-    """The hole this closes: a pair overlapping by less than `min_overlap` of area used to skip
+    """The hole this closes: a pair overlapping slightly used to skip
     the gap rule as well, so the WORSE condition passed while mere abutting was caught."""
     fig = _domain_panel(7.0)  # the same pair, -11.5 px: actually overlapping
     hits = text_overlaps(fig)
@@ -113,3 +113,31 @@ def test_assert_helper_names_the_colliding_pair():
     ax.text(0.5, 0.5, "Measurement A", ha="center")
     with pytest.raises(AssertionError, match="Measurement A"):
         assert_no_text_overlap(fig)
+
+
+def test_the_box_overlap_rule_is_gone_and_ink_answers_that_question() -> None:
+    """Removed rather than retuned, because a threshold on box AREA is the wrong quantity.
+
+    What it could do that the pixel test cannot: nothing. What it could get wrong: report a pair
+    whose boxes intersect while no glyph does — the false positive that made me exempt whole
+    classes of artist from the checks earlier, which is how a real defect then hid behind an
+    exemption.
+
+    An earlier version of this test also claimed it MISSED a real collision, from a constructed
+    case where descenders met ascenders across a 3% box overlap. That reproduced in Arial and not
+    in DejaVu, which this suite pins — so the claim was font-dependent and is not made here. The
+    spacing rule it shared a function with is untouched and still has its own tests above.
+    """
+    import inspect
+
+    from ogviz.layout import overlap
+    from ogviz.qc import colliding_ink
+
+    assert "min_overlap" not in inspect.signature(overlap.text_overlaps).parameters
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    ax.text(0.5, 0.5, "OVERLAP", fontsize=30, ha="center", va="center")
+    ax.text(0.5, 0.5, "OVERLAP", fontsize=30, ha="center", va="center")
+    fig.canvas.draw()
+    assert colliding_ink(fig), "two strings in one place share pixels, in any font"
+    plt.close(fig)

@@ -186,11 +186,11 @@ ogviz
 │   │   ├── hidden_artists(fig: Figure, artists: list[Artist], *, showing: float) -> list[int]
 │   │   └── visible_contribution(fig: Figure, artist: Artist) -> NDArray[np.bool_]
 │   ├── overlap
-│   │   ├── assert_no_text_overlap(fig: Figure, *, min_overlap: float, min_gap: float) -> None
+│   │   ├── assert_no_text_overlap(fig: Figure, *, min_gap: float) -> None
 │   │   ├── assert_nothing_clipped(fig: Figure) -> None
 │   │   ├── clipped_artists(fig: Figure) -> list[str]
 │   │   ├── drawn_tick_labels(ax: Axes) -> list[Text]
-│   │   └── text_overlaps(fig: Figure, *, min_overlap: float, min_gap: float) -> list[str]
+│   │   └── text_overlaps(fig: Figure, *, min_gap: float) -> list[str]
 │   ├── panels
 │   │   ├── panel_row(...) -> ...
 │   │   ├── settle_caption(fig: Figure, *, gap_px: float) -> bool

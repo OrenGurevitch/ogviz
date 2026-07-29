@@ -3,8 +3,7 @@
 Overlap is the defect that keeps coming back, because it depends on the rendered size of every
 string and therefore on the font, the figure size and the data range — none of which a builder
 can reason about while writing the call. So measure it: draw the figure, take every visible text
-artist's window extent, and report any pair whose intersection covers more than `min_overlap` of
-the smaller box.
+artist's window extent, and report any pair on one row that sits closer than `min_gap`.
 
 The threshold exists because tick labels and legend entries legitimately abut. A few percent of
 shared area is kerning; a fifth of a label buried under another is a defect.
@@ -17,14 +16,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from matplotlib.transforms import Bbox
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
     from matplotlib.text import Text
+    from matplotlib.transforms import Bbox
 
-DEFAULT_MIN_OVERLAP = 0.18
 DEFAULT_MIN_GAP = 5.0  # px; below this two labels on one row read as one word
 
 
@@ -82,16 +80,18 @@ def _horizontal_gap(first: Bbox, second: Bbox) -> float | None:
     return max(first.x0, second.x0) - min(first.x1, second.x1)
 
 
-def text_overlaps(
-    fig: Figure,
-    *,
-    min_overlap: float = DEFAULT_MIN_OVERLAP,
-    min_gap: float = DEFAULT_MIN_GAP,
-) -> list[str]:
-    """Text pairs that overlap, or that sit so close on one row they read as a single word.
+def text_overlaps(fig: Figure, *, min_gap: float = DEFAULT_MIN_GAP) -> list[str]:
+    """Text pairs sitting so close on one row that they read as a single word.
 
-    The gap rule catches what a pure overlap rule cannot: a tick row where "cognition" ends 3 px
-    before "autonomic" begins has zero overlapping area and still renders as "cognitionautonomic".
+    This is the SPACING rule, and it is all that is left here. It catches what no overlap test can:
+    a tick row where "cognition" ends 3 px before "autonomic" begins shares no pixel and still
+    renders as "cognitionautonomic".
+
+    Whether two labels actually collide is `colliding_ink`'s question, answered on rendered pixels.
+    A bounding-box overlap rule used to live here too and was wrong in both directions — it reported
+    pairs whose boxes intersect while no glyph does, and, because its threshold was a fraction of
+    the smaller box's AREA, it stayed silent on a real collision where descenders met ascenders
+    across a 3% overlap. Measured, not argued: that case is in `test_overlap.py`.
     """
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()  # type: ignore[attr-defined]
@@ -104,34 +104,24 @@ def text_overlaps(
     hits = []
     for index, (first_label, first_box) in enumerate(boxes):
         for second_label, second_box in boxes[index + 1 :]:
-            # The gap rule runs FIRST and on every same-row pair, including intersecting ones.
-            # An earlier version skipped it whenever the boxes intersected, so a pair overlapping
-            # by less than `min_overlap` of area escaped both rules — the worse condition passing
-            # while the milder one was caught. Two tick labels 11.5 px INTO each other reported
-            # clean.
+            # Runs on every same-row pair, including intersecting ones. An earlier version skipped
+            # it whenever the boxes intersected, so a pair overlapping by a little escaped both
+            # rules — the worse condition passing while the milder one was caught.
             gap = _horizontal_gap(first_box, second_box)
             if gap is not None and gap < min_gap:
                 verb = "touches" if gap >= 0 else "runs into"
                 hits.append(f"{first_label!r} {verb} {second_label!r} ({gap:.1f} px apart)")
                 continue
-            shared = Bbox.intersection(first_box, second_box)
-            if shared is None or shared.width <= 0 or shared.height <= 0:
-                continue
-            smaller = min(first_box.size.prod(), second_box.size.prod())
-            fraction = (shared.width * shared.height) / smaller
-            if fraction > min_overlap:
-                hits.append(f"{first_label!r} over {second_label!r} ({fraction:.0%})")
     return hits
 
 
 def assert_no_text_overlap(
     fig: Figure,
     *,
-    min_overlap: float = DEFAULT_MIN_OVERLAP,
     min_gap: float = DEFAULT_MIN_GAP,
 ) -> None:
     """Fail the build rather than write a figure whose labels sit on or against each other."""
-    hits = text_overlaps(fig, min_overlap=min_overlap, min_gap=min_gap)
+    hits = text_overlaps(fig, min_gap=min_gap)
     assert not hits, "text collisions: " + " | ".join(hits)
 
 
