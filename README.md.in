@@ -79,6 +79,7 @@ project, drawn any way.
 uv run python -m ogviz.qc mypackage.figures:build_panel   # a callable that returns a figure
 uv run python -m ogviz.qc scripts/make_figures.py         # a script; every figure it leaves open
 uv run python -m ogviz.qc scripts/make_figures.py --fix out/   # repair what it can, write to out/
+uv run python -m ogviz.qc scripts/make_figures.py --thorough  # also the slow, exact ones
 uv run python -m ogviz.qc --list-checks
 ```
 

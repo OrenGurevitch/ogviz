@@ -79,3 +79,36 @@ def test_nothing_close_costs_no_extra_renders() -> None:
     ]
     fig.canvas.draw()
     assert exact_overlaps(fig, far_apart) == []
+
+
+def test_an_artist_covered_by_another_is_found() -> None:
+    """The check that took two attempts. A line behind a filled area is drawn and cannot be seen."""
+    from ogviz.layout.ink import hidden_artists
+
+    fig, ax = plt.subplots(figsize=(5.0, 4.0))
+    (behind,) = ax.plot([0, 1], [0.5, 0.5], color="red", lw=8.0, zorder=1)
+    fill = ax.fill_between([0, 1], [0, 0], [1, 1], color="blue", zorder=2)
+    (on_top,) = ax.plot([0, 1], [0.2, 0.2], color="green", lw=8.0, zorder=3)
+    fig.canvas.draw()
+
+    assert hidden_artists(fig, [behind, fill, on_top]) == [0], "only the buried one"
+
+
+def test_visibility_is_measured_in_colour_not_in_ink() -> None:
+    """Why the first version reported nearly every artist as buried.
+
+    A boolean ink mask asks "does this pixel differ from the page". Green over blue is ink either
+    way, so removing the green changed no mask pixel and a plainly visible line measured as
+    contributing nothing.
+    """
+    from ogviz.layout.ink import artist_ink, visible_contribution
+
+    fig, ax = plt.subplots(figsize=(5.0, 4.0))
+    ax.fill_between([0, 1], [0, 0], [1, 1], color="blue", zorder=1)
+    (on_top,) = ax.plot([0, 1], [0.5, 0.5], color="green", lw=8.0, zorder=2)
+    fig.canvas.draw()
+
+    footprint = int(artist_ink(fig, on_top).sum())
+    in_colour = int(visible_contribution(fig, on_top).sum())
+    assert footprint > 100
+    assert in_colour / footprint > 0.9, "it decides the colour of nearly all of its own footprint"

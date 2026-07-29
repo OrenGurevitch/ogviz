@@ -17,7 +17,7 @@ import numpy as np
 
 from ogviz.layout.caption import overflowing_text
 from ogviz.layout.collision import quoted, text_over_data
-from ogviz.layout.ink import exact_overlaps
+from ogviz.layout.ink import exact_overlaps, hidden_artists
 from ogviz.layout.overlap import clipped_artists, text_overlaps
 from ogviz.significance import STACK_GAP_PX, ink_extents_points
 
@@ -463,6 +463,29 @@ def _handle_color(handle) -> str | None:
     return None
 
 
+def drawn_but_invisible(fig: Figure) -> list[str]:
+    """Marks that would draw something and are covered by something else.
+
+    The case no geometric check can see: the artist is where it was asked to be, its bounding box is
+    fine, and a reader cannot see it. Measured in colour — which pixels change value when it is
+    taken away — because in a boolean ink mask a line drawn over a filled area contributes nothing
+    whether it is visible or not.
+
+    Backdrops and the marks sitting on them are exempt: a shaded column exists to be covered.
+    """
+    complaints: list[str] = []
+    for ax in fig.axes:
+        artists = [
+            artist for artist in [*ax.lines, *ax.collections, *ax.patches] if not _backdrop(artist)
+        ]
+        for index in hidden_artists(fig, artists):
+            complaints.append(
+                f"a {type(artists[index]).__name__} is drawn and almost entirely covered — "
+                "either it is redundant or something is on top of it"
+            )
+    return complaints
+
+
 def colliding_ink(fig: Figure) -> list[str]:
     """Artists that genuinely share pixels, decided by the renderer rather than by their boxes.
 
@@ -552,9 +575,21 @@ CHECKS = (
 )
 
 
-def audit(fig: Figure) -> list[str]:
-    """Every complaint the checks can make about this figure."""
-    return [complaint for check in CHECKS for complaint in check(fig)]
+# Two renders per artist, so it costs seconds on a busy panel where the rest of the gate costs
+# milliseconds. Out of the default set for that reason alone — it is correct and it is affordable
+# occasionally, not on every save.
+THOROUGH_CHECKS = (drawn_but_invisible,)
+
+
+def audit(fig: Figure, *, thorough: bool = False) -> list[str]:
+    """Every complaint the checks can make about this figure.
+
+    `thorough` adds the checks that render the figure once per artist. They are exact and slow —
+    nine seconds on a six-panel grid against milliseconds for the rest — so they are asked for
+    rather than paid for on every save. `python -m ogviz.qc --thorough` is the usual way in.
+    """
+    checks = CHECKS + THOROUGH_CHECKS if thorough else CHECKS
+    return [complaint for check in checks for complaint in check(fig)]
 
 
 def assert_clean(fig: Figure) -> None:

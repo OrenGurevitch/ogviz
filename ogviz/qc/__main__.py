@@ -76,6 +76,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--list-checks", action="store_true", help="print what is checked, and stop"
     )
     parser.add_argument(
+        "--thorough",
+        action="store_true",
+        help=(
+            "also run the checks that render once per artist — exact, and seconds rather than "
+            "milliseconds on a busy figure"
+        ),
+    )
+    parser.add_argument(
         "--fix",
         metavar="DIR",
         help=(
@@ -105,11 +113,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     for index, figure in enumerate(figures):
         label = figure.get_label() or f"figure_{index + 1}"
         print(f"{label}:")
-        for line in group_by_subject(audit(figure)):
+        for line in group_by_subject(audit(figure, thorough=args.thorough)):
             print(f"  - {line}")
 
         if destination is None:
-            outstanding += len(audit(figure))
+            outstanding += len(audit(figure, thorough=args.thorough))
             continue
 
         for change in repair(figure):
@@ -117,7 +125,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         written = destination / f"{label}.png"
         figure.savefig(written, dpi=200, bbox_inches="tight")
         print(f"  wrote {written}")
-        remaining = audit(figure)
+        remaining = audit(figure, thorough=args.thorough)
         outstanding += len(remaining)
         for line in group_by_subject(remaining):
             print(f"  still needs a person: {line}")

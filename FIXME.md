@@ -21,20 +21,22 @@ the bottom with the commit that fixed them.
   **Trigger to act:** the first time it reports a pair `colliding_ink` passes. At that point the
   threshold is deciding, and it should go.
 
-- **§27 — a companion ink check is written, disagrees with itself, and is NOT shipped.**
-  "This artist is drawn and contributes no pixel, so something covers it" is the obvious next use
-  of `ogviz.layout.ink` and would catch a mark hidden behind another. Written, it returned indices
-  for artists that `artist_ink` reported hundreds of pixels for, in the same process, from the same
-  list.
-  Half the cause is understood and is written into the module: a DIFFERENCE render gives an
-  artist's marginal contribution, not its footprint, so anything whose pixels are also painted by
-  something else measures as zero. `artist_ink` renders alone now and subtracts a bare render.
-  What is still unexplained is the disagreement itself. Renders were measured stable at 0 px
-  between consecutive draws, so the cold-font-cache theory raised at the time was wrong.
-  **Before shipping it:** reproduce the disagreement against the current `artist_ink` and explain
-  it. A check whose failures cannot be explained teaches people to ignore output.
-
 ## Resolved
+
+- **§27 — the "drawn but invisible" check works now, and is opt-in.** Two attempts, and the first
+  is the interesting half: it measured with a boolean INK mask, and green drawn over blue is ink
+  either way — so removing an artist sitting on ANOTHER inked artist changed no mask pixel, and
+  every such artist measured as contributing nothing. That is why it once called nearly every label
+  buried, and why it disagreed with `artist_ink`: the two were not measuring the same thing.
+  Visibility is measured in COLOUR now — which pixels change value when the artist is taken away. A
+  line behind a filled area decides 152 px of its own 4,741 footprint; a line on top decides all of
+  them.
+  It costs two renders per artist, so a bbox-and-z-order gate runs in front — nothing above an
+  artist means nothing can hide it — taking a six-panel grid from 12.6 s to 9.1 s. Still far too
+  slow for every save, so it is NOT in the default set: `audit(fig, thorough=True)` and
+  `python -m ogviz.qc --thorough`. Verified to fire on a buried line and to stay silent across all
+  thirteen examples.
+
 
 ### Audit round, 2026-07-29
 

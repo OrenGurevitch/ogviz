@@ -80,6 +80,7 @@ project, drawn any way.
 uv run python -m ogviz.qc mypackage.figures:build_panel   # a callable that returns a figure
 uv run python -m ogviz.qc scripts/make_figures.py         # a script; every figure it leaves open
 uv run python -m ogviz.qc scripts/make_figures.py --fix out/   # repair what it can, write to out/
+uv run python -m ogviz.qc scripts/make_figures.py --thorough  # also the slow, exact ones
 uv run python -m ogviz.qc --list-checks
 ```
 
@@ -181,7 +182,9 @@ ogviz
 │   │   └── titled(...) -> ...
 │   ├── ink
 │   │   ├── artist_ink(fig: Figure, artist: Artist, *, others: list[Artist] | None)
-│   │   └── exact_overlaps(...) -> ...
+│   │   ├── exact_overlaps(...) -> ...
+│   │   ├── hidden_artists(fig: Figure, artists: list[Artist], *, showing: float) -> list[int]
+│   │   └── visible_contribution(fig: Figure, artist: Artist) -> NDArray[np.bool_]
 │   ├── overlap
 │   │   ├── assert_no_text_overlap(fig: Figure, *, min_overlap: float, min_gap: float) -> None
 │   │   ├── assert_nothing_clipped(fig: Figure) -> None
@@ -266,10 +269,11 @@ ogviz
 │       └── group_violins(...) -> ...
 ├── qc
 │   ├── assert_clean(fig: Figure) -> None
-│   ├── audit(fig: Figure) -> list[str]
+│   ├── audit(fig: Figure, *, thorough: bool) -> list[str]
 │   ├── buried_baselines(fig: Figure) -> list[str]
 │   ├── colliding_ink(fig: Figure) -> list[str]
 │   ├── dots_off_the_marks(fig: Figure) -> list[str]
+│   ├── drawn_but_invisible(fig: Figure) -> list[str]
 │   ├── layout_not_applied(fig: Figure) -> list[str]
 │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
 │   ├── one_minus_sign(fig: Figure) -> list[str]

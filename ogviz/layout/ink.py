@@ -23,11 +23,15 @@ It costs one render per artist, so it is not run over everything: `exact_overlap
 find candidate pairs and pays for ink only on those. On a figure where nothing is close, that is
 one render. On a figure with a real collision, it is a handful.
 
-A companion check — "this artist is drawn and contributes no pixel, so something covers it" — is
-the obvious next use of the same measurement and is NOT here. Written, it disagreed with
-`artist_ink` called directly on the same artists, and the cause is not yet understood; a check
-whose failures cannot be explained is worse than no check, because it teaches people to ignore
-output. FIXME has it.
+`hidden_artists` is the same measurement asking a different question, and it took two attempts to
+get right. An artist is hidden when it would put ink on the page and decides the colour of almost
+none of it.
+
+Both halves matter and the first version had neither. It measured with a boolean INK mask — "does
+this pixel differ from the page" — and green drawn over blue is ink either way, so removing an
+artist that sits on top of another changed no mask pixel and every such artist measured as
+contributing nothing. That is why it once reported nearly every label as buried. The contribution
+has to be measured in COLOUR: which pixels change value when the artist is taken away.
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ if TYPE_CHECKING:
 
 INK_TOLERANCE = 10  # per channel, against the page colour
 MIN_SHARED_PX = 2  # one shared pixel is antialiasing; two is contact
+HIDDEN_FRACTION = 0.05  # below this share of its own footprint, an artist is covered
 
 
 def _render(fig: Figure) -> NDArray[np.bool_]:
@@ -134,3 +139,74 @@ def exact_overlaps(
         if shared >= min_shared:
             found.append((first, second, shared))
     return found
+
+
+def visible_contribution(fig: Figure, artist: Artist) -> NDArray[np.bool_]:
+    """Pixels whose COLOUR this artist decides — what a reader would lose without it.
+
+    Not the same as its footprint, and not the same as its ink. A line drawn over a filled area has
+    a full footprint, and contributes nothing to a boolean ink mask because the pixels were already
+    ink; in colour it contributes everything, because they were blue and are now green. Measuring
+    this in ink rather than colour is the mistake that made the first version of `hidden_artists`
+    report almost every artist as buried.
+    """
+    was_visible = artist.get_visible()
+    artist.set_visible(True)
+    with_it = _frame(fig)
+    artist.set_visible(False)
+    try:
+        without = _frame(fig)
+    finally:
+        artist.set_visible(was_visible)
+    return np.any(np.abs(with_it - without) > INK_TOLERANCE, axis=2)
+
+
+def _frame(fig: Figure) -> NDArray[np.int16]:
+    fig.canvas.draw()
+    read_back = getattr(fig.canvas, "buffer_rgba", None)
+    assert read_back is not None, "reading pixels back needs a raster canvas — run under Agg"
+    return np.asarray(read_back(), dtype=np.int16)[:, :, :3]
+
+
+def hidden_artists(
+    fig: Figure, artists: list[Artist], *, showing: float = HIDDEN_FRACTION
+) -> list[int]:
+    """Indices of artists that would draw something and decide the colour of almost none of it.
+
+    A geometric check cannot ask this: the artist is exactly where it was asked to be, with a
+    perfectly good bounding box, and something is on top of it. `showing` is the share of an
+    artist's own footprint it must still decide to count as visible — a line poking out at the ends
+    of the shape covering it is not a visible line.
+    """
+    fig.canvas.draw()
+    everything = _every_artist(fig)
+    found: list[int] = []
+    for index, artist in enumerate(artists):
+        if not artist.get_visible() or not _could_be_covered(artist, everything):
+            continue
+        footprint = int(artist_ink(fig, artist, others=everything).sum())
+        if footprint == 0:
+            continue
+        contributes = int(visible_contribution(fig, artist).sum())
+        if contributes / footprint < showing:
+            found.append(index)
+    return found
+
+
+def _could_be_covered(artist: Artist, everything: list[Artist]) -> bool:
+    """Whether anything is drawn above this artist and overlaps its box.
+
+    A cheap gate in front of an expensive answer, which is the same shape as `exact_overlaps`: two
+    renders per artist is affordable for the few that something sits on and ruinous for all of
+    them. Nothing above it means nothing can be hiding it, and no render is needed to know that —
+    on a 78-artist panel this is the difference between twelve seconds and one.
+    """
+    box = artist.get_window_extent()
+    order = artist.get_zorder()
+    return any(
+        other is not artist
+        and other.get_visible()
+        and other.get_zorder() > order
+        and other.get_window_extent().overlaps(box)
+        for other in everything
+    )
