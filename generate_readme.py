@@ -55,9 +55,19 @@ def _collapse(raw: str) -> str:
         if lines and lines[-1].count("(") > lines[-1].count(")"):
             lines[-1] = lines[-1].rstrip() + " " + body.strip()
             continue
+        if lines and lines[-1].rstrip().endswith("->"):
+            lines[-1] = lines[-1].rstrip() + " " + body.strip()   # a return type left on its own line
+            continue
         lines.append(stem + body)
     out = []
     for line in lines:
+        # Only the SIGNATURE is normalised, never the stem: the stem's runs of spaces ARE the tree
+        # indentation, and squeezing them turns "│   ├──" into "│ ├──" and flattens the whole shape.
+        stem = re.match(r"^([\s│├└─]*)", line).group(1)  # type: ignore[union-attr]
+        body = line[len(stem):]
+        # pypatree wraps at its own width, so joining leaves "( a, b, )" spacing behind
+        body = re.sub(r"\(\s+", "(", re.sub(r"\s+\)", ")", re.sub(r",\s*\)", ")", body)))
+        line = stem + re.sub(r"(?<=\S)  +(?=\S)", " ", body)
         if len(line) > WIDTH and "(" in line:
             head, _, _rest = line.partition("(")
             line = f"{head}(...)" + (" -> ..." if "->" in line else "")

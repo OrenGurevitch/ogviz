@@ -94,6 +94,10 @@ until they fit, at any figure size. A word too long to break is reported by name
 
 ```text
 ogviz
+├── color
+│   ├── indistinguishable_series(colors: dict[str, str], *, threshold: float) -> list[str]
+│   ├── separation(first: str, second: str, deficiency: Deficiency | None) -> float
+│   └── simulate(...) -> ...
 ├── layout
 │   ├── baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
 │   ├── drawn_value_extent(ax: Axes) -> tuple[float, float] | None
@@ -102,7 +106,7 @@ ogviz
 │   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
 │   ├── pill_frame(legend: Legend) -> Legend
 │   ├── save(...) -> ...
-│   ├── ticks_over_data( ax: Axes, data_high: float, *, orientation: Orientation, ) -> None
+│   ├── ticks_over_data(ax: Axes, data_high: float, *, orientation: Orientation) -> None
 │   ├── titled(...) -> ...
 │   ├── zero_baseline(ax: Axes) -> None
 │   ├── caption
@@ -131,15 +135,15 @@ ogviz
 │   │   ├── artist_ink(fig: Figure, artist: Artist, *, others: list[Artist] | None)
 │   │   └── exact_overlaps(...) -> ...
 │   ├── overlap
-│   │   ├── assert_no_text_overlap(...) -> ...
+│   │   ├── assert_no_text_overlap(fig: Figure, *, min_overlap: float, min_gap: float) -> None
 │   │   ├── assert_nothing_clipped(fig: Figure) -> None
 │   │   ├── clipped_artists(fig: Figure) -> list[str]
 │   │   ├── drawn_tick_labels(ax: Axes) -> list[Text]
-│   │   └── text_overlaps( fig: Figure, *, min_overlap: float, min_gap: float, ) -> list[str]
+│   │   └── text_overlaps(fig: Figure, *, min_overlap: float, min_gap: float) -> list[str]
 │   ├── panels
 │   │   ├── panel_row(...) -> ...
 │   │   ├── text_width_points(text: str, fontsize: float) -> float
-│   │   └── wrap_to_width( text: str, width_points: float, fontsize: float, ) -> list[str]
+│   │   └── wrap_to_width(text: str, width_points: float, fontsize: float) -> list[str]
 │   └── ticks
 │       ├── auto_decimals(value: float) -> int
 │       ├── format_value(...) -> ...
@@ -154,14 +158,14 @@ ogviz
 │   ├── points(...) -> ...
 │   └── violin(...) -> ...
 ├── orientation
-│   ├── category_limits( ax: Axes, orientation: Orientation, ) -> Callable[..., object]
-│   ├── category_tick_labels( ax: Axes, orientation: Orientation, ) -> Callable[..., object]
-│   ├── category_ticks( ax: Axes, orientation: Orientation, ) -> Callable[..., object]
+│   ├── category_limits(ax: Axes, orientation: Orientation) -> Callable[..., object]
+│   ├── category_tick_labels(ax: Axes, orientation: Orientation) -> Callable[..., object]
+│   ├── category_ticks(ax: Axes, orientation: Orientation) -> Callable[..., object]
 │   ├── constant_value_line(...) -> ...
 │   ├── is_vertical(orientation: Orientation) -> bool
-│   ├── place( orientation: Orientation, category: float, value: float, ) -> tuple[float, float]
+│   ├── place(orientation: Orientation, category: float, value: float) -> tuple[float, float]
 │   ├── place_many(orientation: Orientation, category, value) -> tuple
-│   ├── require_linear_value_axis( ax: Axes, orientation: Orientation, what: str, ) -> None
+│   ├── require_linear_value_axis(ax: Axes, orientation: Orientation, what: str) -> None
 │   ├── value_limits(ax: Axes, orientation: Orientation) -> Callable[...,
 │   │   object]
 │   ├── value_scale(ax: Axes, orientation: Orientation) -> str
@@ -191,10 +195,9 @@ ogviz
 │   │   └── share_value_limits(...) -> ...
 │   ├── lines
 │   │   ├── Line(...) -> ...
-│   │   ├── broken_zero(ax: Axes, *, floor: float, zero_gap: float | None) ->
-│   │   │   None
+│   │   ├── broken_zero(ax: Axes, *, floor: float, zero_gap: float | None) -> None
 │   │   ├── line_panel(...) -> ...
-│   │   ├── money_ticks( ax: Axes, positions: Sequence[float], *, decimals: int, ) -> None
+│   │   ├── money_ticks(ax: Axes, positions: Sequence[float], *, decimals: int) -> None
 │   │   ├── series_colors(count: int) -> tuple[str, ...]
 │   │   └── value_floor(lines: Sequence[Line], *, gap: float) -> float
 │   ├── split
@@ -203,7 +206,7 @@ ogviz
 │   │   └── split_violins(...) -> ...
 │   ├── table
 │   │   ├── Cell(value: str, sub: str | None, best: bool) -> None
-│   │   ├── Row( label: str, cells: tuple[Cell, ...], sub: str | None, height: float, ) -> None
+│   │   ├── Row(label: str, cells: tuple[Cell, ...], sub: str | None, height: float) -> None
 │   │   ├── table_panel(...) -> ...
 │   │   └── tint(color: str, *, strength: float) -> tuple[float, float, float,
 │   │       float]
@@ -218,21 +221,28 @@ ogviz
 │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
 │   ├── one_minus_sign(fig: Figure) -> list[str]
 │   ├── rows_outside_their_panel(fig: Figure) -> list[str]
+│   ├── series_confusable_under_cvd(fig: Figure) -> list[str]
 │   ├── significance_gaps(fig: Figure) -> list[str]
 │   ├── stack_spacing(fig: Figure) -> list[str]
 │   └── ticks_in_the_headroom(fig: Figure) -> list[str]
 ├── significance
 │   ├── bracket_stack(...) -> ...
-│   ├── ink_bounds_points( text: str, fontsize: float, *, weight: str, ) -> tuple[float, float]
+│   ├── ink_bounds_points(text: str, fontsize: float, *, weight: str) -> tuple[float, float]
 │   ├── ink_extents_points(...) -> ...
 │   ├── label_size(label: str, star_size: float) -> float
 │   ├── spaced_stars(p: float) -> str
 │   └── stars(p: float) -> str
-└── theme
-    ├── glyphs_must_render() -> Iterator[None]
-    ├── house_style(canvas: str) -> Iterator[None]
-    ├── page_color() -> str
-    └── use_house_style(canvas: str) -> None
+├── theme
+│   ├── glyphs_must_render() -> Iterator[None]
+│   ├── house_style(canvas: str) -> Iterator[None]
+│   ├── page_color() -> str
+│   └── use_house_style(canvas: str) -> None
+└── units
+    ├── midpoint(ax: Axes, low: float, high: float, *, orientation: str) -> float
+    ├── panel_px(ax: Axes, *, orientation: str) -> float
+    ├── px_to_value(ax: Axes, pixels: float, *, orientation: str) -> float
+    ├── to_px(value: float, unit: Unit, *, fig: Figure, em: float | None) -> float
+    └── value_to_px(ax: Axes, value: float, *, orientation: str) -> float
 ```
 
 ## License
