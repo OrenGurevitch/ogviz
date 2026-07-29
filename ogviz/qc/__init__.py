@@ -19,6 +19,7 @@ from ogviz.layout.caption import overflowing_text
 from ogviz.layout.collision import quoted, text_over_data
 from ogviz.layout.ink import exact_overlaps, hidden_artists
 from ogviz.layout.overlap import clipped_artists, text_overlaps
+from ogviz.orientation import read_orientation
 from ogviz.significance import STACK_GAP_PX, ink_extents_points
 
 if TYPE_CHECKING:
@@ -38,13 +39,21 @@ BRACKET_POINTS = 4  # a bracket is drawn as four points: down, across, down
 
 
 def _orientation(ax: Axes) -> str:
-    """Read the panel's orientation off the marks rather than asking the caller.
+    """The panel's orientation: what it recorded, or failing that what its marks suggest.
 
-    An IQR whisker is a two-point line drawn ON the group's centre: constant x in a vertical
-    panel, constant y in a horizontal one. Without this the checks assumed vertical and reported
-    that a horizontal panel's stars had "no bracket under them", which is the kind of false alarm
-    that gets a gate switched off.
+    The marks are a fallback for a figure this package did not draw. Inferring it where the answer
+    was known produced the worst class of QC failure — a confident complaint about a correct
+    figure. A grouped bar panel votes exactly once, and wrongly: `errorbar` keeps its bars and caps
+    in a LineCollection, so the only two-point line is the zero baseline, whose y is constant, and
+    the panel reads as horizontal. Brackets were then measured along x, none matched the bracket
+    shape, and all five stars were reported as having no bracket under them.
+
+    The vote itself is unchanged and still right for what it is: an IQR whisker is a two-point line
+    on the group's centre, constant x in a vertical panel and constant y in a horizontal one.
     """
+    recorded = read_orientation(ax)
+    if recorded is not None:
+        return recorded
     vertical = horizontal = 0
     for line in ax.lines:
         xdata = np.asarray(line.get_xdata(), dtype=float)
@@ -58,14 +67,27 @@ def _orientation(ax: Axes) -> str:
     return "horizontal" if horizontal > vertical else "vertical"
 
 
+def _looks_like_stars(text: str) -> bool:
+    """A row of asterisks, however `spaced_stars` spaced them. For figures with no tag to read."""
+    stripped = text.strip()
+    return bool(stripped) and set(stripped.split()) == {"*"}
+
+
 def _stars(ax: Axes) -> list[Text]:
-    """Bracket stars only. A forest strip marks whole rows and flags those so they are skipped."""
-    return [
-        t
-        for t in ax.texts
-        if (set(t.get_text().split()) == {"*"} or t.get_text().strip() == "*")
-        and not getattr(t, "ogviz_column_star", False)
-    ]
+    """Every label `bracket_stack` placed over a bracket, whatever it says.
+
+    Read from the tag the stack already sets, not from the wording. Matching asterisks instead
+    excluded `"n.s."` — so the one label in a stack that is not a row of asterisks was the one
+    exempt from the check that they all sit at the same height, and a figure shipped with `n.s.`
+    visibly below its neighbours while the audit stayed silent. `label_for` means a project can
+    print any wording it likes, so no list of strings could have covered this.
+
+    The wording test remains for a figure this package did not draw, where there is no tag.
+    A forest strip marks whole rows and flags those, so they are skipped.
+    """
+    tagged = [t for t in ax.texts if getattr(t, "ogviz_bracket_star", False)]
+    candidates = tagged or [t for t in ax.texts if _looks_like_stars(t.get_text())]
+    return [t for t in candidates if not getattr(t, "ogviz_column_star", False)]
 
 
 def _is_bracket(data: np.ndarray) -> bool:

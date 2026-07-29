@@ -159,6 +159,7 @@ ogviz
 │   │   ├── annotate_clear(...)
 │   │   ├── clear_position(...) -> ...
 │   │   ├── data_paths(ax: Axes) -> list[tuple[Path, bool]]
+│   │   ├── data_points(ax: Axes) -> list[tuple[NDArray[np.float64], float]]
 │   │   ├── decoration_ids(ax: Axes) -> set[int]
 │   │   ├── hits_data(ax: Axes, box: Bbox, *, padding: float) -> int
 │   │   ├── hits_decoration(ax: Axes, box: Bbox, *, padding: float) -> int
@@ -222,7 +223,9 @@ ogviz
 │   ├── is_vertical(orientation: Orientation) -> bool
 │   ├── place(orientation: Orientation, category: float, value: float) -> tuple[float, float]
 │   ├── place_many(orientation: Orientation, category, value) -> tuple
+│   ├── read_orientation(ax: Axes) -> Orientation | None
 │   ├── require_linear_value_axis(ax: Axes, orientation: Orientation, what: str) -> None
+│   ├── stamp_orientation(ax: Axes, orientation: Orientation) -> None
 │   ├── value_limits(ax: Axes, orientation: Orientation) -> Callable[...,
 │   │   object]
 │   ├── value_scale(ax: Axes, orientation: Orientation) -> str

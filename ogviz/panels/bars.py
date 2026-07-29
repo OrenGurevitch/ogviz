@@ -30,6 +30,7 @@ from ogviz.orientation import (
     constant_value_line,
     is_vertical,
     place_many,
+    stamp_orientation,
     value_span,
     value_transform,
 )
@@ -347,6 +348,7 @@ def bar_panel(
     """
     assert series, "bar_panel needs at least one series"
     assert len(categories), "bar_panel needs at least one category"
+    stamp_orientation(ax, orientation)
     upright = is_vertical(orientation)
     count = len(series)
     centres = np.arange(len(categories), dtype=float)

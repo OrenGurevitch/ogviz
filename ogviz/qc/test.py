@@ -198,3 +198,78 @@ def test_listing_the_checks_needs_no_target() -> None:
     from ogviz.qc.__main__ import main
 
     assert main(["--list-checks"]) == 0
+
+
+def test_a_bar_panel_with_error_bars_is_not_read_as_horizontal() -> None:
+    """The QC bug that reported five correct brackets as missing.
+
+    `errorbar` keeps its bars and caps in a LineCollection, so a grouped bar panel's only two-point
+    line is the zero baseline — constant y — and the orientation vote came back horizontal. Brackets
+    were then measured along x, matched none, and every star was reported bracket-less.
+    """
+    import numpy as np
+
+    from ogviz import bar_panel, bracket_stack
+    from ogviz.panels.bars import Series
+    from ogviz.qc import _orientation, significance_gaps
+
+    values = [0.9, 0.6, 0.45]
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    bar_panel(ax, [Series("s", values, "#7C9A6E", [0.1] * 3)], ["one", "two", "three"])
+    ax.axhline(0.0, color="#333333", lw=1.2)
+    fig.canvas.draw()
+    votes = [line for line in ax.lines if np.asarray(line.get_xdata()).size == 2]
+    assert len(votes) == 1, "the premise: exactly one line votes, and it votes wrongly"
+    assert _orientation(ax) == "vertical"
+
+    reach = max(values)
+    for index in range(3):
+        bracket_stack(ax, [(index - 0.2, index + 0.2, 0.001)], start=reach + 0.3, span=1.0)
+    fig.canvas.draw()
+    missing = [c for c in significance_gaps(fig) if "no bracket under it" in c]
+    assert not missing, missing
+
+
+def test_a_marker_only_line_is_not_ink_between_its_markers() -> None:
+    """A label in the gaps between error-bar caps touches nothing and must not be flagged.
+
+    `errorbar` draws all the lower caps as ONE marker-only Line2D and all the upper caps as another,
+    so the polyline through them runs diagonally across the panel. Testing that polyline reported
+    every value label in a bar panel as sitting on the marks.
+    """
+    import numpy as np
+
+    from ogviz.layout.collision import hits_data, text_box
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    ax.errorbar(np.arange(6.0), np.arange(1.0, 7.0), yerr=0.15, fmt="none", capsize=4)
+    ax.set_xlim(-0.6, 5.6)
+    ax.set_ylim(0.0, 7.0)
+    in_the_gap = ax.text(1.5, 2.5, "0.42", ha="center", va="center")
+    on_a_cap = ax.text(1.0, 2.0, "0.42", ha="center", va="center")
+    fig.canvas.draw()
+    assert hits_data(ax, text_box(in_the_gap)) == 0, "nothing is drawn between two caps"
+    assert hits_data(ax, text_box(on_a_cap)) > 0, "and a label on a cap is still caught"
+
+
+def test_a_non_significant_label_is_checked_like_any_other() -> None:
+    """`_stars` matched asterisks, so `n.s.` was exempt from the gap-consistency check."""
+    import numpy as np
+
+    from ogviz import group_violins
+    from ogviz.qc import _stars, significance_gaps
+
+    rng = np.random.default_rng(0)
+    groups = [(float(i), rng.normal(i * 0.2, 1.0, 30), "#E8A838", "#B97C10") for i in range(3)]
+    fig, ax = plt.subplots(figsize=(8.0, 6.0))
+    group_violins(ax, groups, comparisons=[(0.0, 1.0, 1e-4), (0.0, 2.0, 0.4)])
+    fig.canvas.draw()
+    assert "n.s." in [t.get_text().strip() for t in _stars(ax)]
+    assert not significance_gaps(fig), "as drawn, the two labels agree"
+
+    for text in ax.texts:
+        if text.get_text().strip() == "n.s.":
+            x, y = text.get_position()
+            text.set_position((x, y - 0.35))
+    fig.canvas.draw()
+    assert any("different distances" in c for c in significance_gaps(fig))

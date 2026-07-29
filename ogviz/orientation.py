@@ -30,6 +30,31 @@ def is_vertical(orientation: Orientation) -> bool:
     return orientation == "vertical"
 
 
+STAMP = "ogviz_orientation"
+
+
+def stamp_orientation(ax: Axes, orientation: Orientation) -> None:
+    """Record on the axes which way this panel runs, for anything that has to ask later.
+
+    Every panel here is TOLD its orientation, and until this existed it threw that away, leaving QC
+    to infer it from the marks: a vote on two-point lines, constant-x meaning vertical. A grouped
+    bar panel defeats that outright. `errorbar` hides its bars and caps in a LineCollection, so the
+    only two-point line in the panel is the zero baseline — constant y — and the panel reads as
+    horizontal. QC then measured brackets along x, found none bracket-shaped, and reported all five
+    stars as having no bracket under them, on a panel whose brackets were present and correct.
+
+    Inference is a fallback for a figure this package did not draw. Where the answer is known it is
+    written down.
+    """
+    assert orientation in ("vertical", "horizontal"), f"unknown orientation {orientation!r}"
+    setattr(ax, STAMP, orientation)
+
+
+def read_orientation(ax: Axes) -> Orientation | None:
+    """The orientation a panel recorded, or None for axes this package did not draw."""
+    return getattr(ax, STAMP, None)
+
+
 def place(orientation: Orientation, category: float, value: float) -> tuple[float, float]:
     """(x, y) for a point at `category` on the category axis and `value` on the value axis."""
     return (category, value) if is_vertical(orientation) else (value, category)

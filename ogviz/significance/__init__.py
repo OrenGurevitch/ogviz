@@ -21,7 +21,11 @@ from typing import TYPE_CHECKING
 from matplotlib.font_manager import FontProperties
 from matplotlib.textpath import TextPath
 
-from ogviz.orientation import is_vertical, place_many
+from ogviz.orientation import (
+    is_vertical,
+    place_many,
+    stamp_orientation,
+)
 from ogviz.theme import INK, MUTED_INK, STAR_SIZE, WORD_LABEL_SIZE
 
 if TYPE_CHECKING:
@@ -144,6 +148,10 @@ def bracket_stack(
     """
     if not comparisons:
         return start
+    # Before anything is drawn, and even for `draw=False`: the panel this stack belongs to may have
+    # nothing else that reveals which way it runs, and a bracket is the artist QC most needs to
+    # measure along the right axis.
+    stamp_orientation(ax, orientation)
     figure = ax.figure
     assert figure is not None, "the axes must belong to a figure"
     figure.canvas.draw()  # realise a renderer so transforms are meaningful

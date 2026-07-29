@@ -25,6 +25,7 @@ from ogviz.orientation import (
     category_ticks,
     is_vertical,
     place_many,
+    stamp_orientation,
     value_limits,
     value_span,
 )
@@ -115,6 +116,7 @@ def _finish(ax: Axes, high: float, orientation: Orientation, *, grid: bool) -> N
     Asserted here rather than checked later because this is the one place that knows what the
     limits are supposed to be.
     """
+    stamp_orientation(ax, orientation)
     if grid:
         # Drawn by the panel, not by the caller. Every example had to remember `hairline_grid`, and
         # the two grid examples did not — six panels shipped with no rule to read a violin against.

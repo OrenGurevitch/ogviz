@@ -101,7 +101,7 @@ def data_paths(ax: Axes) -> list[tuple[Path, bool]]:
 
 def _paths_of(artist: Artist) -> Iterator[tuple[Path, bool]]:
     if isinstance(artist, Line2D):
-        yield artist.get_path().transformed(artist.get_transform()), False
+        yield from _line_paths(artist)
     elif isinstance(artist, Patch):
         yield artist.get_path().transformed(artist.get_transform()), True
     elif isinstance(artist, AxesImage):
@@ -130,15 +130,104 @@ def point_offsets(collection: Collection) -> NDArray[np.float64] | None:
     return None
 
 
-def _collection_paths(collection: Collection) -> Iterator[tuple[Path, bool]]:
-    from matplotlib.path import Path as MplPath
+NO_LINE = ("None", "none", " ", "")
 
-    offsets = point_offsets(collection)
-    if offsets is not None:
-        # The marker outline is sized in points, so the honest cheap test is the offset points
-        # themselves, as a single unclosed path.
-        yield MplPath(collection.get_offset_transform().transform(offsets)), False
-        return
+
+def _stroked(line: Line2D) -> bool:
+    return line.get_linestyle() not in NO_LINE and float(line.get_linewidth()) > 0.0
+
+
+def _marked(line: Line2D) -> bool:
+    return line.get_marker() not in (*NO_LINE, None)
+
+
+def _px_per_point(artist: Artist) -> float:
+    figure = artist.get_figure()
+    return (figure.dpi / 72.0) if figure is not None else 1.0
+
+
+def _cloud_footprint_px(collection: Collection) -> float:
+    """How wide one of this collection's marks is drawn, in display pixels.
+
+    Measured from the marker outline through the collection's own per-element transform, which is
+    where matplotlib keeps the size and already folds in the dpi. Reading `get_sizes` instead works
+    only for the collections that define it, and describes an AREA in points squared, which then has
+    to be rooted and converted — two conversions to get wrong for a number matplotlib will hand over
+    directly.
+    """
+    from matplotlib.transforms import Affine2D
+
+    paths = collection.get_paths()
+    transforms = collection.get_transforms()
+    if not len(paths) or not len(transforms):
+        return 1.0
+    footprints = [paths[0].transformed(Affine2D(matrix)).get_extents() for matrix in transforms]
+    widest = max(max(box.width, box.height) for box in footprints)
+    return max(float(widest), 1.0)
+
+
+def data_points(ax: Axes) -> list[tuple[NDArray[np.float64], float]]:
+    """Every cloud of separate marks in the axes: positions in display px, and footprint size in px.
+
+    Separate from `data_paths` because a cloud cannot be tested as a path. Joining the marks into
+    one polyline claims ink along every segment between them, and a compound path of one square per
+    mark does not help — matplotlib's `intersects_bbox` answers True for a box lying BETWEEN two
+    subpaths, so the disjointness is lost either way. Positions, tested individually, are the only
+    faithful representation.
+
+    The defect this fixes: `errorbar` draws its caps as ONE marker-only Line2D per side, so the
+    polyline ran diagonally across the whole panel and every value label in a bar panel came back
+    "sits on 2 mark(s)" — five confident complaints about a figure with nothing overlapping. The
+    same flaw was latent for every scatter, where a dense jitter cloud hid it: the zigzag through
+    the dots happens to cover roughly the area the dots do.
+    """
+    skip = decoration_ids(ax)
+    clouds: list[tuple[NDArray[np.float64], float]] = []
+    for line in ax.lines:
+        if id(line) in skip or not line.get_visible() or _stroked(line) or not _marked(line):
+            continue
+        points = np.column_stack(
+            [np.asarray(line.get_xdata(), dtype=float), np.asarray(line.get_ydata(), dtype=float)]
+        )
+        if len(points):
+            size = float(line.get_markersize()) * _px_per_point(line)
+            clouds.append((line.get_transform().transform(points), size))
+    for collection in ax.collections:
+        if id(collection) in skip or not collection.get_visible():
+            continue
+        offsets = point_offsets(collection)
+        if offsets is None:
+            continue
+        positions = collection.get_offset_transform().transform(offsets)
+        clouds.append((positions, _cloud_footprint_px(collection)))
+    return clouds
+
+
+def _marks_in(positions: NDArray[np.float64], size_px: float, box: Bbox) -> int:
+    """How many marks of that size, centred at those positions, reach into `box`."""
+    half = max(size_px, 1.0) / 2.0
+    inside = (
+        (positions[:, 0] >= box.x0 - half)
+        & (positions[:, 0] <= box.x1 + half)
+        & (positions[:, 1] >= box.y0 - half)
+        & (positions[:, 1] <= box.y1 + half)
+    )
+    return int(np.count_nonzero(inside))
+
+
+def _line_paths(line: Line2D) -> Iterator[tuple[Path, bool]]:
+    """A line's stroke, when it has one. Its markers are a cloud and go through `data_points`.
+
+    `get_path` is the polyline through the points whether or not that polyline is drawn, and a
+    marker-only line draws none of it.
+    """
+    if _stroked(line):
+        yield line.get_path().transformed(line.get_transform()), False
+
+
+def _collection_paths(collection: Collection) -> Iterator[tuple[Path, bool]]:
+    if point_offsets(collection) is not None:
+        return  # a cloud; `data_points` has it
     transform = collection.get_transform()
     for path in collection.get_paths():
         yield path.transformed(transform), True
@@ -165,7 +254,10 @@ def _padded(box: Bbox, padding: float) -> Bbox:
 def hits_data(ax: Axes, box: Bbox, *, padding: float = PADDING_PX) -> int:
     """How many marks enter `box`, which is in display pixels."""
     target = _padded(box, padding)
-    return sum(1 for path, filled in data_paths(ax) if path.intersects_bbox(target, filled=filled))
+    struck = sum(
+        1 for path, filled in data_paths(ax) if path.intersects_bbox(target, filled=filled)
+    )
+    return struck + sum(_marks_in(points, size, target) for points, size in data_points(ax))
 
 
 def hits_decoration(ax: Axes, box: Bbox, *, padding: float = 0.0) -> int:
