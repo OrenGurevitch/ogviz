@@ -67,7 +67,7 @@ it matters, not what to do about it.
   that cannot see intra-module use will report the same two names again.
 
 
-### §15 — 📚 `fit_under_header` reports a refusal that nothing acts on
+### §15 — RESOLVED. `fit_under_header`'s refusal is now read, and no example triggers it
 
 `tight_layout` declines, with a warning and no effect, when axis decorations cannot fit the rect;
 `02_display_units` hits it through its two-line x tick labels, which is §8 in a second place. The
@@ -75,10 +75,14 @@ figure then keeps default margins, which is survivable — the top pin is applie
 checks still run on the result — and `fit_under_header` now returns whether the layout ran rather
 than letting the warning vanish into a build log.
 
-Nothing reads the return value. Either a caller should act on it or the gate should, and the real
-fix is whatever closes §8: reserve for decorations that grow downward past their allotment. Tried
-and rejected: more figure height, a bottom margin, a larger header gap — the constraint is
-structural, not room.
+**Both halves closed, and the second was a surprise.** The gate reads it now: the refusal is
+recorded on the figure and `layout_not_applied` says so out loud, because a return value nobody
+reads is the same as a swallowed warning.
+
+And `02_display_units` no longer refuses. Re-measured across all thirteen examples with warnings
+captured: none of them trips it. Nothing was aimed at this — the bracket alignment and the mean-row
+placement both changed what grows out of the axes, and between them the decorations now fit. The
+check stays, since the condition is real and will return the moment a figure is crowded again.
 
 
 ### §8 — 🎨 the caption row can still be reached by a two-line x-label

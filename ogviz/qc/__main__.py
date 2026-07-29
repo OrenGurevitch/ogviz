@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 
 from ogviz.qc import CHECKS, audit
 from ogviz.qc.repair import repair
+from ogviz.qc.report import group_by_subject
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -104,8 +105,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     for index, figure in enumerate(figures):
         label = figure.get_label() or f"figure_{index + 1}"
         print(f"{label}:")
-        for complaint in audit(figure):
-            print(f"  - {complaint}")
+        for line in group_by_subject(audit(figure)):
+            print(f"  - {line}")
 
         if destination is None:
             outstanding += len(audit(figure))
@@ -118,8 +119,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"  wrote {written}")
         remaining = audit(figure)
         outstanding += len(remaining)
-        for complaint in remaining:
-            print(f"  still needs a person: {complaint}")
+        for line in group_by_subject(remaining):
+            print(f"  still needs a person: {line}")
 
     tail = "outstanding" if destination is not None else ""
     print(f"\n{len(figures)} figure(s), {outstanding} complaint(s) {tail}".rstrip())

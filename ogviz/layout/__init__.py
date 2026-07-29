@@ -244,6 +244,9 @@ def fit_under_header(
         warnings.simplefilter("always", UserWarning)
         fig.tight_layout(rect=(0.0, bottom, 1.0, header_bottom))
         applied = not any("Tight layout not applied" in str(one.message) for one in raised)
+    # Recorded on the figure as well as returned, because the return value went unread for a week
+    # and the whole point was that this should not pass unnoticed.
+    fig.ogviz_layout_refused = not applied  # type: ignore[attr-defined]
     fig.canvas.draw()
     figure_px = fig.get_figheight() * fig.dpi
     titles_px = max(

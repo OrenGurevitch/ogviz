@@ -166,6 +166,7 @@ ogviz
 │   │   ├── hits_data(ax: Axes, box: Bbox, *, padding: float) -> int
 │   │   ├── hits_decoration(ax: Axes, box: Bbox, *, padding: float) -> int
 │   │   ├── point_offsets(collection: Collection) -> NDArray[np.float64] | None
+│   │   ├── quoted(text: str) -> str
 │   │   ├── text_box(text: Text) -> Bbox
 │   │   └── text_over_data(fig: Figure) -> list[str]
 │   ├── density
@@ -264,6 +265,7 @@ ogviz
 │   ├── buried_baselines(fig: Figure) -> list[str]
 │   ├── colliding_ink(fig: Figure) -> list[str]
 │   ├── dots_off_the_marks(fig: Figure) -> list[str]
+│   ├── layout_not_applied(fig: Figure) -> list[str]
 │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
 │   ├── one_minus_sign(fig: Figure) -> list[str]
 │   ├── rows_outside_their_panel(fig: Figure) -> list[str]
@@ -273,11 +275,14 @@ ogviz
 │   ├── ticks_in_the_headroom(fig: Figure) -> list[str]
 │   ├── __main__
 │   │   └── main(argv: Sequence[str] | None) -> int
-│   └── repair
-│       ├── knock_out_labels_over_rules(fig: Figure) -> list[str]
-│       ├── move_labels_off_the_marks(fig: Figure) -> list[str]
-│       ├── raise_buried_lines(fig: Figure) -> list[str]
-│       └── repair(fig: Figure) -> list[str]
+│   ├── repair
+│   │   ├── knock_out_labels_over_rules(fig: Figure) -> list[str]
+│   │   ├── move_labels_off_the_marks(fig: Figure) -> list[str]
+│   │   ├── raise_buried_lines(fig: Figure) -> list[str]
+│   │   └── repair(fig: Figure) -> list[str]
+│   └── report
+│       ├── group_by_subject(complaints: list[str]) -> list[str]
+│       └── subject_of(complaint: str) -> str | None
 ├── significance
 │   ├── bracket_stack(...) -> ...
 │   ├── ink_bounds_points(text: str, fontsize: float, *, weight: str) -> tuple[float, float]

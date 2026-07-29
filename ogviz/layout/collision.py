@@ -61,6 +61,15 @@ PADDING_PX = 3.0  # breathing room between a label's ink and whatever it is avoi
 # what let "league average" sit on a bar unreported: the label is fixed to its line vertically and
 # free to slide along it, so it was exempt from the one axis it was actually free on.
 ANCHORED = "ogviz_anchored"
+# How much of a label a complaint quotes. ONE number, because a report groups complaints by the
+# string they name: two checks quoting the same label at 32 and 40 characters describe it as two
+# different labels, and the reader is shown one problem twice.
+QUOTED_LENGTH = 40
+
+
+def quoted(text: str) -> str:
+    """A label as a complaint should name it — trimmed, and trimmed the same way everywhere."""
+    return text.strip()[:QUOTED_LENGTH]
 
 
 def decoration_ids(ax: Axes) -> set[int]:
@@ -254,10 +263,10 @@ def text_over_data(fig: Figure) -> list[str]:
             box = text_box(text)
             struck = hits_data(ax, box)
             if struck:
-                complaints.append(f"{content[:40]!r} sits on {struck} mark(s) — it has to move")
+                complaints.append(f"{quoted(content)!r} sits on {struck} mark(s) — it has to move")
             elif hits_decoration(ax, box) and not _knocked_out(text):
                 complaints.append(
-                    f"{content[:40]!r} crosses a gridline with nothing behind it — knock it out"
+                    f"{quoted(content)!r} crosses a gridline with nothing behind it — knock it out"
                 )
     return complaints
 

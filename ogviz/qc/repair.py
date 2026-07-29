@@ -25,7 +25,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ogviz.layout.collision import ANCHORED, clear_position, hits_data, text_box, text_over_data
+from ogviz.layout.collision import (
+    ANCHORED,
+    clear_position,
+    hits_data,
+    quoted,
+    text_box,
+    text_over_data,
+)
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -59,14 +66,16 @@ def move_labels_off_the_marks(fig: Figure) -> list[str]:
                 continue
             offset = clear_position(ax, text_box(text))
             if offset is None or offset == (0.0, 0.0):
-                moved.append(f"{content[:40]!r} sits on the marks and nowhere in the panel is free")
+                moved.append(
+                    f"{quoted(content)!r} sits on the marks and nowhere in the panel is free"
+                )
                 continue
             start = ax.transData.transform(text.get_position())
             shifted = ax.transData.inverted().transform(
                 (start[0] + offset[0], start[1] + offset[1])
             )
             text.set_position((float(shifted[0]), float(shifted[1])))
-            moved.append(f"moved {content[:40]!r} clear of the marks")
+            moved.append(f"moved {quoted(content)!r} clear of the marks")
     return moved
 
 
@@ -86,7 +95,7 @@ def knock_out_labels_over_rules(fig: Figure) -> list[str]:
         return changed
     for ax in fig.axes:
         for text in ax.texts:
-            if text.get_text().strip()[:40] not in wanted or text.get_bbox_patch() is not None:
+            if quoted(text.get_text()) not in wanted or text.get_bbox_patch() is not None:
                 continue
             text.set_bbox(
                 {
@@ -96,7 +105,7 @@ def knock_out_labels_over_rules(fig: Figure) -> list[str]:
                     "boxstyle": "square",
                 }
             )
-            changed.append(f"knocked out the rule behind {text.get_text().strip()[:40]!r}")
+            changed.append(f"knocked out the rule behind {quoted(text.get_text())!r}")
     return changed
 
 

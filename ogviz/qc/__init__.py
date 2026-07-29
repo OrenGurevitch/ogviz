@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout.caption import overflowing_text
-from ogviz.layout.collision import text_over_data
+from ogviz.layout.collision import quoted, text_over_data
 from ogviz.layout.ink import exact_overlaps
 from ogviz.layout.overlap import clipped_artists, text_overlaps
 from ogviz.significance import STACK_GAP_PX, ink_extents_points
@@ -360,6 +360,26 @@ def rows_outside_their_panel(fig: Figure) -> list[str]:
     return complaints
 
 
+def layout_not_applied(fig: Figure) -> list[str]:
+    """A figure whose layout engine declined, and which is therefore on default margins.
+
+    `tight_layout` warns and does nothing when the axis decorations will not fit the rect it was
+    given, leaving whatever margins were already set. `fit_under_header` catches that and returns
+    whether it ran — and nothing read the answer, so a figure could be laid out by nobody and look
+    merely a bit loose. Recorded on the figure so the gate can say it out loud.
+
+    Not fatal on its own: default margins are usually survivable and the rest of the checks still
+    measure what was actually drawn. It is here because "nobody laid this out" should be a sentence
+    someone reads, not a warning swallowed by a build log.
+    """
+    if getattr(fig, "ogviz_layout_refused", False):
+        return [
+            "the layout engine declined — the decorations do not fit, so this figure kept default "
+            "margins. Give it more height, or shorten what grows out of the axes"
+        ]
+    return []
+
+
 def ticks_in_the_headroom(fig: Figure) -> list[str]:
     """A value tick above every mark on the panel, in the space reserved for brackets.
 
@@ -509,12 +529,13 @@ def _excused(label, other) -> bool:
 def _name(artist) -> str:
     text = getattr(artist, "get_text", None)
     if text is not None:
-        return repr(text()[:32])
+        return repr(quoted(text()))
     return type(artist).__name__
 
 
 CHECKS = (
     text_overlaps,
+    layout_not_applied,
     series_confusable_under_cvd,
     rows_outside_their_panel,
     mean_rows_unaligned,
