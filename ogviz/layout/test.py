@@ -68,60 +68,6 @@ def test_save_writes_both_formats_and_closes_the_figure(tmp_path: Path) -> None:
     assert not plt.get_fignums()
 
 
-def test_the_mean_row_is_the_visual_midpoint_on_any_scale() -> None:
-    """Midway is a question about the picture, so it is measured in pixels and converted back.
-
-    Averaged in data units the answer is right only while the axis is linear. On a log axis running
-    1 to 1000, the data-space midpoint of a gap from 1 to 100 sits 108 px from the middle of a
-    308 px gap — and every panel in this package is linear today, which is exactly why the error
-    would have waited for the first log axis to appear.
-    """
-    from ogviz.layout import align_mean_rows
-
-    for scale in ("linear", "log"):
-        fig, ax = plt.subplots(figsize=(5.0, 6.0))
-        ax.set_yscale(scale)
-        ax.set_ylim(1.0, 1000.0)
-        ax.fill_between([-0.4, 0.4], [100.0, 100.0], [800.0, 800.0])
-        row = ax.text(0.0, 50.0, "123", ha="center")
-        row.ogviz_mean_row = True
-        fig.canvas.draw()
-
-        line = align_mean_rows([ax], floor=1.0)
-        assert line is not None
-        fig.canvas.draw()
-        floor_px, body_px, row_px = (
-            float(ax.transData.transform((0.0, value))[1]) for value in (1.0, 100.0, line)
-        )
-        assert row_px == pytest.approx((floor_px + body_px) / 2, abs=0.5), (
-            f"{scale}: the row must sit at the visual middle, not the arithmetic one"
-        )
-        plt.close(fig)
-
-
-def test_the_rows_align_whatever_the_grid_shape() -> None:
-    """1x2 today, 2x2 today, 1x3 tomorrow — the rule cannot depend on the arrangement."""
-    import numpy as np
-
-    from ogviz import group_violins, share_value_limits
-
-    rng = np.random.default_rng(5)
-    for rows, columns in ((1, 2), (2, 2), (1, 3), (3, 1), (2, 3)):
-        fig, axes = plt.subplots(rows, columns, figsize=(4.0 * columns, 4.0 * rows), squeeze=False)
-        for index, ax in enumerate(axes.flat):
-            group_violins(ax, [(0.0, rng.normal(index * 0.7, 1.0, 30), "#E8A838", "#B97C10")])
-        share_value_limits(axes.flat)
-        fig.canvas.draw()
-        heights = {
-            round(float(text.get_position()[1]), 6)
-            for ax in axes.flat
-            for text in ax.texts
-            if getattr(text, "ogviz_mean_row", False)
-        }
-        assert len(heights) == 1, f"{rows}x{columns} put its rows at {len(heights)} heights"
-        plt.close(fig)
-
-
 def test_a_scatters_extent_comes_from_its_offsets_not_its_marker() -> None:
     """`get_paths()` on a scatter is the MARKER, a unit circle about the origin.
 

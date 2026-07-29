@@ -37,7 +37,7 @@ def _visible_texts(fig: Figure) -> list[Text]:
             # positions and `get_visible() is True`. Collecting them anyway reports collisions
             # against labels that are not on the page — which a table, drawn on a bare axes, hits
             # for every tick it never shows.
-            items += _drawn_tick_labels(ax)
+            items += drawn_tick_labels(ax)
         legend = ax.get_legend()
         if legend is not None:
             items += legend.get_texts()
@@ -47,7 +47,7 @@ def _visible_texts(fig: Figure) -> list[Text]:
 SAME_ROW_FRACTION = 0.5  # of the shorter box's height, before two labels count as one row
 
 
-def _drawn_tick_labels(ax: Axes) -> list[Text]:
+def drawn_tick_labels(ax: Axes) -> list[Text]:
     """Tick labels for ticks that are actually inside the axis limits.
 
     A locator generates ticks past the limit — an axis capped at 2.15 still carries a 2.25 tick —

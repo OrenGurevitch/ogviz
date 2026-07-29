@@ -290,11 +290,11 @@ def one_minus_sign(fig: Figure) -> list[str]:
 
 def _drawn_artists(ax) -> list:
     """Everything on one axes that a reader can see, in one list."""
-    from ogviz.layout.overlap import _drawn_tick_labels
+    from ogviz.layout.overlap import drawn_tick_labels
 
     items = [*ax.texts, *ax.lines, *ax.patches, *ax.collections]
     if ax.axison:
-        items += _drawn_tick_labels(ax)
+        items += drawn_tick_labels(ax)
     return [artist for artist in items if artist.get_visible()]
 
 

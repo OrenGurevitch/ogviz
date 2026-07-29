@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ogviz.layout import align_mean_rows
 from ogviz.marks import (
     BOX_COLOR,
     MEAN_HALF_WIDTH,
@@ -27,6 +26,7 @@ from ogviz.marks import (
     Z_VIOLIN,
 )
 from ogviz.orientation import violin_orientation_kwarg
+from ogviz.panels.grid import align_mean_rows
 from ogviz.theme import KNOCKOUT_PAD, VALUE_LABEL_SIZE, page_color
 
 if TYPE_CHECKING:

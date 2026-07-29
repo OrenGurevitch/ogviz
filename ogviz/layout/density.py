@@ -114,9 +114,9 @@ def data_ink_mask(fig: Figure, ax: Axes) -> NDArray[np.bool_]:
     put ink on every edge of every panel, so measuring the raw render reports every panel as
     perfectly full no matter how little data it holds.
     """
-    from ogviz.layout.collision import _decoration
+    from ogviz.layout.collision import decoration_ids
 
-    skip = _decoration(ax)
+    skip = decoration_ids(ax)
     marks = [
         artist
         for artist in [*ax.lines, *ax.collections, *ax.patches, *ax.images]

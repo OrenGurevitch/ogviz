@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ogviz.layout import align_mean_rows, ticks_over_data
+from ogviz.layout import ticks_over_data
 from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin
 from ogviz.orientation import (
     category_limits,
@@ -26,6 +26,7 @@ from ogviz.orientation import (
     value_limits,
     value_span,
 )
+from ogviz.panels.grid import align_mean_rows
 from ogviz.significance import bracket_stack
 from ogviz.theme import INK, KNOCKOUT_PAD, MEAN_LABEL_SIZE, page_color
 

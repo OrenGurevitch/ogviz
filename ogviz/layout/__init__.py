@@ -1,13 +1,15 @@
 """Headers, frames and saving — the parts every builder otherwise reinvents.
 
-`titled` returns where the header ends so a caller sizes its axes from the measured header
-rather than a guessed `rect` top. The title-to-subtitle gap is derived from the type size and
-the figure height in points: a fixed figure-fraction gap collides with the title on a short
-figure and floats away from it on a tall one.
+`titled` returns where the header ends so a caller sizes its axes from the measured header rather
+than a guessed `rect` top. The title-to-subtitle gap is derived from the type size and the figure
+height in points: a fixed figure-fraction gap collides with the title on a short figure and floats
+away from it on a tall one.
 
-No caption helper. Figures carry title, subtitle, axes, legend and data; what the marks mean,
-which test was run, n and the exact p belong in the project's README, where they are maintained
-and read. A caption baked into an image is a second copy that drifts.
+Captions are OFF unless a caller asks for one, and `ogviz.layout.caption` is where they live. A
+figure normally carries title, subtitle, axes and legend, and what the marks mean belongs in the
+surrounding text; a caption baked into an image is a second copy that drifts. The exception is a
+figure that travels as a file — a slide, a shared PNG — where there is no surrounding text to
+carry it, and there the caption has to be right, which is what that module is for.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from ogviz.layout.collision import (
     annotate_clear,
     clear_position,
     hits_data,
+    point_offsets,
     text_over_data,
 )
 from ogviz.layout.density import dead_space, trim_margins
@@ -37,7 +40,6 @@ from ogviz.layout.panels import panel_row, text_width_points, wrap_to_width
 from ogviz.layout.ticks import auto_decimals, format_value, round_ticks, value_ticks
 
 __all__ = [
-    "align_mean_rows",
     "annotate_clear",
     "assert_no_text_overlap",
     "assert_nothing_clipped",
@@ -59,7 +61,6 @@ __all__ = [
     "pill_frame",
     "round_ticks",
     "save",
-    "share_value_limits",
     "text_over_data",
     "text_overlaps",
     "text_width_points",
@@ -87,6 +88,8 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
     from matplotlib.legend import Legend
+
+    from ogviz.orientation import Orientation
 
 
 def titled(
@@ -144,7 +147,7 @@ def baseline(ax: Axes, *, axis: Literal["x", "y"] = "x") -> None:
 TITLE_CLEARANCE = 1.35  # an axes title needs its own height plus the pad under it
 
 
-def ticks_over_data(ax, data_high: float, *, orientation: str = "vertical") -> None:
+def ticks_over_data(ax: Axes, data_high: float, *, orientation: Orientation = "vertical") -> None:
     """Drop value ticks that fall in the room reserved above the data.
 
     A panel grows its value axis to fit a bracket stack, and the locator then puts ticks up there
@@ -174,38 +177,7 @@ def ticks_over_data(ax, data_high: float, *, orientation: str = "vertical") -> N
         ax.set_xlim(*limits)
 
 
-def share_value_limits(axes, *, orientation: str = "vertical") -> tuple[float, float]:
-    """Put every panel on one value scale: the union of the limits they each worked out.
-
-    For a grid of comparable panels, which have to share a scale to be read against each other. The
-    scale is the union of what the panels ALREADY fitted, not a number chosen in advance — a violin
-    panel measures the headroom its bracket stack needs and grows the axis to suit, and a caller who
-    then overwrites that with a guess has thrown the measurement away.
-
-    That is the bug this replaces. A grid of one-comparison panels was given headroom sized for a
-    three-bracket stack, so every panel carried two brackets' worth of empty page between its stars
-    and its title. Ask each panel what it needs and take the widest answer, and a grid of
-    single-bracket panels gets exactly one bracket's room.
-
-    Returns the shared (low, high).
-    """
-    panels = list(axes)
-    assert panels, "share_value_limits needs at least one axes"
-    reader = (lambda ax: ax.get_ylim()) if orientation == "vertical" else (lambda ax: ax.get_xlim())
-    spans = [reader(ax) for ax in panels]
-    low = min(bounds[0] for bounds in spans)
-    high = max(bounds[1] for bounds in spans)
-    for ax in panels:
-        if orientation == "vertical":
-            ax.set_ylim(low, high)
-        else:
-            ax.set_xlim(low, high)
-    if orientation == "vertical":
-        align_mean_rows(panels, floor=low)
-    return low, high
-
-
-def drawn_value_extent(ax) -> tuple[float, float] | None:
+def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
     """The lowest and highest value any MARK reaches, in data units, or None if nothing is drawn.
 
     Reading `collection.get_paths()` is the trap, and it cost a panel its layout. For a filled body
@@ -219,8 +191,8 @@ def drawn_value_extent(ax) -> tuple[float, float] | None:
     lows: list[float] = []
     highs: list[float] = []
     for collection in ax.collections:
-        offsets = np.asarray(collection.get_offsets(), dtype=float)
-        if offsets.shape[0] > 1:
+        offsets = point_offsets(collection)
+        if offsets is not None:
             lows.append(float(offsets[:, 1].min()))
             highs.append(float(offsets[:, 1].max()))
             continue
@@ -232,43 +204,6 @@ def drawn_value_extent(ax) -> tuple[float, float] | None:
     if not lows:
         return None
     return min(lows), max(highs)
-
-
-def align_mean_rows(axes, *, floor: float) -> float | None:
-    """Put every panel's printed means on ONE line, and return that line.
-
-    A panel places its means in the middle of the margin below its own data. Once the panels share
-    a scale that is wrong: the floor is common and the lowest violin is not, so the row sits at a
-    different height in each panel and the eye reads four different rows where there is one kind of
-    number. The gap from a row to the frame stops meaning anything.
-
-    The line is the midpoint between the floor and the lowest mark ACROSS the panels, so it clears
-    the deepest violin in the grid and is identical everywhere. Returns None where no panel prints
-    means.
-
-    Measured in DISPLAY space and converted back, not averaged in data units. "Midway between the
-    violin and the frame" is a question about the picture, and the two agree only while the axis is
-    linear: on a log axis running 1 to 1000, the data-space midpoint of a gap from 1 to 100 lands
-    108 px from the middle of a 308 px gap. Every panel here happens to be linear today, which is
-    exactly why the error would have sat unnoticed until the first log axis.
-    """
-    rows = [text for ax in axes for text in ax.texts if getattr(text, "ogviz_mean_row", False)]
-    if not rows:
-        return None
-    extents = [drawn_value_extent(ax) for ax in axes]
-    measured = [extent[0] for extent in extents if extent is not None]
-    if not measured:
-        return None
-    lowest = min(measured)
-    reference = next(iter(axes))
-    reference.figure.canvas.draw()
-    to_pixels, to_data = reference.transData, reference.transData.inverted()
-    floor_px = float(to_pixels.transform((0.0, floor))[1])
-    lowest_px = float(to_pixels.transform((0.0, lowest))[1])
-    line = float(to_data.transform((0.0, (floor_px + lowest_px) / 2.0))[1])
-    for text in rows:
-        text.set_position((text.get_position()[0], line))
-    return line
 
 
 def fit_under_header(

@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
     from matplotlib.path import Path
     from matplotlib.text import Text
+    from numpy.typing import NDArray
 
 # The search walks out in rings until it has covered the panel. Sized from the axes rather than
 # fixed in pixels: a fixed 14 x 6 px reach covers 84 px, which is a tenth of a normal panel, so it
@@ -62,7 +63,7 @@ PADDING_PX = 3.0  # breathing room between a label's ink and whatever it is avoi
 ANCHORED = "ogviz_anchored"
 
 
-def _decoration(ax: Axes) -> set[int]:
+def decoration_ids(ax: Axes) -> set[int]:
     """Artists that are the frame rather than the finding, identified by id.
 
     A gridline is not data. Neither is the spine. A label may cross either, provided it knocks it
@@ -80,7 +81,7 @@ def data_paths(ax: Axes) -> list[tuple[Path, bool]]:
     origin, repeated at every offset, so reading `get_paths` alone would test one point near (0, 0)
     and pronounce the whole cloud clear.
     """
-    skip = _decoration(ax)
+    skip = decoration_ids(ax)
     found: list[tuple[Path, bool]] = []
     for artist in [*ax.lines, *ax.collections, *ax.patches, *ax.images]:
         if id(artist) in skip or not artist.get_visible():
@@ -102,19 +103,35 @@ def _paths_of(artist: Artist) -> Iterator[tuple[Path, bool]]:
         yield from _collection_paths(artist)
 
 
+def point_offsets(collection: Collection) -> NDArray[np.float64] | None:
+    """The per-point positions if this collection is a point cloud, else None.
+
+    The one question that has to be asked the same way everywhere. A scatter carries ONE path — the
+    marker outline, a small shape about the origin — repeated at every offset; a filled body carries
+    a path that is the shape itself and no meaningful offsets. Read the wrong one and a point cloud
+    reports its extent as roughly -0.5 to 0.5 whatever the data says, which is how a panel in ppm
+    ended up with its printed means off the page.
+
+    Two callers asked it with two different conditions before this existed, which is worse than
+    duplication: they could disagree about the same collection.
+    """
+    offsets = np.asarray(collection.get_offsets(), dtype=float)
+    if offsets.shape[0] > 1 and len(collection.get_paths()) <= 1:
+        return offsets
+    return None
+
+
 def _collection_paths(collection: Collection) -> Iterator[tuple[Path, bool]]:
     from matplotlib.path import Path as MplPath
 
-    offsets = np.asarray(collection.get_offsets(), dtype=float)
-    paths = collection.get_paths()
-    if offsets.size and len(paths) <= 1 < offsets.shape[0]:
-        # A scatter: one marker outline reused at every offset. The outline is sized in points, so
-        # the honest cheap test is the offset points themselves, as a single unclosed path.
-        placed = collection.get_offset_transform().transform(offsets)
-        yield MplPath(placed), False
+    offsets = point_offsets(collection)
+    if offsets is not None:
+        # The marker outline is sized in points, so the honest cheap test is the offset points
+        # themselves, as a single unclosed path.
+        yield MplPath(collection.get_offset_transform().transform(offsets)), False
         return
     transform = collection.get_transform()
-    for path in paths:
+    for path in collection.get_paths():
         yield path.transformed(transform), True
 
 

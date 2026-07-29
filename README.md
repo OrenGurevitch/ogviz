@@ -95,16 +95,14 @@ until they fit, at any figure size. A word too long to break is reported by name
 ```text
 ogviz
 ├── layout
-│   ├── align_mean_rows(axes, *, floor: float) -> float | None
 │   ├── baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
-│   ├── drawn_value_extent(ax) -> tuple[float, float] | None
+│   ├── drawn_value_extent(ax: Axes) -> tuple[float, float] | None
 │   ├── fit_under_header(...) -> ...
 │   ├── hairline_grid(ax: Axes, *, axis: "Literal[x, y]") -> None
 │   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
 │   ├── pill_frame(legend: Legend) -> Legend
 │   ├── save(...) -> ...
-│   ├── share_value_limits(axes, *, orientation: str) -> tuple[float, float]
-│   ├── ticks_over_data(ax, data_high: float, *, orientation: str) -> None
+│   ├── ticks_over_data( ax: Axes, data_high: float, *, orientation: Orientation, ) -> None
 │   ├── titled(...) -> ...
 │   ├── zero_baseline(ax: Axes) -> None
 │   ├── caption
@@ -115,8 +113,10 @@ ogviz
 │   │   ├── annotate_clear(...)
 │   │   ├── clear_position(...) -> ...
 │   │   ├── data_paths(ax: Axes) -> list[tuple[Path, bool]]
+│   │   ├── decoration_ids(ax: Axes) -> set[int]
 │   │   ├── hits_data(ax: Axes, box: Bbox, *, padding: float) -> int
 │   │   ├── hits_decoration(ax: Axes, box: Bbox, *, padding: float) -> int
+│   │   ├── point_offsets(collection: Collection) -> NDArray[np.float64] | None
 │   │   ├── text_box(text: Text) -> Bbox
 │   │   └── text_over_data(fig: Figure) -> list[str]
 │   ├── density
@@ -134,6 +134,7 @@ ogviz
 │   │   ├── assert_no_text_overlap(...) -> ...
 │   │   ├── assert_nothing_clipped(fig: Figure) -> None
 │   │   ├── clipped_artists(fig: Figure) -> list[str]
+│   │   ├── drawn_tick_labels(ax: Axes) -> list[Text]
 │   │   └── text_overlaps( fig: Figure, *, min_overlap: float, min_gap: float, ) -> list[str]
 │   ├── panels
 │   │   ├── panel_row(...) -> ...
@@ -184,6 +185,10 @@ ogviz
 │   │   ├── shared_limits(legs: Sequence[Leg], *, pad: float) -> tuple[float,
 │   │   │   float]
 │   │   └── trend_line(...) -> ...
+│   ├── grid
+│   │   ├── align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float |
+│   │   │   None
+│   │   └── share_value_limits(...) -> ...
 │   ├── lines
 │   │   ├── Line(...) -> ...
 │   │   ├── broken_zero(ax: Axes, *, floor: float, zero_gap: float | None) ->
