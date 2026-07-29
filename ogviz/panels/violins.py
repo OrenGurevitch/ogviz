@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from ogviz.orientation import Orientation
 
 BOTTOM_PAD = 0.20  # the margin left below the data, as a fraction of the span
+LIMIT_DRIFT = 1e-9  # the value axis is settled; presentation must not move it
 # The printed means sit in the MIDDLE of that margin, not at a fraction of their own choosing. Two
 # independent constants drift: raise the pad and the row stays put, crowding the violins it belongs
 # to; halve the pad and the row lands under the axis. One number, and the row is centred by
@@ -96,6 +97,30 @@ def _printed_means(
         # lands at a different height in every panel — which is the thing a shared scale exists to
         # prevent.
         printed.ogviz_mean_row = True  # type: ignore[attr-defined]
+
+
+def _finish(ax: Axes, high: float, orientation: Orientation) -> None:
+    """Tidy the ticks and the mean row, and check the limits survived it.
+
+    A POST-CONDITION, not a style check. This function fitted the value axis to the data and its
+    bracket stack; anything done afterwards is presentation and must not move it. `set_yticks`
+    does: it fixes the locator, and matplotlib then grows the view to contain every fixed tick, so
+    dropping the ticks above the data reframed one panel from zero and left its violins in the top
+    third of an axis that had been fitted to them. Nothing in QC noticed, because no check asked
+    whether the axis still framed the data.
+
+    Asserted here rather than checked later because this is the one place that knows what the
+    limits are supposed to be.
+    """
+    before = value_span(ax, orientation)
+    ticks_over_data(ax, high, orientation=orientation)
+    _settle_mean_row(ax, orientation)
+    after = value_span(ax, orientation)
+    drift = max(abs(a - b) for a, b in zip(after, before, strict=True))
+    assert drift <= abs(before[1] - before[0]) * LIMIT_DRIFT, (
+        f"the value axis moved after it was fitted: {before} -> {after}. Something below this "
+        "point changed the limits, and the panel no longer frames the data it was sized to."
+    )
 
 
 def _settle_mean_row(ax: Axes, orientation: Orientation) -> None:
@@ -284,8 +309,7 @@ def group_violins(
         )
 
     if not comparisons:
-        ticks_over_data(ax, high, orientation=orientation)
-        _settle_mean_row(ax, orientation)
+        _finish(ax, high, orientation)
         return high
     reached = bracket_stack(
         ax,
@@ -302,6 +326,5 @@ def group_violins(
         "clips the bracket LINES and not their stars, so this would have shipped as stars "
         "floating over nothing. Raise `headroom`."
     )
-    ticks_over_data(ax, high, orientation=orientation)
-    _settle_mean_row(ax, orientation)
+    _finish(ax, high, orientation)
     return reached

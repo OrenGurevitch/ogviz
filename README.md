@@ -97,6 +97,7 @@ ogviz
 ├── layout
 │   ├── align_mean_rows(axes, *, floor: float) -> float | None
 │   ├── baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
+│   ├── drawn_value_extent(ax) -> tuple[float, float] | None
 │   ├── fit_under_header(...) -> ...
 │   ├── hairline_grid(ax: Axes, *, axis: "Literal[x, y]") -> None
 │   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
@@ -211,6 +212,7 @@ ogviz
 │   ├── dots_off_the_marks(fig: Figure) -> list[str]
 │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
 │   ├── one_minus_sign(fig: Figure) -> list[str]
+│   ├── rows_outside_their_panel(fig: Figure) -> list[str]
 │   ├── significance_gaps(fig: Figure) -> list[str]
 │   ├── stack_spacing(fig: Figure) -> list[str]
 │   └── ticks_in_the_headroom(fig: Figure) -> list[str]

@@ -47,6 +47,7 @@ __all__ = [
     "clear_position",
     "clipped_artists",
     "dead_space",
+    "drawn_value_extent",
     "fit_under_header",
     "format_value",
     "hairline_grid",
@@ -154,14 +155,23 @@ def ticks_over_data(ax, data_high: float, *, orientation: str = "vertical") -> N
     happens to clear a round number carries an extra rule and its neighbour does not. That is the
     inconsistency this removes.
     """
-    ticks = ax.get_yticks() if orientation == "vertical" else ax.get_xticks()
+    upright = orientation == "vertical"
+    ticks = ax.get_yticks() if upright else ax.get_xticks()
     kept = [float(tick) for tick in ticks if float(tick) <= data_high + 1e-9]
     if not kept or len(kept) == len(ticks):
         return
-    if orientation == "vertical":
+    # `set_yticks` FIXES the locator, and matplotlib then grows the view to contain every fixed
+    # tick. Dropping the ticks above the data therefore dragged the floor down to the lowest
+    # remaining one — on a panel whose ticks ran to zero, the axis reframed itself from zero and
+    # the violins ended up in the top third of a panel that had been fitted to them. Restore the
+    # limits, which were already correct before the ticks were touched.
+    limits = ax.get_ylim() if upright else ax.get_xlim()
+    if upright:
         ax.set_yticks(kept)
+        ax.set_ylim(*limits)
     else:
         ax.set_xticks(kept)
+        ax.set_xlim(*limits)
 
 
 def share_value_limits(axes, *, orientation: str = "vertical") -> tuple[float, float]:
@@ -195,6 +205,35 @@ def share_value_limits(axes, *, orientation: str = "vertical") -> tuple[float, f
     return low, high
 
 
+def drawn_value_extent(ax) -> tuple[float, float] | None:
+    """The lowest and highest value any MARK reaches, in data units, or None if nothing is drawn.
+
+    Reading `collection.get_paths()` is the trap, and it cost a panel its layout. For a filled body
+    the path IS the shape in data coordinates. For a scatter it is the MARKER OUTLINE — a unit
+    circle about the origin, reused at every offset — so a panel of points reports its extent as
+    roughly -0.5 to 0.5 whatever the data says. On values of order one that looks plausible; on
+    values of order 0.001 it puts the answer nowhere near the panel.
+
+    So: offsets when a collection has them, path vertices when it does not.
+    """
+    lows: list[float] = []
+    highs: list[float] = []
+    for collection in ax.collections:
+        offsets = np.asarray(collection.get_offsets(), dtype=float)
+        if offsets.shape[0] > 1:
+            lows.append(float(offsets[:, 1].min()))
+            highs.append(float(offsets[:, 1].max()))
+            continue
+        for path in collection.get_paths():
+            vertices = np.asarray(path.vertices, dtype=float)
+            if vertices.size:
+                lows.append(float(vertices[:, 1].min()))
+                highs.append(float(vertices[:, 1].max()))
+    if not lows:
+        return None
+    return min(lows), max(highs)
+
+
 def align_mean_rows(axes, *, floor: float) -> float | None:
     """Put every panel's printed means on ONE line, and return that line.
 
@@ -216,18 +255,11 @@ def align_mean_rows(axes, *, floor: float) -> float | None:
     rows = [text for ax in axes for text in ax.texts if getattr(text, "ogviz_mean_row", False)]
     if not rows:
         return None
-    lowest = min(
-        (
-            float(np.asarray(path.vertices, dtype=float)[:, 1].min())
-            for ax in axes
-            for collection in ax.collections
-            for path in collection.get_paths()
-            if np.asarray(path.vertices, dtype=float).size
-        ),
-        default=None,
-    )
-    if lowest is None:
+    extents = [drawn_value_extent(ax) for ax in axes]
+    measured = [extent[0] for extent in extents if extent is not None]
+    if not measured:
         return None
+    lowest = min(measured)
     reference = next(iter(axes))
     reference.figure.canvas.draw()
     to_pixels, to_data = reference.transData, reference.transData.inverted()

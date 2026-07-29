@@ -120,3 +120,33 @@ def test_the_rows_align_whatever_the_grid_shape() -> None:
         }
         assert len(heights) == 1, f"{rows}x{columns} put its rows at {len(heights)} heights"
         plt.close(fig)
+
+
+def test_a_scatters_extent_comes_from_its_offsets_not_its_marker() -> None:
+    """`get_paths()` on a scatter is the MARKER, a unit circle about the origin.
+
+    Reading it as the data reported every point cloud as spanning about -0.5 to 0.5. On values of
+    order one that is a small error; on a panel in ppm it put the printed mean at -0.25 on an axis
+    running 0.0004 to 0.006, which is off the page.
+    """
+    import numpy as np
+
+    from ogviz.layout import drawn_value_extent
+
+    _fig, ax = plt.subplots()
+    tiny = np.array([0.0011, 0.0030, 0.0050])
+    ax.scatter(np.zeros_like(tiny), tiny)
+    low, high = drawn_value_extent(ax)
+    assert (low, high) == pytest.approx((0.0011, 0.0050)), "the offsets are the data"
+    assert abs(low) < 0.5, "the marker outline must not be mistaken for the data"
+
+
+def test_a_filled_body_still_reports_its_own_shape() -> None:
+    """The other half: a fill has no offsets, and its path IS the shape in data coordinates."""
+
+    from ogviz.layout import drawn_value_extent
+
+    _fig, ax = plt.subplots()
+    ax.fill_between([0.0, 1.0], [2.0, 2.0], [7.0, 7.0])
+    low, high = drawn_value_extent(ax)
+    assert (low, high) == pytest.approx((2.0, 7.0))

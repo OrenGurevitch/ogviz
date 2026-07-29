@@ -328,6 +328,38 @@ def mean_rows_unaligned(fig: Figure) -> list[str]:
     return complaints
 
 
+def rows_outside_their_panel(fig: Figure) -> list[str]:
+    """A printed mean must land between the frame and the marks it belongs to.
+
+    The failure this exists for put the row at -0.25 on an axis running 0.0004 to 0.006 — off the
+    panel entirely — because the code measuring "the lowest mark" was reading a scatter's MARKER
+    OUTLINE instead of its offsets, and a marker outline is a unit circle about the origin whatever
+    the data is. On values of order one that is a small error; on values of order 0.001 the answer
+    is not on the page.
+
+    Cheap, and it asks the question directly rather than trusting the measurement that failed.
+    """
+    from ogviz.layout import drawn_value_extent
+
+    complaints: list[str] = []
+    for ax in fig.axes:
+        rows = [text for text in ax.texts if getattr(text, "ogviz_mean_row", False)]
+        if not rows:
+            continue
+        extent = drawn_value_extent(ax)
+        if extent is None:
+            continue
+        floor, _top = ax.get_ylim()
+        for text in rows:
+            where = float(text.get_position()[1])
+            if not floor <= where <= extent[0]:
+                complaints.append(
+                    f"the printed mean {text.get_text()!r} sits at {where:g}, outside the band "
+                    f"between the frame ({floor:g}) and the lowest mark ({extent[0]:g})"
+                )
+    return complaints
+
+
 def ticks_in_the_headroom(fig: Figure) -> list[str]:
     """A value tick above every mark on the panel, in the space reserved for brackets.
 
@@ -357,17 +389,10 @@ def ticks_in_the_headroom(fig: Figure) -> list[str]:
 
 def _data_reach(ax: Axes) -> float | None:
     """The highest value any mark reaches, or None where the panel draws no marks."""
-    tops: list[float] = []
-    for collection in ax.collections:
-        for path in collection.get_paths():
-            vertices = np.asarray(path.vertices, dtype=float)
-            if vertices.size:
-                tops.append(float(vertices[:, 1].max()))
-    for patch in ax.patches:
-        if getattr(patch, "ogviz_backdrop", False):
-            continue
-        tops.append(float(patch.get_window_extent().y1))
-    return max(tops) if ax.collections and tops else None
+    from ogviz.layout import drawn_value_extent
+
+    extent = drawn_value_extent(ax)
+    return extent[1] if extent is not None else None
 
 
 def colliding_ink(fig: Figure) -> list[str]:
@@ -442,6 +467,7 @@ def _name(artist) -> str:
 
 CHECKS = (
     text_overlaps,
+    rows_outside_their_panel,
     mean_rows_unaligned,
     ticks_in_the_headroom,
     colliding_ink,
