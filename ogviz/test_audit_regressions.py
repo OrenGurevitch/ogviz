@@ -1,6 +1,6 @@
 """One test per defect from the 2026-07-27 audit, so none of them can come back.
 
-Each name says the failure, not the fix. See FIXME.md for how each was found.
+Each name says the failure, not the fix, so a regression reads as the thing that came back.
 """
 
 import matplotlib

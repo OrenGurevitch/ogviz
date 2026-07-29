@@ -238,26 +238,29 @@ def expected_goals(seed: int = 14) -> tuple[np.ndarray, np.ndarray]:
     return means, errors
 
 
-TRAINING_STATES = (
-    "Base",
-    "Weighted gear",
-    "Gravity x10",
-    "Gravity x100",
-    "Time chamber",
-    "Post-Zenkai",
+STAGES_OF_THE_ROAD = (
+    "The Shire",
+    "Bree",
+    "Moria",
+    "Lothlórien",
+    "Cirith Ungol",
+    "Grey Havens",
 )
 
 
-def output_by_state(seed: int = 15) -> dict[str, tuple[np.ndarray, np.ndarray, float]]:
-    """Two cohorts measured under six conditions. Six panels of one comparison, all invented.
+def burden_by_stage(seed: int = 15) -> dict[str, tuple[np.ndarray, np.ndarray, float]]:
+    """Two groups measured at six stages of one journey. Six panels of one comparison, all invented.
 
-    The separations rise across the six so a reader can see a gradient rather than six versions of
-    the same picture, and the last one is deliberately null.
+    The separations rise across the first five so a reader sees a gradient rather than six versions
+    of the same picture, and the sixth is null — which is why these six stages and not six others.
+    The gap between a ring-bearer and a companion grows the closer the road runs to Mordor and is
+    gone at the Havens, because by then there is no Ring to carry. A grid wants a story that ends,
+    and a null panel is the hardest kind to label honestly.
     """
     rng = np.random.default_rng(seed)
     separations = (0.12, 0.38, 0.62, 0.95, 1.30, 0.05)
     p_values = (0.62, 0.09, 0.02, 0.001, 0.0002, 0.81)
     return {
         state: (rng.normal(0.0, 1.0, 34), rng.normal(shift, 1.05, 46), p)
-        for state, shift, p in zip(TRAINING_STATES, separations, p_values, strict=True)
+        for state, shift, p in zip(STAGES_OF_THE_ROAD, separations, p_values, strict=True)
     }

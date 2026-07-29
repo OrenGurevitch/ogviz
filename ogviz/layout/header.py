@@ -67,7 +67,7 @@ def fit_under_header(
     the layout and then pinning the top closes it.
 
     Returns whether `tight_layout` actually ran. It refuses, with a warning and no effect, when the
-    axis decorations cannot fit the rect — a two-line x tick label is enough to cause it (FIXME §8)
+    axis decorations cannot fit the rect — a two-line x tick label is enough to cause it
     — and the figure then keeps default margins. Usually fine, never silent: a caller that needs
     the layout to have happened can check.
 

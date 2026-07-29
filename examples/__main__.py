@@ -22,10 +22,11 @@ from examples.data import (
     FORMATIONS,
     LEAGUE_AVERAGE_XG,
     NATIONS,
-    TRAINING_STATES,
+    STAGES_OF_THE_ROAD,
     TREATED,
     TREATED_EDGE,
     bending_by_nation,
+    burden_by_stage,
     concentration_ppm,
     correlation_with_interval,
     coupled_variables,
@@ -34,7 +35,6 @@ from examples.data import (
     expected_goals,
     headline_arms,
     large_magnitudes,
-    output_by_state,
     paired_sensors,
     skewed_groups,
     two_groups,
@@ -572,27 +572,27 @@ def violin_grid_tall() -> None:
     then one shared scale and one line of printed means across all six. Two columns rather than
     three because the panel has to stay wide enough for its two violins and their labels.
     """
-    states = output_by_state()
+    stages = burden_by_stage()
     fig, axes = plt.subplots(3, 2, figsize=(11.0, 15.0))
-    for ax, state in zip(axes.flat, TRAINING_STATES, strict=True):
-        control, treated, p = states[state]
+    for ax, stage in zip(axes.flat, STAGES_OF_THE_ROAD, strict=True):
+        companion, bearer, p = stages[stage]
         group_violins(
             ax,
-            [(0.0, control, CONTROL, CONTROL_EDGE), (1.0, treated, TREATED, TREATED_EDGE)],
+            [(0.0, companion, CONTROL, CONTROL_EDGE), (1.0, bearer, TREATED, TREATED_EDGE)],
             comparisons=[(0.0, 1.0, p)],
         )
         ax.set_xticks([0, 1])
-        ax.set_xticklabels(["Control", "Treated"], fontsize=14)
-        ax.set_title(state, fontsize=16, fontweight="bold", pad=12)
+        ax.set_xticklabels(["Companion", "Ring-bearer"], fontsize=14)
+        ax.set_title(stage, fontsize=16, fontweight="bold", pad=12)
     share_value_limits(axes.flat)
     for ax in axes[:, 1]:
         ax.set_yticklabels([])
     for ax in axes[:, 0]:
-        ax.set_ylabel("Output (arbitrary)", fontsize=15, fontweight="bold", labelpad=8)
+        ax.set_ylabel("Burden (arbitrary)", fontsize=15, fontweight="bold", labelpad=8)
     header_bottom = titled(
         fig,
-        "Six conditions on one scale",
-        subtitle="invented numbers; the separation rises across the six and the last is null",
+        "The weight of the Ring along the road",
+        subtitle="invented numbers; the burden grows toward Mordor and is gone at the Havens",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "06_violin_grid_tall")
