@@ -217,3 +217,35 @@ def test_a_crowded_stack_is_still_caught() -> None:
     highest.set_ydata(np.asarray(highest.get_ydata(), dtype=float) - crowd)
     fig.canvas.draw()
     assert any("closer than a star" in c for c in stack_spacing(fig))
+
+
+def test_a_bracket_label_survives_a_rescale_after_it_was_placed() -> None:
+    """The gap is set in pixels, so anything that rescales the axis afterwards changes it.
+
+    And changes it unequally: a label set smaller has a smaller ink offset in points, which does not
+    scale with the axis. Measured here as 5.2 px for the asterisks against 2.0 px for the smaller
+    "n.s."; on the figure that reported this, 7.5 px against 0.9 px — touching. `save` re-settles
+    them, and this is that step.
+    """
+    import numpy as np
+
+    from ogviz import group_violins
+    from ogviz.qc import significance_gaps
+    from ogviz.significance import settle_bracket_labels
+
+    rng = np.random.default_rng(1)
+    groups = [
+        (float(index), rng.normal(index * 0.3, 1.0, 30), "#E8A838", "#B97C10") for index in range(3)
+    ]
+    fig, ax = plt.subplots(figsize=(8.0, 6.0))
+    group_violins(ax, groups)
+    reach = max(float(np.max(values)) for _p, values, _f, _e in groups)
+    for pair, p in (((0.0, 1.0), 1e-4), ((1.0, 2.0), 0.4)):
+        bracket_stack(ax, [(pair[0], pair[1], p)], start=reach * 1.2, span=1.0, fontsize=18.0)
+    ax.set_ylim(ax.get_ylim()[0], ax.get_ylim()[1] * 2)  # a rescale after the fact
+    fig.canvas.draw()
+    assert significance_gaps(fig), "the premise: rescaling after placement breaks the gaps"
+
+    assert settle_bracket_labels(fig), "it has something to move"
+    fig.canvas.draw()
+    assert not significance_gaps(fig)

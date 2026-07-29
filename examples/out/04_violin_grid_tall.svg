@@ -748,7 +748,7 @@ L 311.046062 125.643439
 " clip-path="url(#pfe5cd84b78)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_11">
-    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="232.025654" y="120.366833" transform="rotate(-0 232.025654 120.366833)">n.s.</text>
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="232.025654" y="120.122638" transform="rotate(-0 232.025654 120.122638)">n.s.</text>
    </g>
   </g>
   <g id="axes_2">
@@ -1413,7 +1413,7 @@ L 679.857488 125.898468
 " clip-path="url(#p96d612af5d)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_17">
-    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.83708" y="120.202444" transform="rotate(-0 600.83708 120.202444)">n.s.</text>
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.83708" y="120.122638" transform="rotate(-0 600.83708 120.122638)">n.s.</text>
    </g>
   </g>
   <g id="axes_3">
@@ -2093,7 +2093,7 @@ L 311.046062 456.035068
 " clip-path="url(#p14475ca07e)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_28">
-    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="232.025654" y="458.208717" transform="rotate(-0 232.025654 458.208717)">*</text>
+    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="232.025654" y="457.685335" transform="rotate(-0 232.025654 457.685335)">*</text>
    </g>
   </g>
   <g id="axes_4">
@@ -2758,7 +2758,7 @@ L 679.857488 455.712595
 " clip-path="url(#pfbc1be5ea1)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_34">
-    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.83708" y="457.707619" transform="rotate(-0 600.83708 457.707619)">*  *</text>
+    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.83708" y="457.685335" transform="rotate(-0 600.83708 457.685335)">*  *</text>
    </g>
   </g>
   <g id="axes_5">
@@ -3438,7 +3438,7 @@ L 311.046062 785.49402
 " clip-path="url(#p5bb2fcd7aa)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_45">
-    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="232.025654" y="787.547454" transform="rotate(-0 232.025654 787.547454)">*  *  *</text>
+    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="232.025654" y="787.361314" transform="rotate(-0 232.025654 787.361314)">*  *  *</text>
    </g>
   </g>
   <g id="axes_6">
@@ -4103,7 +4103,7 @@ L 679.857488 785.051678
 " clip-path="url(#p861ab8d94a)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_51">
-    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.83708" y="779.682511" transform="rotate(-0 600.83708 779.682511)">n.s.</text>
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="600.83708" y="779.474595" transform="rotate(-0 600.83708 779.474595)">n.s.</text>
    </g>
   </g>
   <g id="text_52">

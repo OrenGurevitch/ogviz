@@ -767,7 +767,7 @@ L 324.663055 123.580308
 " clip-path="url(#pe49b6c2411)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_12">
-    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="241.729531" y="125.115799" transform="rotate(-0 241.729531 125.115799)">*  *  *</text>
+    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="241.729531" y="125.017094" transform="rotate(-0 241.729531 125.017094)">*  *  *</text>
    </g>
   </g>
   <g id="axes_2">
@@ -1448,7 +1448,7 @@ L 711.005243 123.143576
 " clip-path="url(#p64919c00ac)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_18">
-    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="628.071719" y="124.516992" transform="rotate(-0 628.071719 124.516992)">*  *</text>
+    <text style="font-weight: 700; font-size: 20px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="628.071719" y="125.017094" transform="rotate(-0 628.071719 125.017094)">*  *</text>
    </g>
   </g>
   <g id="axes_3">
@@ -2147,7 +2147,7 @@ L 324.663055 479.901113
 " clip-path="url(#p590f8d45a7)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_30">
-    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="241.729531" y="474.559753" transform="rotate(-0 241.729531 474.559753)">n.s.</text>
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="241.729531" y="474.183936" transform="rotate(-0 241.729531 474.183936)">n.s.</text>
    </g>
   </g>
   <g id="axes_4">
@@ -2828,7 +2828,7 @@ L 711.005243 479.692918
 " clip-path="url(#p87a1819681)" style="fill: none; stroke: #5c5b57; stroke-width: 1.6; stroke-linecap: square"/>
    </g>
    <g id="text_36">
-    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="628.071719" y="474.678165" transform="rotate(-0 628.071719 474.678165)">n.s.</text>
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="628.071719" y="474.183936" transform="rotate(-0 628.071719 474.183936)">n.s.</text>
    </g>
   </g>
   <g id="text_37">

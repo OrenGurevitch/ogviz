@@ -156,10 +156,11 @@ ogviz
 │   │   ├── longest_unbreakable(text: str, size: float) -> float
 │   │   └── overflowing_text(fig: Figure) -> list[str]
 │   ├── collision
+│   │   ├── MarkCloud(*args, **kwargs)
 │   │   ├── annotate_clear(...)
 │   │   ├── clear_position(...) -> ...
 │   │   ├── data_paths(ax: Axes) -> list[tuple[Path, bool]]
-│   │   ├── data_points(ax: Axes) -> list[tuple[NDArray[np.float64], float]]
+│   │   ├── data_points(ax: Axes) -> list[MarkCloud]
 │   │   ├── decoration_ids(ax: Axes) -> set[int]
 │   │   ├── hits_data(ax: Axes, box: Bbox, *, padding: float) -> int
 │   │   ├── hits_decoration(ax: Axes, box: Bbox, *, padding: float) -> int
@@ -302,6 +303,7 @@ ogviz
 │   ├── ink_bounds_points(text: str, fontsize: float, *, weight: str) -> tuple[float, float]
 │   ├── ink_extents_points(...) -> ...
 │   ├── label_size(label: str, star_size: float) -> float
+│   ├── settle_bracket_labels(fig: Figure) -> list[str]
 │   ├── significance_row(...) -> ...
 │   ├── spaced_stars(p: float) -> str
 │   └── stars(p: float) -> str

@@ -121,3 +121,35 @@ def test_the_search_covers_the_panel_not_a_fixed_pixel_reach() -> None:
         box.x0 + offset[0], box.y0 + offset[1], box.x1 + offset[0], box.y1 + offset[1]
     )
     assert not hits_data(ax, moved)
+
+
+def test_a_thin_marker_is_not_measured_as_a_square() -> None:
+    """An error-bar cap is `"_"`: wide, and ink only as thick as its own stroke.
+
+    Measuring it as markersize-by-markersize claimed 8 px of height it does not have and reported
+    fourteen value labels on a real figure as sitting on a mark each was 0.5 px clear of.
+    """
+    import numpy as np
+
+    from ogviz.layout.collision import data_points
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    ax.errorbar(np.arange(6.0), np.arange(1.0, 7.0), yerr=0.15, fmt="none", capsize=6)
+    fig.canvas.draw()
+    clouds = [cloud for cloud in data_points(ax) if cloud.width_px > 2.0]
+    assert clouds, "the caps are a cloud of marks"
+    for cloud in clouds:
+        assert cloud.height_px < cloud.width_px / 4.0, (
+            f"a cap is flat: {cloud.width_px:.1f} x {cloud.height_px:.1f} px"
+        )
+
+
+def test_a_round_marker_still_measures_square() -> None:
+    """The other direction: the shape comes from the marker, so a dot must not be flattened."""
+    from ogviz.layout.collision import data_points
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    ax.plot([1.0, 2.0, 3.0], [1.0, 2.0, 3.0], linestyle="none", marker="o", markersize=12)
+    fig.canvas.draw()
+    (cloud,) = data_points(ax)
+    assert abs(cloud.width_px - cloud.height_px) < 0.01, (cloud.width_px, cloud.height_px)

@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
     from ogviz.orientation import Orientation
 
@@ -247,3 +248,54 @@ def significance_row(
         for comparison in comparisons
     ]
     return max(tops, default=start)
+
+
+def settle_bracket_labels(fig: Figure) -> list[str]:
+    """Re-anchor every bracket label to its own bracket, in the pixels as they now are.
+
+    The gap between a star's ink and its bracket is chosen in PIXELS, the only unit in which "3 px
+    of air" means anything. Anything that rescales the value axis afterwards — `ax.margins`,
+    a `tight_layout`, a shared scale applied across a grid — moves the bracket through the data
+    transform while the ink offset, measured in points, stays put. The gap therefore changes, and it
+    changes by DIFFERENT amounts for labels set at different sizes: on a real figure whose builder
+    called `ax.margins(y=0.36)` after drawing, the asterisks ended 7.5 px above their brackets and
+    the smaller `n.s.` 0.9 px above its own — touching.
+
+    Re-settling at save time makes the placement independent of what a caller does next — the same
+    argument that moved the caption out of `panel_row` and into `settle_caption`.
+
+    Returns what moved, for the same reason `repair` does: a silent adjustment is unreviewable.
+    """
+    import numpy as np
+
+    from ogviz.orientation import read_orientation
+
+    fig.canvas.draw()
+    px_per_pt = fig.dpi / 72.0
+    moved: list[str] = []
+    for ax in fig.axes:
+        orientation = read_orientation(ax) or "vertical"
+        axis = 1 if is_vertical(orientation) else 0
+        for text in ax.texts:
+            bracket = getattr(text, "ogviz_anchor", None)
+            if not getattr(text, "ogviz_bracket_star", False) or bracket is None:
+                continue
+            along = bracket.get_ydata() if axis == 1 else bracket.get_xdata()
+            top = float(np.max(np.asarray(along, dtype=float)))
+            ink_low, _high = ink_extents_points(
+                text.get_text(),
+                float(text.get_fontsize()),
+                axis=axis,
+                weight=str(text.get_fontweight()),
+            )
+            anchor_px = float(ax.transData.transform(place_many(orientation, 0.0, top))[axis])
+            baseline_px = anchor_px + INK_GAP_PX - ink_low * px_per_pt
+            point = (baseline_px, 0.0) if axis == 0 else (0.0, baseline_px)
+            settled = float(ax.transData.inverted().transform(point)[axis])
+            position = list(text.get_position())
+            if abs(position[axis] - settled) < 1e-12:
+                continue
+            position[axis] = settled
+            text.set_position((position[0], position[1]))
+            moved.append(f"re-anchored {text.get_text()!r} to its bracket")
+    return moved

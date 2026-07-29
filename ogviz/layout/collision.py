@@ -23,7 +23,7 @@ the free space, and the free space is whatever shape the data leaves behind.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 from matplotlib.collections import Collection
@@ -146,28 +146,69 @@ def _px_per_point(artist: Artist) -> float:
     return (figure.dpi / 72.0) if figure is not None else 1.0
 
 
-def _cloud_footprint_px(collection: Collection) -> float:
-    """How wide one of this collection's marks is drawn, in display pixels.
+class MarkCloud(NamedTuple):
+    """Marks drawn separately: where each one is, and how big it is drawn — width and height apart.
 
-    Measured from the marker outline through the collection's own per-element transform, which is
-    where matplotlib keeps the size and already folds in the dpi. Reading `get_sizes` instead works
-    only for the collections that define it, and describes an AREA in points squared, which then has
-    to be rooted and converted — two conversions to get wrong for a number matplotlib will hand over
-    directly.
+    Two numbers rather than one, because a mark is not square and the difference is not cosmetic. An
+    error-bar cap is matplotlib's `"_"` marker: at markersize 12 it is 12 points wide and ZERO high,
+    ink only from its own linewidth. Testing it as a 12x12 square claimed 8 px of height it does not
+    have, and reported every value label in a real figure as "sits on 1 mark(s)" — fourteen of them,
+    each 0.5 px clear of the cap it was accused of touching.
+    """
+
+    positions: NDArray[np.float64]
+    width_px: float
+    height_px: float
+
+
+def _stroke_px(artist: Artist, width: float) -> float:
+    """A stroked mark's thinnest dimension is still its linewidth of ink."""
+    return max(width * _px_per_point(artist), 1.0)
+
+
+def _marker_footprint_px(line: Line2D) -> tuple[float, float]:
+    """How wide and how high one of this line's markers is drawn, in display pixels.
+
+    From the marker's own path, which is the shape matplotlib will stroke, scaled by the markersize
+    it will be stroked at. A round marker measures square, a cap measures wide and flat, and neither
+    needs a special case here.
+    """
+    from matplotlib.markers import MarkerStyle
+
+    style = MarkerStyle(line.get_marker())
+    # The marker path is a unit shape; the markersize scales it. Multiplying the extents is the same
+    # arithmetic as scaling the transform and does not need the transform to be an affine.
+    unit = style.get_path().transformed(style.get_transform()).get_extents()
+    scale = float(line.get_markersize()) * _px_per_point(line)
+    thinnest = _stroke_px(line, float(line.get_markeredgewidth()))
+    return (
+        max(float(unit.width) * scale, thinnest),
+        max(float(unit.height) * scale, thinnest),
+    )
+
+
+def _cloud_footprint_px(collection: Collection) -> tuple[float, float]:
+    """The same measurement for a collection, through its own per-element transform.
+
+    That transform is where matplotlib keeps the size, and it already folds in the dpi. Reading
+    `get_sizes` instead works only for the collections that define it, and describes an AREA in
+    points squared, which then has to be rooted and converted — two conversions to get wrong for a
+    number matplotlib will hand over directly.
     """
     from matplotlib.transforms import Affine2D
 
     paths = collection.get_paths()
     transforms = collection.get_transforms()
     if not len(paths) or not len(transforms):
-        return 1.0
+        return (1.0, 1.0)
     footprints = [paths[0].transformed(Affine2D(matrix)).get_extents() for matrix in transforms]
-    widest = max(max(box.width, box.height) for box in footprints)
-    return max(float(widest), 1.0)
+    widest = max(float(box.width) for box in footprints)
+    highest = max(float(box.height) for box in footprints)
+    return (max(widest, 1.0), max(highest, 1.0))
 
 
-def data_points(ax: Axes) -> list[tuple[NDArray[np.float64], float]]:
-    """Every cloud of separate marks in the axes: positions in display px, and footprint size in px.
+def data_points(ax: Axes) -> list[MarkCloud]:
+    """Every cloud of separately drawn marks in the axes, in display pixels.
 
     Separate from `data_paths` because a cloud cannot be tested as a path. Joining the marks into
     one polyline claims ink along every segment between them, and a compound path of one square per
@@ -182,35 +223,39 @@ def data_points(ax: Axes) -> list[tuple[NDArray[np.float64], float]]:
     the dots happens to cover roughly the area the dots do.
     """
     skip = decoration_ids(ax)
-    clouds: list[tuple[NDArray[np.float64], float]] = []
+    clouds: list[MarkCloud] = []
     for line in ax.lines:
         if id(line) in skip or not line.get_visible() or _stroked(line) or not _marked(line):
             continue
         points = np.column_stack(
             [np.asarray(line.get_xdata(), dtype=float), np.asarray(line.get_ydata(), dtype=float)]
         )
-        if len(points):
-            size = float(line.get_markersize()) * _px_per_point(line)
-            clouds.append((line.get_transform().transform(points), size))
+        if not len(points):
+            continue
+        width, height = _marker_footprint_px(line)
+        clouds.append(MarkCloud(line.get_transform().transform(points), width, height))
     for collection in ax.collections:
         if id(collection) in skip or not collection.get_visible():
             continue
         offsets = point_offsets(collection)
         if offsets is None:
             continue
-        positions = collection.get_offset_transform().transform(offsets)
-        clouds.append((positions, _cloud_footprint_px(collection)))
+        width, height = _cloud_footprint_px(collection)
+        clouds.append(
+            MarkCloud(collection.get_offset_transform().transform(offsets), width, height)
+        )
     return clouds
 
 
-def _marks_in(positions: NDArray[np.float64], size_px: float, box: Bbox) -> int:
-    """How many marks of that size, centred at those positions, reach into `box`."""
-    half = max(size_px, 1.0) / 2.0
+def _marks_in(cloud: MarkCloud, box: Bbox) -> int:
+    """How many of the cloud's marks reach into `box`, each as the rectangle it is drawn as."""
+    half_wide = cloud.width_px / 2.0
+    half_high = cloud.height_px / 2.0
     inside = (
-        (positions[:, 0] >= box.x0 - half)
-        & (positions[:, 0] <= box.x1 + half)
-        & (positions[:, 1] >= box.y0 - half)
-        & (positions[:, 1] <= box.y1 + half)
+        (cloud.positions[:, 0] >= box.x0 - half_wide)
+        & (cloud.positions[:, 0] <= box.x1 + half_wide)
+        & (cloud.positions[:, 1] >= box.y0 - half_high)
+        & (cloud.positions[:, 1] <= box.y1 + half_high)
     )
     return int(np.count_nonzero(inside))
 
@@ -257,7 +302,7 @@ def hits_data(ax: Axes, box: Bbox, *, padding: float = PADDING_PX) -> int:
     struck = sum(
         1 for path, filled in data_paths(ax) if path.intersects_bbox(target, filled=filled)
     )
-    return struck + sum(_marks_in(points, size, target) for points, size in data_points(ax))
+    return struck + sum(_marks_in(cloud, target) for cloud in data_points(ax))
 
 
 def hits_decoration(ax: Axes, box: Bbox, *, padding: float = 0.0) -> int:
