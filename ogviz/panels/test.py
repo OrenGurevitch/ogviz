@@ -297,3 +297,93 @@ def test_the_gate_can_be_asked_for_more_breathing_room() -> None:
     # Its closest pair of labels sits 114 px apart, which is comfortable; a project that demanded
     # more would be told about them, and this one is not.
     assert audit(fig, min_gap=120.0), "and the same figure reads as tight at a wider floor"
+
+
+def test_a_panel_carries_its_project_bracket_typography_into_both_bracket_calls() -> None:
+    """`bracket_stack` runs twice: once with `draw=False` to size the headroom, once to draw.
+
+    Typography reaching only the drawing call would reserve room for a 20 pt star and then set a
+    52 pt one in it, so the test is that the RESERVED room grows and the figure still passes.
+    """
+    import numpy as np
+
+    from ogviz import group_violins
+    from ogviz.qc import audit
+
+    def build(size: float) -> tuple[float, list[str]]:
+        rng = np.random.default_rng(0)
+        groups = [
+            (float(index), rng.normal(index * 0.4, 1.0, 30), "#E8A838", "#B97C10")
+            for index in range(3)
+        ]
+        fig, ax = plt.subplots(figsize=(7.0, 6.0))
+        group_violins(
+            ax,
+            groups,
+            comparisons=[(0.0, 1.0, 1e-4), (1.0, 2.0, 1e-3), (0.0, 2.0, 1e-5)],
+            bracket_kwargs={"fontsize": size},
+        )
+        fig.canvas.draw()
+        return ax.get_ylim()[1], audit(fig)
+
+    small_top, small_complaints = build(12.0)
+    large_top, large_complaints = build(52.0)
+    assert large_top > small_top, "the reserved headroom must grow with the type"
+    # Measured through the gate rather than by comparing the star's box to the frame: a glyph's
+    # layout box carries ascender space its ink does not use, so a box poking past the frame is
+    # normal and says nothing about whether the room reserved was right.
+    assert not small_complaints and not large_complaints, (small_complaints, large_complaints)
+
+
+def test_a_panel_takes_a_generator_so_a_row_can_share_one_stream() -> None:
+    """`points` always accepted a Generator; only the composite narrowed it to an int."""
+    import numpy as np
+
+    from ogviz import group_violins
+
+    stream = np.random.default_rng(11)
+    _fig, axes = plt.subplots(1, 2, figsize=(9.0, 4.0))
+    clouds = []
+    for ax in axes:
+        sample = np.random.default_rng(3).normal(0.0, 1.0, 40)
+        group_violins(ax, [(0.0, sample, "#E8A838", "#B97C10")], seed=stream)
+        clouds.append(ax.collections[-1].get_offsets()[:, 0].copy())
+    assert not np.allclose(clouds[0], clouds[1]), (
+        "one stream drawn twice must not jitter both panels identically"
+    )
+
+
+def test_the_printed_row_is_public_and_shares_one_format() -> None:
+    """Two consumers kept a local copy of this purely because it was underscored."""
+    from ogviz import printed_means
+
+    _fig, ax = plt.subplots()
+    labels = printed_means(ax, [0.0, 1.0, 2.0], [0.0887, 0.545, 1.57], -0.5)
+    printed = [label.get_text() for label in labels]
+    assert printed == ["0.09", "0.55", "1.57"], printed
+    assert all(getattr(label, "ogviz_mean_row", False) for label in labels)
+
+
+def test_the_estimate_column_can_print_the_value_and_not_only_its_stars() -> None:
+    """Stars are categorical, and a project whose intervals clear zero while nothing survives its
+    multiplicity correction needs the number as well, or the figure reads as findings it has not."""
+    from ogviz.panels.coupling import Estimate, estimate_strip
+    from ogviz.significance import stars
+
+    rows = [
+        Estimate("marker vs mass", 0.31, (0.05, 0.55), "#7C9A6E", p=0.012),
+        Estimate("mass vs burden", 0.18, (-0.02, 0.38), "#6E8CA0", p=0.083),
+    ]
+    _fig, ax = plt.subplots(figsize=(6.0, 3.0))
+    estimate_strip(ax, rows, limits=(-0.3, 0.7))
+    assert [t.get_text() for t in ax.texts if getattr(t, "ogviz_column_star", False)] == [
+        "*",
+        "n.s.",
+    ]
+
+    _fig2, ax2 = plt.subplots(figsize=(6.0, 3.0))
+    estimate_strip(ax2, rows, limits=(-0.3, 0.7), label_for=lambda q: f"q={q:.3f} {stars(q)}")
+    assert [t.get_text() for t in ax2.texts if getattr(t, "ogviz_column_star", False)] == [
+        "q=0.012 *",
+        "q=0.083 n.s.",
+    ]

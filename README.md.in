@@ -59,11 +59,22 @@ Each row adds one thing to the row above it.
 | ![](examples/out/11_effort_curves.png) | ![](examples/out/12_coupling_panels.png) |
 | `line_panel` — measured points, log money axis, `broken_zero` | `coupling_panels` — pairs above, their estimates and stars below |
 
+### A family of tests, treated as a family
+
+| | |
+|---|---|
+| ![](examples/out/13_multiplicity_ladder.png) | |
+| `multiplicity_ladder` — sorted p against the Bonferroni line and the Benjamini-Hochberg ramp | |
+
+Eight stars in a table read as eight findings. Drawing the ramp shows where the cutoff really falls
+and why: BH declares every test at or below the largest rank that clears the line, including points
+sitting above it. `benjamini_hochberg_rank` and `bonferroni_threshold` are available on their own.
+
 ### A table drawn as a figure
 
 | | |
 |---|---|
-| ![](examples/out/13_comparison_table.png) | |
+| ![](examples/out/14_comparison_table.png) | |
 | `table_panel` — highlighted column, shaded best value, `caption` | |
 
 ## Captions

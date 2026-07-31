@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
 
     from matplotlib.axes import Axes
+    from matplotlib.text import Text
     from numpy.typing import NDArray
 
     from ogviz.orientation import Orientation
@@ -54,31 +55,44 @@ BRACKET_INSET = 0.12  # first bracket, below the expanded top
 STACK_FIT_MARGIN = 0.02  # slack per attempt while growing the axis to fit a bracket stack
 
 
-def _printed_means(
+def printed_means(
     ax: Axes,
-    items: Sequence[tuple[float, NDArray[np.float64]]],
-    y: float,
+    positions: Sequence[float],
+    values: Sequence[float],
+    row: float,
     *,
-    fontsize: float,
-    decimals: int | None,
-    orientation: Orientation,
-    scale: float,
-    thousands_separator: bool,
-) -> None:
+    fontsize: float = MEAN_LABEL_SIZE,
+    decimals: int | None = None,
+    orientation: Orientation = "vertical",
+    scale: float = 1.0,
+    thousands_separator: bool = False,
+) -> list[Text]:
+    """A row of numbers under the marks they describe, ONE format for the whole row.
+
+    The row's format is the part with logic in it, and the reason this is public rather than private
+    to `group_violins`: letting each value pick its own decimals gives a ragged
+    "0.0887 / 0.545 / 1.57", which reads as three different measurements rather than three values
+    of one measurement. The count comes from the largest value in the row and applies to all of it.
+
+    `values` are the numbers to print, not the samples they came from — a caller printing medians,
+    a difference, or a count wants the same row. `group_violins` computes its means and calls this.
+
+    Every label is tagged `ogviz_mean_row`, which is how `align_mean_rows` finds them and puts a
+    grid's rows on one line.
+    """
     from ogviz.layout.ticks import auto_decimals, format_value
 
-    means = [float(np.mean(v)) for _p, v in items]
-    # One format for the whole row. Letting each value pick its own gives a ragged
-    # "0.0887 / 0.545 / 1.57", which reads as three different measurements.
+    assert len(positions) == len(values), f"{len(positions)} positions for {len(values)} values"
     if decimals is None:
-        decimals = auto_decimals(max((abs(m * scale) for m in means), default=1.0))
-    for (position, _values), mean in zip(items, means, strict=True):
-        horizontal, vertical = place_many(orientation, position, y)
-        printed = ax.text(
+        decimals = auto_decimals(max((abs(value * scale) for value in values), default=1.0))
+    drawn: list[Text] = []
+    for position, value in zip(positions, values, strict=True):
+        horizontal, vertical = place_many(orientation, position, row)
+        label = ax.text(
             horizontal,
             vertical,
             format_value(
-                mean,
+                value,
                 scale=scale,
                 decimals=decimals,
                 thousands_separator=thousands_separator,
@@ -100,7 +114,9 @@ def _printed_means(
         # common but each panel's lowest violin is not, so a row placed from a panel's own data
         # lands at a different height in every panel — which is the thing a shared scale exists to
         # prevent.
-        printed.ogviz_mean_row = True  # type: ignore[attr-defined]
+        label.ogviz_mean_row = True  # type: ignore[attr-defined]
+        drawn.append(label)
+    return drawn
 
 
 def _finish(ax: Axes, high: float, orientation: Orientation, *, grid: bool) -> None:
@@ -161,6 +177,7 @@ def _fit_bracket_stack(
     base_headroom: float,
     label_for: Callable[[float], str] | None,
     orientation: Orientation,
+    bracket_arguments: Mapping[str, object],
 ) -> tuple[float, float]:
     """Grow the value axis until the whole bracket stack fits. Returns (headroom, stack start).
 
@@ -184,10 +201,10 @@ def _fit_bracket_stack(
             comparisons,
             start=start,
             span=span,
-            text_color=INK,
             label_for=label_for,
             orientation=orientation,
             draw=False,
+            **bracket_arguments,  # type: ignore[arg-type]
         )
         if reached <= top:
             return headroom, start
@@ -207,7 +224,7 @@ def group_violins(
     categories: Sequence[str] | None = None,
     category_fontsize: float | None = None,
     anchor_value: float | None = None,
-    seed: int = 0,
+    seed: int | np.random.Generator = 0,
     show_means: bool | None = None,
     mean_fontsize: float = MEAN_LABEL_SIZE,
     mean_decimals: int | None = None,
@@ -223,6 +240,7 @@ def group_violins(
     point_kwargs: Mapping[str, object] | None = None,
     box_kwargs: Mapping[str, object] | None = None,
     mean_kwargs: Mapping[str, object] | None = None,
+    bracket_kwargs: Mapping[str, object] | None = None,
     orientation: Orientation = "vertical",
 ) -> float:
     """Draw a full group-comparison panel. Returns the topmost drawn y in data units.
@@ -260,7 +278,11 @@ def group_violins(
             "Drop or impute them in the project, where the choice is visible — a plot that "
             "silently omits them shows an n nobody wrote down."
         )
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)  # a Generator passes straight through
+    # Built once and given to BOTH `bracket_stack` calls. The first measures how much headroom the
+    # stack needs and draws nothing; typography reaching only the drawing call would reserve room
+    # for a 20 pt star and then set a 28 pt one in it.
+    bracket_arguments: dict[str, object] = {"text_color": INK, **(bracket_kwargs or {})}
     violin_kwargs = {"orientation": orientation, **dict(violin_kwargs or {})}
     point_kwargs = {"orientation": orientation, **dict(point_kwargs or {})}
     box_kwargs = {"orientation": orientation, **dict(box_kwargs or {})}
@@ -295,6 +317,7 @@ def group_violins(
                 base_headroom=SPAN_HEADROOM,
                 label_for=label_for,
                 orientation=orientation,
+                bracket_arguments=bracket_arguments,
             )
         else:
             headroom, stack_start = PLAIN_HEADROOM, high
@@ -312,9 +335,10 @@ def group_violins(
         mean_line(ax, values, position, **mean_kwargs)  # type: ignore[arg-type]
 
     if show_means:
-        _printed_means(
+        printed_means(
             ax,
-            [(p, v) for p, v, _f, _e in populated],
+            [position for position, *_rest in populated],
+            [float(np.mean(sample)) for _p, sample, _f, _e in populated],
             low - mean_row_offset * span,
             fontsize=mean_fontsize,
             decimals=mean_decimals,
@@ -346,9 +370,9 @@ def group_violins(
         comparisons,
         start=stack_start,
         span=span,
-        text_color=INK,
         label_for=label_for,
         orientation=orientation,
+        **bracket_arguments,  # type: ignore[arg-type]
     )
     limit = value_span(ax, orientation)[1]
     assert reached <= limit + 1e-9, (

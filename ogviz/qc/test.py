@@ -273,3 +273,29 @@ def test_a_non_significant_label_is_checked_like_any_other() -> None:
             text.set_position((x, y - 0.35))
     fig.canvas.draw()
     assert any("different distances" in c for c in significance_gaps(fig))
+
+
+def test_a_hyphen_inside_a_name_is_not_a_minus_sign() -> None:
+    """`COMPASS-31` was reported as mixing two minus signs with matplotlib's own tick labels.
+
+    One complaint on one figure, and the kind that teaches a reader to skim the audit output.
+    """
+    from ogviz.qc import one_minus_sign
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    ax.plot([0.0, 1.0], [-0.5, 0.5])
+    ax.set_xticks([0, 1])
+    ax.set_xticklabels(["COMPASS-31", "Diez-Cirarda"])
+    fig.canvas.draw()
+    assert not one_minus_sign(fig)
+
+
+def test_a_real_mix_of_minus_glyphs_is_still_caught() -> None:
+    """The other direction: narrowing the rule must not blind the check it belongs to."""
+    from ogviz.qc import one_minus_sign
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    ax.plot([0.0, 1.0], [-0.5, 0.5])
+    ax.text(0.5, 0.0, f"{-0.42:.2f}", ha="center")  # an ASCII hyphen from format
+    fig.canvas.draw()
+    assert any("two different minus signs" in c for c in one_minus_sign(fig))

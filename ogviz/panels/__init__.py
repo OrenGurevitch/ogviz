@@ -24,9 +24,14 @@ from ogviz.panels.lines import (
     series_colors,
     value_floor,
 )
+from ogviz.panels.multiplicity import (
+    benjamini_hochberg_rank,
+    bonferroni_threshold,
+    multiplicity_ladder,
+)
 from ogviz.panels.split import half_marks, half_violin, split_violins
 from ogviz.panels.table import Cell, Row, table_panel
-from ogviz.panels.violins import group_violins
+from ogviz.panels.violins import group_violins, printed_means
 
 __all__ = [
     "Cell",
@@ -40,6 +45,8 @@ __all__ = [
     "align_mean_rows",
     "align_ticks",
     "bar_panel",
+    "benjamini_hochberg_rank",
+    "bonferroni_threshold",
     "broken_zero",
     "coupling_panels",
     "error_bars",
@@ -50,6 +57,8 @@ __all__ = [
     "label_shared_scale_once",
     "line_panel",
     "money_ticks",
+    "multiplicity_ladder",
+    "printed_means",
     "reference_line",
     "scatter_panel",
     "series_colors",

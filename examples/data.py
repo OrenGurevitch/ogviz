@@ -264,3 +264,49 @@ def burden_by_stage(seed: int = 15) -> dict[str, tuple[np.ndarray, np.ndarray, f
         state: (rng.normal(0.0, 1.0, 34), rng.normal(shift, 1.05, 46), p)
         for state, shift, p in zip(STAGES_OF_THE_ROAD, separations, p_values, strict=True)
     }
+
+
+TRIALS_OF_THE_TOURNAMENT = (
+    "Sword swallowing",
+    "Fire breathing",
+    "Plate spinning",
+    "Knife juggling",
+    "Lion taming",
+    "Tightrope",
+    "Trapeze",
+    "Escapology",
+    "Contortion",
+    "Human cannonball",
+    "Card throwing",
+    "Stilt walking",
+    "Hoop diving",
+    "Whip cracking",
+    "Unicycling",
+)
+
+
+def tournament_p_values(seed: int = 16) -> tuple[tuple[str, ...], list[float]]:
+    """A family of fifteen tests, most of which are noise. Invented, and round on purpose.
+
+    Eight land under 0.05 and only a few survive the correction, which is the whole reason the
+    panel exists: eight stars in a table read as eight findings.
+    """
+    del seed  # the values are written down, not drawn
+    p_values = [
+        0.0004,
+        0.006,
+        0.011,
+        0.019,
+        0.028,
+        0.033,
+        0.041,
+        0.049,
+        0.08,
+        0.12,
+        0.19,
+        0.24,
+        0.41,
+        0.63,
+        0.88,
+    ]
+    return TRIALS_OF_THE_TOURNAMENT, p_values

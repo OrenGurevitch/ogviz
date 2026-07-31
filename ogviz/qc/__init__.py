@@ -11,6 +11,7 @@ it, so a project cannot write a figure that fails one of these without being tol
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -310,6 +311,14 @@ def buried_baselines(fig: Figure) -> list[str]:
     return complaints
 
 
+# A hyphen is a MINUS only where a sign can stand: at the start of a run, or after whitespace or
+# an opening bracket, and immediately before a digit. Inside a word it is orthography, and
+# `COMPASS-31` and `Diez-Cirarda` were reported as mixing two minus signs against an axis whose
+# ticks matplotlib had typeset with U+2212 — the kind of complaint that teaches a reader to skim
+# the audit output.
+CANDIDATE_MINUS = re.compile(r"(?<![^\s(\[])-(?=\d)")
+
+
 def one_minus_sign(fig: Figure) -> list[str]:
     """Every negative number in a figure must use the same glyph for its sign.
 
@@ -324,7 +333,8 @@ def one_minus_sign(fig: Figure) -> list[str]:
             content = text.get_text().strip()
             if not content or not any(character.isdigit() for character in content):
                 continue
-            (hyphen if "-" in content else minus if "\u2212" in content else set()).add(content)
+            signed = bool(CANDIDATE_MINUS.search(content))
+            (hyphen if signed else minus if "\u2212" in content else set()).add(content)
     if hyphen and minus:
         return [
             f"two different minus signs in one figure: {sorted(hyphen)[:3]} use a hyphen, "

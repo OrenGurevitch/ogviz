@@ -33,7 +33,7 @@ from ogviz.significance import stars
 from ogviz.theme import AXIS_LABEL_SIZE, INK, STAR_SIZE, TICK_SIZE, page_color
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
@@ -196,7 +196,11 @@ def scatter_panel(
     ax.spines["bottom"].set(linewidth=2.0, color=INK)
 
 
-def _star_column(ax: Axes, estimates: Sequence[Estimate]) -> None:
+def _star_column(
+    ax: Axes,
+    estimates: Sequence[Estimate],
+    label_for: Callable[[float], str] | None = None,
+) -> None:
     """Stars for the rows that carry a p, aligned in one column at the strip's right edge.
 
     A column rather than a mark beside each dot: the dots sit at their estimates, which are all
@@ -205,13 +209,22 @@ def _star_column(ax: Axes, estimates: Sequence[Estimate]) -> None:
     still shows how far each estimate is from the reference — which is the thing a star cannot say.
 
     The row's own colour, so a star is unambiguous about which estimate it belongs to.
+
+    `label_for` decides what the column SAYS, the same separation `bracket_stack` makes: ogviz owns
+    where the mark sits and never what it reads. Stars alone are categorical, and a project whose
+    intervals clear zero while nothing survives its multiplicity correction needs the number as well
+    — with stars only, that figure reads as findings it does not have. Such a project passes
+    `lambda q: f"q={q:.3f} {stars(q)}"`.
+
+    A longer label is wider, and the column sits just outside the panel; `text_off_canvas` is the
+    check that catches a rightmost column running off the page.
     """
     marked = [(row, e) for row, e in enumerate(estimates) if e.p is not None]
     if not marked:
         return
     for row, estimate in marked:
         assert estimate.p is not None  # narrowed by the comprehension above
-        glyphs = stars(estimate.p)
+        glyphs = (label_for or stars)(estimate.p)
         if not glyphs:
             continue
         drawn = ax.text(
@@ -241,6 +254,7 @@ def estimate_strip(
     name_the_rows: bool = True,
     reference: float | None = 0.0,
     label_size: float = TICK_SIZE - 3.5,
+    label_for: Callable[[float], str] | None = None,
 ) -> None:
     """The estimates as dot-and-interval marks on a shared scale.
 
@@ -272,7 +286,7 @@ def estimate_strip(
             zorder=4,
         )
 
-    _star_column(ax, estimates)
+    _star_column(ax, estimates, label_for)
     ax.set_xlim(*limits)
     # Strips stand side by side on one scale, so the tick at one strip's right edge and the tick
     # at its neighbour's left edge are a gutter apart and collide as soon as the scale reaches a
@@ -314,6 +328,7 @@ def coupling_panels(
     height_ratios: tuple[float, float] = SCATTER_TO_STRIP,
     width_space: float = 0.26,
     height_space: float = 0.42,
+    label_for: Callable[[float], str] | None = None,
 ) -> None:
     """One column per pair: the scatter above, its estimates below, all strips on one scale.
 
@@ -331,6 +346,7 @@ def coupling_panels(
                 leg.estimates,
                 limits=scale,
                 name_the_rows=column == 0,
+                label_for=label_for,
             )
     if estimate_axis_label is not None:
         fig.supxlabel(estimate_axis_label, fontsize=AXIS_LABEL_SIZE)

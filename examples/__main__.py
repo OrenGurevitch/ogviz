@@ -57,6 +57,7 @@ from ogviz import (
     group_violins,
     legend_pill,
     line_panel,
+    multiplicity_ladder,
     save,
     series_colors,
     share_value_limits,
@@ -379,6 +380,31 @@ def coupling_triangle() -> None:
     render(fig, "12_coupling_panels")
 
 
+def multiplicity_ladder_example() -> None:
+    """Fifteen tests, eight of them under 0.05, and what a correction leaves of that.
+
+    The panel a table of stars cannot replace: with fifteen independent tests at 0.05, the chance of
+    at least one false positive is about 54%, so eight stars is not eight findings. Drawing the
+    Benjamini-Hochberg ramp shows WHY its cutoff falls where it does: the rule takes the largest
+    rank whose p clears the ramp, so points above the line at smaller ranks are declared too.
+    """
+    from examples.data import tournament_p_values
+
+    names, p_values = tournament_p_values()
+    fig, ax = plt.subplots(figsize=(10.0, 6.4))
+    declared = multiplicity_ladder(ax, p_values, labels=names)
+    header_bottom = titled(
+        fig,
+        "Eight stars, three findings",
+        subtitle=(
+            f"{sum(p < 0.05 for p in p_values)} of {len(p_values)} invented trials fall under "
+            f"0.05; Benjamini-Hochberg declares {declared}"
+        ),
+    )
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, header_bottom))
+    render(fig, "13_multiplicity_ladder")
+
+
 def violin_grid() -> None:
     """One violin panel per region, on one shared scale.
 
@@ -551,7 +577,7 @@ def comparison_table() -> None:
         "every row but hair.",
         heading="Super Saiyan forms, compared",
     )
-    render(fig, "13_comparison_table")
+    render(fig, "14_comparison_table")
 
 
 # Grouped by what the panel IS, and numbered to match. A gallery ordered by the date each example
@@ -605,6 +631,8 @@ EXAMPLES = (
     # Relationships over a continuous axis: one panel of series, then the composite built from them.
     effort_curves,
     coupling_triangle,
+    # What a family of tests leaves once it is treated as a family.
+    multiplicity_ladder_example,
     # A table drawn as a figure.
     comparison_table,
 )
