@@ -331,3 +331,26 @@ def act_scores(seed: int = 17) -> tuple[np.ndarray, np.ndarray]:
     p_values[0, 0] = 0.0003
     p_values[4, 1] = 0.004
     return effects, p_values
+
+
+ROUNDS = ("Heats", "Quarter", "Semi", "Final")
+DISCIPLINES = ("Acrobatics", "Illusion", "Beasts")
+
+
+def scores_by_round(seed: int = 18) -> dict[str, tuple[list[float], list[tuple[float, float]]]]:
+    """Invented per-round scores with a bootstrap-style band. Round numbers, no measurement."""
+    del seed
+    return {
+        "Acrobatics": (
+            [0.10, 0.32, 0.55, 0.78],
+            [(0.02, 0.18), (0.22, 0.42), (0.44, 0.66), (0.66, 0.90)],
+        ),
+        "Illusion": (
+            [0.20, 0.28, 0.30, 0.34],
+            [(0.12, 0.28), (0.19, 0.37), (0.20, 0.40), (0.23, 0.45)],
+        ),
+        "Beasts": (
+            [0.30, 0.18, 0.02, -0.14],
+            [(0.22, 0.38), (0.09, 0.27), (-0.08, 0.12), (-0.26, -0.02)],
+        ),
+    }

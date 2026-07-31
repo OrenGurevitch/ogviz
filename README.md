@@ -87,11 +87,24 @@ Symmetric about the neutral value, so equal effects in opposite directions colou
 number takes its colour from the cell behind it; and a missing cell is drawn as missing rather than
 shaded like a measured zero.
 
+### A sequence of stages
+
+| | |
+|---|---|
+| ![](examples/out/15_slopegraph.png) | |
+| `slopegraph` — evenly spaced stages, a point at each, spread as a band | |
+
+Stages are evenly spaced whatever they represent, since uneven spacing makes a slope mean something
+the data did not say. `slopegraph` returns any end-label crowding it found, so a figure whose series
+converge is told before it is written rather than after it is looked at. `null_distance` puts metrics
+with different chance levels — an OOS correlation at 0, an AUC at 0.5 — on one axis where zero is
+chance.
+
 ### A table drawn as a figure
 
 | | |
 |---|---|
-| ![](examples/out/15_comparison_table.png) | |
+| ![](examples/out/16_comparison_table.png) | |
 | `table_panel` — highlighted column, shaded best value, `caption` | |
 
 ## Captions
@@ -304,6 +317,11 @@ ogviz
 │   │   ├── benjamini_hochberg_rank(sorted_p: NDArray[np.float64], *, alpha: float) -> int
 │   │   ├── bonferroni_threshold(count: int, *, alpha: float) -> float
 │   │   └── multiplicity_ladder(...) -> ...
+│   ├── slopegraph
+│   │   ├── Strand(...) -> ...
+│   │   ├── crowded_ends(strands: Sequence[Strand], ax: Axes, *, gap_px: float) -> list[str]
+│   │   ├── null_distance(...) -> ...
+│   │   └── slopegraph(...) -> ...
 │   ├── split
 │   │   ├── half_marks(...) -> ...
 │   │   ├── half_violin(...) -> ...

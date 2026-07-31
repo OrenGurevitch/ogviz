@@ -48,6 +48,7 @@ from ogviz import (
     Line,
     Row,
     Series,
+    Strand,
     bar_panel,
     baseline,
     broken_zero,
@@ -62,6 +63,7 @@ from ogviz import (
     save,
     series_colors,
     share_value_limits,
+    slopegraph,
     split_violins,
     table_panel,
     ticks_over_data,
@@ -435,6 +437,33 @@ def effect_matrix() -> None:
     render(fig, "14_effect_heatmap")
 
 
+def rounds_slopegraph() -> None:
+    """Three disciplines across four rounds: the SHAPE of each line is the comparison.
+
+    A slopegraph rather than a line panel because the x axis is a sequence of stages, not a
+    quantity — so the stages are evenly spaced whatever they represent, and every series carries a
+    marked point at every stage so a crossing says which series went where.
+    """
+    from examples.data import ROUNDS, scores_by_round
+    from ogviz.theme import SERIES
+
+    scores = scores_by_round()
+    strands = [
+        Strand(name, values, SERIES[index], spread)
+        for index, (name, (values, spread)) in enumerate(scores.items())
+    ]
+    fig, ax = plt.subplots(figsize=(9.0, 5.6))
+    slopegraph(ax, strands, ROUNDS)
+    ax.set_ylabel("Judge score, centred", fontsize=15, fontweight="bold", labelpad=8)
+    header_bottom = titled(
+        fig,
+        "Who improves, and who is found out",
+        subtitle="invented scores; the band is the spread across judges",
+    )
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, header_bottom))
+    render(fig, "15_slopegraph")
+
+
 def violin_grid() -> None:
     """One violin panel per region, on one shared scale.
 
@@ -607,7 +636,7 @@ def comparison_table() -> None:
         "every row but hair.",
         heading="Super Saiyan forms, compared",
     )
-    render(fig, "15_comparison_table")
+    render(fig, "16_comparison_table")
 
 
 # Grouped by what the panel IS, and numbered to match. A gallery ordered by the date each example
@@ -665,6 +694,8 @@ EXAMPLES = (
     multiplicity_ladder_example,
     # Matrices: many effects at once, then the same shape set as a table.
     effect_matrix,
+    # A sequence of stages, where the shape of each series is the comparison.
+    rounds_slopegraph,
     comparison_table,
 )
 

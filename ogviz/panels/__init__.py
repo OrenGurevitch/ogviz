@@ -30,6 +30,7 @@ from ogviz.panels.multiplicity import (
     bonferroni_threshold,
     multiplicity_ladder,
 )
+from ogviz.panels.slopegraph import Strand, crowded_ends, null_distance, slopegraph
 from ogviz.panels.split import half_marks, half_violin, split_violins
 from ogviz.panels.table import Cell, Row, table_panel
 from ogviz.panels.violins import group_violins, printed_means
@@ -42,6 +43,7 @@ __all__ = [
     "Line",
     "Row",
     "Series",
+    "Strand",
     "align_brackets",
     "align_mean_rows",
     "align_ticks",
@@ -50,6 +52,7 @@ __all__ = [
     "bonferroni_threshold",
     "broken_zero",
     "coupling_panels",
+    "crowded_ends",
     "diverging_map",
     "effect_heatmap",
     "error_bars",
@@ -61,12 +64,14 @@ __all__ = [
     "line_panel",
     "money_ticks",
     "multiplicity_ladder",
+    "null_distance",
     "printed_means",
     "reference_line",
     "scatter_panel",
     "series_colors",
     "share_value_limits",
     "shared_limits",
+    "slopegraph",
     "split_violins",
     "table_panel",
     "trend_line",
