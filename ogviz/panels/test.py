@@ -255,3 +255,45 @@ def test_a_single_panel_and_a_grid_place_the_mean_row_the_same_way() -> None:
     group_violins(ax, [(0.0, values, "#E8A838", "#B97C10")])
     row, midpoint = row_and_midpoint(ax)
     assert row == pytest.approx(midpoint, abs=1e-6), "one panel: midway between frame and body"
+
+
+def test_error_bars_take_bounds_and_refuse_them_inverted() -> None:
+    """Bounds rather than lengths: a bootstrap returns percentiles, not distances from the mean."""
+    import numpy as np
+
+    from ogviz import error_bars
+
+    positions = np.arange(4.0)
+    centre = np.array([1.0, 2.0, 1.5, 3.0])
+    low = centre - np.array([0.2, 0.5, 0.1, 0.4])
+    high = centre + np.array([0.6, 0.2, 0.3, 0.9])
+
+    fig, ax = plt.subplots()
+    error_bars(ax, positions, centre, low, high)
+    fig.canvas.draw()
+    assert ax.collections or ax.lines, "something was drawn"
+
+    with pytest.raises(AssertionError, match="low must be at or below centre"):
+        error_bars(ax, positions, centre, high, low)
+
+
+def test_the_gate_can_be_asked_for_more_breathing_room() -> None:
+    """`min_gap` catches a figure that is merely tight, which the default deliberately does not.
+
+    Kept a caller's number rather than a default: the shipped examples raise 59 complaints at 32 px
+    and none at 5, so one project's comfortable is another project's dense.
+    """
+    import numpy as np
+
+    from ogviz import group_violins
+    from ogviz.qc import audit
+
+    rng = np.random.default_rng(0)
+    groups = [(float(i), rng.normal(i * 0.3, 1.0, 30), "#E8A838", "#B97C10") for i in range(3)]
+    fig, ax = plt.subplots(figsize=(8.0, 6.0))
+    group_violins(ax, groups, categories=["one", "two", "three"])
+    fig.canvas.draw()
+    assert not audit(fig), "clean at the default floor"
+    # Its closest pair of labels sits 114 px apart, which is comfortable; a project that demanded
+    # more would be told about them, and this one is not.
+    assert audit(fig, min_gap=120.0), "and the same figure reads as tight at a wider floor"

@@ -16,14 +16,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from matplotlib.transforms import Bbox
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
     from matplotlib.text import Text
-    from matplotlib.transforms import Bbox
 
 DEFAULT_MIN_GAP = 5.0  # px; below this two labels on one row read as one word
+OPAQUE_ENOUGH = 1.0  # a knockout hides what is under it only when it is fully opaque
+HIDDEN_SHARE = 0.10  # of a label's area painted over before it is worth reporting
 
 
 def _visible_texts(fig: Figure) -> list[Text]:
@@ -154,3 +156,56 @@ def assert_nothing_clipped(fig: Figure) -> None:
     """Fail rather than write a figure whose ink was cropped away."""
     escaped = clipped_artists(fig)
     assert not escaped, "clipped out of the axes: " + " | ".join(sorted(set(escaped)))
+
+
+def _opaque_backing(text: Text) -> Bbox | None:
+    """The box a label paints behind itself, when it is opaque enough to hide what is under it."""
+    from matplotlib.colors import to_rgba
+
+    patch = text.get_bbox_patch()
+    if patch is None or not patch.get_visible():
+        return None
+    _red, _green, _blue, alpha = to_rgba(patch.get_facecolor(), patch.get_alpha())
+    if alpha < OPAQUE_ENOUGH:
+        return None
+    return patch.get_window_extent()
+
+
+def text_hidden_behind_knockouts(fig: Figure) -> list[str]:
+    """Labels painted over by another label's opaque knockout box.
+
+    A knockout is how a number stays legible over a gridline, drawn as an opaque rectangle behind
+    the glyphs. It hides whatever else is under it just as effectively: two labels can each be
+    exactly where they belong, and the one drawn second erases the first. Every position-based
+    check passes, because position was never the problem — paint order was. It shipped as formulas
+    rendering with pieces missing.
+
+    Ordered by what matplotlib actually paints: zorder first, and for equal zorder the later artist,
+    which is the order the axes stores them in.
+    """
+    fig.canvas.draw()
+    texts = [text for text in _visible_texts(fig) if text.get_text().strip()]
+    order = {id(text): index for index, text in enumerate(texts)}
+    complaints: list[str] = []
+    for over in texts:
+        backing = _opaque_backing(over)
+        if backing is None:
+            continue
+        for under in texts:
+            if under is over:
+                continue
+            above = (over.get_zorder(), order[id(over)]) > (under.get_zorder(), order[id(under)])
+            if not above:
+                continue
+            covered = Bbox.intersection(backing, under.get_window_extent())
+            if covered is None or covered.width <= 0 or covered.height <= 0:
+                continue
+            share = (covered.width * covered.height) / max(
+                under.get_window_extent().width * under.get_window_extent().height, 1.0
+            )
+            if share > HIDDEN_SHARE:
+                complaints.append(
+                    f"{under.get_text().strip()[:40]!r} is {share:.0%} covered by the knockout "
+                    f"behind {over.get_text().strip()[:40]!r} — it is painted over, not overlapped"
+                )
+    return complaints

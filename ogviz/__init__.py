@@ -31,10 +31,12 @@ from ogviz.layout import (
     save,
     text_over_data,
     text_overlaps,
+    text_width_points,
     ticks_over_data,
     titled,
     trim_margins,
     value_ticks,
+    wrap_to_width,
     zero_baseline,
 )
 from ogviz.marks import iqr_box, jitter_x, mean_line, points, violin
@@ -52,6 +54,7 @@ from ogviz.panels import (
     bar_panel,
     broken_zero,
     coupling_panels,
+    error_bars,
     estimate_strip,
     group_violins,
     label_shared_scale_once,
@@ -126,6 +129,7 @@ __all__ = [
     "clipped_artists",
     "coupling_panels",
     "dead_space",
+    "error_bars",
     "estimate_strip",
     "fit_under_header",
     "glyphs_must_render",
@@ -158,6 +162,7 @@ __all__ = [
     "table_panel",
     "text_over_data",
     "text_overlaps",
+    "text_width_points",
     "ticks_over_data",
     "titled",
     "trend_line",
@@ -167,5 +172,6 @@ __all__ = [
     "value_labels",
     "value_ticks",
     "violin",
+    "wrap_to_width",
     "zero_baseline",
 ]

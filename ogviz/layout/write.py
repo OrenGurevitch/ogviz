@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 
+from ogviz.layout.header import settle_header
 from ogviz.layout.panels import settle_caption
 from ogviz.significance import settle_bracket_labels
 from ogviz.theme import glyphs_must_render
@@ -55,6 +56,7 @@ def save(
     assert formats, "save needs at least one format"
     # Before the checks, not after: a caption row is reserved when the panels are created and the
     # caller has not plotted yet, so what grows into it can only be measured here.
+    settle_header(fig)
     settle_caption(fig)
     # After the caption, and before the checks: a bracket label's gap to its bracket is set in
     # pixels, and anything that rescaled the value axis since then has changed it.

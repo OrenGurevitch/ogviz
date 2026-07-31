@@ -223,6 +223,88 @@ def value_labels(
         drawn.ogviz_anchored = True  # type: ignore[attr-defined]
 
 
+def _draw_error_bars(
+    ax: Axes,
+    positions: NDArray[np.float64],
+    centres: NDArray[np.float64],
+    lengths: NDArray[np.float64],
+    *,
+    orientation: Orientation,
+    color: str = INK,
+    linewidth: float = ERROR_LINEWIDTH,
+    capsize: float = ERROR_CAPSIZE,
+    zorder: float = Z_ERROR,
+) -> None:
+    """One drawing of an interval, in matplotlib's own (2, N) below/above LENGTHS."""
+    horizontal, vertical = place_many(orientation, positions, centres)
+    upright = is_vertical(orientation)
+    ax.errorbar(
+        horizontal,
+        vertical,
+        yerr=lengths if upright else None,
+        xerr=None if upright else lengths,
+        fmt="none",
+        ecolor=color,
+        elinewidth=linewidth,
+        capsize=capsize,
+        capthick=linewidth,
+        zorder=zorder,
+    )
+
+
+def error_bars(
+    ax: Axes,
+    positions: ArrayLike,
+    centre: ArrayLike,
+    low: ArrayLike,
+    high: ArrayLike,
+    *,
+    orientation: Orientation = "vertical",
+    color: str = INK,
+    linewidth: float = ERROR_LINEWIDTH,
+    capsize: float = ERROR_CAPSIZE,
+    zorder: float = Z_ERROR,
+) -> None:
+    """Intervals from absolute BOUNDS, in the house style.
+
+    Bounds rather than lengths because that is what every statistics library hands back — a
+    bootstrap returns the 2.5th and 97.5th percentiles, not distances from the mean. matplotlib
+    wants `yerr=[[centre - low], [high - centre]]`, a (2, N) of lengths in below/above order, and
+    that subtraction is the step consumers were repeating and could get backwards: swapping the
+    rows draws a plausible interval on the wrong side of every point, and nothing errors.
+
+    Asymmetric intervals are the normal case here, which is why there is no single-length shortcut.
+    """
+    place = np.asarray(positions, dtype=float)
+    middle = np.asarray(centre, dtype=float)
+    lower = np.asarray(low, dtype=float)
+    upper = np.asarray(high, dtype=float)
+    assert place.shape == middle.shape == lower.shape == upper.shape, (
+        f"positions {place.shape}, centre {middle.shape}, low {lower.shape}, high {upper.shape} "
+        "must all describe the same points"
+    )
+    below = middle - lower
+    above = upper - middle
+    # A bound on the wrong side is a caller error, not something to draw politely: matplotlib takes
+    # a negative length without complaint and renders the cap inside the interval.
+    assert np.all(below >= 0.0) and np.all(above >= 0.0), (
+        "low must be at or below centre and high at or above it; got "
+        f"{np.count_nonzero(below < 0)} inverted lower and {np.count_nonzero(above < 0)} upper. "
+        "Passing lengths where bounds are wanted looks exactly like this."
+    )
+    _draw_error_bars(
+        ax,
+        place,
+        middle,
+        np.vstack([below, above]),
+        orientation=orientation,
+        color=color,
+        linewidth=linewidth,
+        capsize=capsize,
+        zorder=zorder,
+    )
+
+
 def reference_line(
     ax: Axes,
     value: float,
@@ -391,19 +473,7 @@ def bar_panel(
         else:
             ax.barh(positions, values, height=each * 0.92, **shared)  # type: ignore[arg-type]
         if entry.errors is not None:
-            error_horizontal, error_vertical = place_many(orientation, positions, values)
-            ax.errorbar(
-                error_horizontal,
-                error_vertical,
-                yerr=caps if upright else None,
-                xerr=None if upright else caps,
-                fmt="none",
-                ecolor=INK,
-                elinewidth=ERROR_LINEWIDTH,
-                capsize=ERROR_CAPSIZE,
-                capthick=ERROR_LINEWIDTH,
-                zorder=Z_ERROR,
-            )
+            _draw_error_bars(ax, positions, values, caps, orientation=orientation)
 
     category_ticks(ax, orientation)(centres)
     category_tick_labels(ax, orientation)(list(categories))

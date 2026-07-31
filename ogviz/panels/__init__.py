@@ -1,4 +1,4 @@
-from ogviz.panels.bars import Series, bar_panel, reference_line, value_labels
+from ogviz.panels.bars import Series, bar_panel, error_bars, reference_line, value_labels
 from ogviz.panels.coupling import (
     Cloud,
     Estimate,
@@ -42,6 +42,7 @@ __all__ = [
     "bar_panel",
     "broken_zero",
     "coupling_panels",
+    "error_bars",
     "estimate_strip",
     "group_violins",
     "half_marks",

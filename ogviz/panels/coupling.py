@@ -59,6 +59,11 @@ STRIP_TICKS = 5  # before pruning the two end ticks
 # right spine, and the width available depends on the font — it fitted in Arial and collided with an
 # interval bar in DejaVu. Outside, the lane is always there, and the shared scale that makes the
 # strips comparable is not disturbed to make room.
+#
+# The cost is a requirement on whoever lays the figure out: the RIGHTMOST panel needs that lane to
+# exist at the page edge too. A caller that pushed `right` to 0.985 sent its last column of stars
+# 17 px off the canvas, where a plain save crops them and a tight save silently grows the page.
+# `text_off_canvas` is the check that catches it.
 STAR_COLUMN = 1.015
 STRIP_PAD = 1.12  # the shared estimate scale reaches this far past the widest interval
 SCATTER_TO_STRIP = (3.0, 1.15)  # how the height of one column is split

@@ -30,7 +30,7 @@ from ogviz.layout.collision import (
 from ogviz.layout.density import dead_space, trim_margins
 from ogviz.layout.density import measure as measure_density
 from ogviz.layout.frame import baseline, hairline_grid, legend_pill, pill_frame, zero_baseline
-from ogviz.layout.header import fit_under_header, titled
+from ogviz.layout.header import fit_under_header, panel_left_edge, settle_header, titled
 from ogviz.layout.overlap import (
     assert_no_text_overlap,
     assert_nothing_clipped,
@@ -59,11 +59,13 @@ __all__ = [
     "legend_pill",
     "measure_density",
     "overflowing_text",
+    "panel_left_edge",
     "panel_row",
     "pill_frame",
     "point_offsets",
     "round_ticks",
     "save",
+    "settle_header",
     "text_over_data",
     "text_overlaps",
     "text_width_points",

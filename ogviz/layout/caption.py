@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ogviz.layout.bounds import figure_text
 from ogviz.layout.panels import text_width_points, wrap_to_width
 from ogviz.theme import INK, MUTED_INK
 
@@ -127,17 +128,21 @@ def longest_unbreakable(text: str, size: float) -> float:
 
 
 def overflowing_text(fig: Figure) -> list[str]:
-    """Any figure-level text wider than the canvas it sits on.
+    """Any text wider than the canvas it sits on, wherever it lives.
 
-    The last line of defence for the caption's width guarantee, and it applies to every figure-level
-    string, not only captions: a title long enough to run off the page fails here too. Reported
-    against the CANVAS rather than against a margin, so it fires only on genuine overflow and not
-    on a deliberately full-bleed heading.
+    The last line of defence for the caption's width guarantee, and it applies to every string, not
+    only captions: a title long enough to run off the page fails here too. Reported against the
+    CANVAS rather than against a margin, so it fires only on genuine overflow and not on a
+    deliberately full-bleed heading.
+
+    It read `fig.texts` alone until an axes title running past its panel went unreported. A title
+    set with `ax.set_title` is an AXES-level artist and never appears in `fig.texts`, so the name
+    promised a check the function did not perform, and a consumer wrote its own `titles_fit`.
     """
     fig.canvas.draw()
     width_px = fig.get_figwidth() * fig.dpi
     complaints: list[str] = []
-    for text in fig.texts:
+    for text, _owner in figure_text(fig):
         content = text.get_text().strip()
         if not content or not text.get_visible():
             continue
@@ -151,7 +156,7 @@ def overflowing_text(fig: Figure) -> list[str]:
                 content.split(), key=lambda word: text_width_points(word, size), default=""
             )
             complaints.append(
-                f"a caption is {drawn - width_px:.0f} px wider than the figure: {culprit[:60]!r} "
+                f"a label is {drawn - width_px:.0f} px wider than the figure: {culprit[:60]!r} "
                 "is one word and cannot be wrapped"
             )
     return complaints

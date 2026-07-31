@@ -15,10 +15,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout.bounds import text_off_canvas, text_wider_than_its_panel
 from ogviz.layout.caption import overflowing_text
 from ogviz.layout.collision import quoted, text_over_data
 from ogviz.layout.ink import exact_overlaps, hidden_artists
-from ogviz.layout.overlap import clipped_artists, text_overlaps
+from ogviz.layout.overlap import (
+    DEFAULT_MIN_GAP,
+    clipped_artists,
+    text_hidden_behind_knockouts,
+    text_overlaps,
+)
 from ogviz.orientation import read_orientation
 from ogviz.significance import STACK_GAP_PX, ink_extents_points
 
@@ -640,6 +646,9 @@ CHECKS = (
     text_over_data,
     overflowing_text,
     clipped_artists,
+    text_off_canvas,
+    text_wider_than_its_panel,
+    text_hidden_behind_knockouts,
     significance_gaps,
     stack_spacing,
     dots_off_the_marks,
@@ -654,18 +663,32 @@ CHECKS = (
 THOROUGH_CHECKS = (drawn_but_invisible,)
 
 
-def audit(fig: Figure, *, thorough: bool = False) -> list[str]:
+def audit(fig: Figure, *, thorough: bool = False, min_gap: float = DEFAULT_MIN_GAP) -> list[str]:
     """Every complaint the checks can make about this figure.
 
     `thorough` adds the checks that render the figure once per artist. They are exact and slow —
     nine seconds on a six-panel grid against milliseconds for the rest — so they are asked for
     rather than paid for on every save. `python -m ogviz.qc --thorough` is the usual way in.
+
+    `min_gap` is the least space two labels on one row may have and still read as two words. The
+    default catches labels that have run together; it does not catch a figure that is merely tight,
+    and three "this is too crowded" reports were caught by eye and by nothing else. A project that
+    wants breathing room enforced passes its own floor — 32 px is the number one project measured
+    its own comfortable figures against. It is a caller's number rather than a default because the
+    same figures run 59 complaints at 32 px and none at 5, and one project's comfortable is another
+    project's dense.
     """
     checks = CHECKS + THOROUGH_CHECKS if thorough else CHECKS
-    return [complaint for check in checks for complaint in check(fig)]
+    return [
+        complaint
+        for check in checks
+        for complaint in (
+            check(fig, min_gap=min_gap) if check is text_overlaps else check(fig)  # type: ignore[call-arg]
+        )
+    ]
 
 
-def assert_clean(fig: Figure) -> None:
+def assert_clean(fig: Figure, *, min_gap: float = DEFAULT_MIN_GAP) -> None:
     """The build gate. Reports every complaint at once rather than the first."""
-    complaints = audit(fig)
+    complaints = audit(fig, min_gap=min_gap)
     assert not complaints, "figure QC:\n  - " + "\n  - ".join(complaints)

@@ -151,6 +151,11 @@ ogviz
 │   ├── axis
 │   │   ├── drawn_value_extent(ax: Axes) -> tuple[float, float] | None
 │   │   └── ticks_over_data(...) -> ...
+│   ├── bounds
+│   │   ├── figure_text(fig: Figure) -> Iterator[tuple[Text, Axes | None]]
+│   │   ├── panel_text(ax: Axes) -> Iterator[Text]
+│   │   ├── text_off_canvas(fig: Figure) -> list[str]
+│   │   └── text_wider_than_its_panel(fig: Figure) -> list[str]
 │   ├── caption
 │   │   ├── caption(...) -> ...
 │   │   ├── longest_unbreakable(text: str, size: float) -> float
@@ -184,6 +189,8 @@ ogviz
 │   │   └── zero_baseline(ax: Axes) -> None
 │   ├── header
 │   │   ├── fit_under_header(...) -> ...
+│   │   ├── panel_left_edge(fig: Figure) -> float
+│   │   ├── settle_header(fig: Figure) -> list[str]
 │   │   └── titled(...) -> ...
 │   ├── ink
 │   │   ├── artist_ink(fig: Figure, artist: Artist, *, others: list[Artist] | None)
@@ -195,6 +202,7 @@ ogviz
 │   │   ├── assert_nothing_clipped(fig: Figure) -> None
 │   │   ├── clipped_artists(fig: Figure) -> list[str]
 │   │   ├── drawn_tick_labels(ax: Axes) -> list[Text]
+│   │   ├── text_hidden_behind_knockouts(fig: Figure) -> list[str]
 │   │   └── text_overlaps(fig: Figure, *, min_gap: float) -> list[str]
 │   ├── panels
 │   │   ├── panel_row(...) -> ...
@@ -237,6 +245,7 @@ ogviz
 │   │   ├── Series(...) -> ...
 │   │   ├── bar_panel(...) -> ...
 │   │   ├── default_value_format(values: NDArray[np.float64]) -> str
+│   │   ├── error_bars(...) -> ...
 │   │   ├── reference_line(...)
 │   │   └── value_labels(...) -> ...
 │   ├── coupling
@@ -273,8 +282,8 @@ ogviz
 │   └── violins
 │       └── group_violins(...) -> ...
 ├── qc
-│   ├── assert_clean(fig: Figure) -> None
-│   ├── audit(fig: Figure, *, thorough: bool) -> list[str]
+│   ├── assert_clean(fig: Figure, *, min_gap: float) -> None
+│   ├── audit(fig: Figure, *, thorough: bool, min_gap: float) -> list[str]
 │   ├── buried_baselines(fig: Figure) -> list[str]
 │   ├── colliding_ink(fig: Figure) -> list[str]
 │   ├── dots_off_the_marks(fig: Figure) -> list[str]

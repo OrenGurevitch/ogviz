@@ -139,3 +139,38 @@ def test_ticks_over_data_measures_the_drawn_marks_when_not_told() -> None:
     ticks_over_data(ax)
     assert 4.0 in [float(tick) for tick in ax.get_yticks()]
     assert 8.0 not in [float(tick) for tick in ax.get_yticks()]
+
+
+def test_a_left_aligned_header_follows_its_panels() -> None:
+    """The alignment is measured against the panels, and `tight_layout` moves the panels after.
+
+    Placing it once and hoping is what a caller doing this by hand ends up with; the header is
+    re-anchored at save time for the same reason the caption and the bracket labels are.
+    """
+    from ogviz import titled
+    from ogviz.layout.header import panel_left_edge, settle_header
+
+    fig, ax = plt.subplots(figsize=(9.0, 5.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.set_ylabel("a label wide enough to move the panel")
+    bottom = titled(fig, "Left-aligned heading", subtitle="and its subtitle", align="left")
+    fig.canvas.draw()
+    assert all(abs(t.get_position()[0] - panel_left_edge(fig)) < 1e-9 for t in fig.texts)
+
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, bottom))
+    fig.canvas.draw()
+    assert settle_header(fig), "the panels moved, so the header must too"
+    left = panel_left_edge(fig)
+    assert all(abs(t.get_position()[0] - left) < 1e-9 for t in fig.texts)
+
+
+def test_a_centred_header_is_unchanged_by_settling() -> None:
+    from ogviz import titled
+    from ogviz.layout.header import settle_header
+
+    fig, ax = plt.subplots(figsize=(9.0, 5.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    titled(fig, "Centred heading", subtitle="and its subtitle")
+    fig.canvas.draw()
+    assert not settle_header(fig)
+    assert all(abs(t.get_position()[0] - 0.5) < 1e-9 for t in fig.texts)

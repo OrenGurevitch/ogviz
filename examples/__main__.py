@@ -370,7 +370,9 @@ def coupling_triangle() -> None:
     figure_points = fig.get_figheight() * 72.0
     fig.subplots_adjust(
         left=0.085,
-        right=0.985,
+        # The star column sits just outside each panel, so the rightmost panel needs a lane at the
+        # page edge to put it in. At 0.985 the stars of the third leg ran 17 px off the canvas.
+        right=0.975,
         top=header_bottom - 34.0 / figure_points,
         bottom=62.0 / figure_points,
     )

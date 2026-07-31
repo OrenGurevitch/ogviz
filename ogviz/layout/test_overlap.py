@@ -141,3 +141,48 @@ def test_the_box_overlap_rule_is_gone_and_ink_answers_that_question() -> None:
     fig.canvas.draw()
     assert colliding_ink(fig), "two strings in one place share pixels, in any font"
     plt.close(fig)
+
+
+def test_a_knockout_painting_over_another_label_is_caught() -> None:
+    """Position was never the problem — paint order was.
+
+    The two labels do not overlap as text: the upper one's generous knockout pad reaches down over
+    the lower one, so both the spacing rule and the rendered-ink rule stay silent while the lower
+    label is entirely erased.
+    """
+    from ogviz.layout.ink import exact_overlaps
+    from ogviz.layout.overlap import text_hidden_behind_knockouts, text_overlaps
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    under = ax.text(0.5, 0.46, "the line underneath", ha="center", va="center")
+    over = ax.text(
+        0.5,
+        0.56,
+        "0.42",
+        ha="center",
+        va="center",
+        bbox={"facecolor": "#FAF7F0", "edgecolor": "none", "pad": 14, "boxstyle": "square"},
+    )
+    fig.canvas.draw()
+    assert not under.get_window_extent().overlaps(over.get_window_extent()), "the premise"
+    assert not text_overlaps(fig), "the spacing rule cannot see this"
+    assert not exact_overlaps(fig, [under, over]), "nor can the ink rule"
+    assert any("painted over" in c for c in text_hidden_behind_knockouts(fig))
+
+
+def test_a_knockout_over_empty_space_is_not_reported() -> None:
+    from ogviz.layout.overlap import text_hidden_behind_knockouts
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.text(
+        0.5,
+        0.5,
+        "0.42",
+        ha="center",
+        va="center",
+        bbox={"facecolor": "#FAF7F0", "edgecolor": "none", "pad": 6, "boxstyle": "square"},
+    )
+    fig.canvas.draw()
+    assert not text_hidden_behind_knockouts(fig)
