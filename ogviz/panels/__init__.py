@@ -16,6 +16,7 @@ from ogviz.panels.grid import (
     label_shared_scale_once,
     share_value_limits,
 )
+from ogviz.panels.heatmap import diverging_map, effect_heatmap
 from ogviz.panels.lines import (
     Line,
     broken_zero,
@@ -49,6 +50,8 @@ __all__ = [
     "bonferroni_threshold",
     "broken_zero",
     "coupling_panels",
+    "diverging_map",
+    "effect_heatmap",
     "error_bars",
     "estimate_strip",
     "group_violins",

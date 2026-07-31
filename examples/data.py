@@ -310,3 +310,24 @@ def tournament_p_values(seed: int = 16) -> tuple[tuple[str, ...], list[float]]:
         0.88,
     ]
     return TRIALS_OF_THE_TOURNAMENT, p_values
+
+
+ACTS = ("Acrobatics", "Illusion", "Clowning", "Aerials", "Beasts", "Music")
+JUDGES = ("Technique", "Danger", "Showmanship", "Costume")
+
+
+def act_scores(seed: int = 17) -> tuple[np.ndarray, np.ndarray]:
+    """Invented judge-by-act effects and their p-values, with one act unjudged on one criterion.
+
+    The missing cell is on purpose: a matrix panel has to say "not measured" differently from
+    "measured and zero", and an example with no gap in it never shows whether it does.
+    """
+    rng = np.random.default_rng(seed)
+    effects = rng.normal(0.0, 0.55, (len(ACTS), len(JUDGES)))
+    effects[0, 0] = 1.32
+    effects[4, 1] = -1.18
+    effects[2, 3] = np.nan
+    p_values = rng.uniform(0.0, 0.4, (len(ACTS), len(JUDGES)))
+    p_values[0, 0] = 0.0003
+    p_values[4, 1] = 0.004
+    return effects, p_values

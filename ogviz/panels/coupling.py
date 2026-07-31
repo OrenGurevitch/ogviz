@@ -22,7 +22,7 @@ computes a correlation, an interval, or a trend's significance.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from matplotlib import patheffects
@@ -255,14 +255,34 @@ def estimate_strip(
     reference: float | None = 0.0,
     label_size: float = TICK_SIZE - 3.5,
     label_for: Callable[[float], str] | None = None,
+    sort_by: Literal["given", "value", "magnitude"] = "given",
 ) -> None:
-    """The estimates as dot-and-interval marks on a shared scale.
+    """The estimates as dot-and-interval marks on a shared scale — a FOREST PLOT, standalone or in
+    a column of them.
 
-    Rows are drawn bottom-up in the order given, so the sequence reads the way a legend does. The
-    reference line is where "no relationship" sits; pass None for a quantity that has no such
+    Worth saying under that name: a sorted forest of point estimates with confidence whiskers, a
+    zero rule and a significance column is exactly this function, and a project that did not know
+    that hand-rolled one beside it. Colour per row comes from the `Estimate`, so colouring by
+    significance, by direction or by group is done where the rows are built.
+
+    Rows are drawn bottom-up in the order given, so the sequence reads the way a legend does — and
+    that is the trap `sort_by` exists for: a caller who sorts its own list descending gets the
+    largest effect at the BOTTOM. `"magnitude"` puts the largest at the top, which is the ordering a
+    forest is normally read in, and `"value"` sorts signed so the negatives gather at one end.
+
+    The reference line is where "no relationship" sits; pass None for a quantity that has no such
     value.
     """
     assert estimates, "a strip with no estimates in it"
+    if sort_by != "given":
+        key = (
+            (lambda e: abs(e.value - (reference or 0.0)))
+            if sort_by == "magnitude"
+            else (lambda e: e.value)
+        )
+        # Ascending, because row 0 is drawn at the BOTTOM: ascending by magnitude puts the largest
+        # effect on the top row.
+        estimates = sorted(estimates, key=key)
     if reference is not None:
         ax.axvline(reference, color=INK, linewidth=1.4, zorder=1)
     for row, estimate in enumerate(estimates):

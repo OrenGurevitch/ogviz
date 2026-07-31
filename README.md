@@ -60,6 +60,11 @@ Each row adds one thing to the row above it.
 | ![](examples/out/11_effort_curves.png) | ![](examples/out/12_coupling_panels.png) |
 | `line_panel` — measured points, log money axis, `broken_zero` | `coupling_panels` — pairs above, their estimates and stars below |
 
+The lower half of that figure is `estimate_strip`, which is a **forest plot** and works standalone:
+dot and interval per row, a zero rule, row names, and a significance column whose wording is the
+caller's (`label_for`, so a row can read `q=0.083 n.s.` rather than only its stars). `sort_by`
+orders it — rows draw bottom-up, so sorting a list by hand puts the largest effect at the bottom.
+
 ### A family of tests, treated as a family
 
 | | |
@@ -71,11 +76,22 @@ Eight stars in a table read as eight findings. Drawing the ramp shows where the 
 and why: BH declares every test at or below the largest rank that clears the line, including points
 sitting above it. `benjamini_hochberg_rank` and `bonferroni_threshold` are available on their own.
 
+### Many effects at once
+
+| | |
+|---|---|
+| ![](examples/out/14_effect_heatmap.png) | |
+| `effect_heatmap` — diverging matrix, number in every cell, stars, missing cells | |
+
+Symmetric about the neutral value, so equal effects in opposite directions colour equally; each
+number takes its colour from the cell behind it; and a missing cell is drawn as missing rather than
+shaded like a measured zero.
+
 ### A table drawn as a figure
 
 | | |
 |---|---|
-| ![](examples/out/14_comparison_table.png) | |
+| ![](examples/out/15_comparison_table.png) | |
 | `table_panel` — highlighted column, shaded best value, `caption` | |
 
 ## Captions
@@ -274,6 +290,9 @@ ogviz
 │   │   ├── align_ticks(axes: Iterable[Axes], *, orientation: Orientation) -> list[float]
 │   │   ├── label_shared_scale_once(...) -> ...
 │   │   └── share_value_limits(...) -> ...
+│   ├── heatmap
+│   │   ├── diverging_map(colors: Sequence[str | None]) -> LinearSegmentedColormap
+│   │   └── effect_heatmap(...) -> ...
 │   ├── lines
 │   │   ├── Line(...) -> ...
 │   │   ├── broken_zero(ax: Axes, *, floor: float, zero_gap: float | None) -> None

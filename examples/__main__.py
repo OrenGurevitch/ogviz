@@ -53,6 +53,7 @@ from ogviz import (
     broken_zero,
     caption,
     coupling_panels,
+    effect_heatmap,
     fit_under_header,
     group_violins,
     legend_pill,
@@ -405,6 +406,35 @@ def multiplicity_ladder_example() -> None:
     render(fig, "13_multiplicity_ladder")
 
 
+def effect_matrix() -> None:
+    """Every act against every judge, coloured by sign and magnitude, with the number in the cell.
+
+    Three things a hand-rolled version of this gets wrong, all visible here: the scale is symmetric
+    about zero so equal effects in opposite directions colour equally; each number takes its colour
+    from the cell behind it, which is the only way one is legible at both ends of the map; and the
+    unjudged cell is drawn as missing rather than shaded like a measured zero.
+    """
+    from examples.data import ACTS, JUDGES, act_scores
+
+    effects, p_values = act_scores()
+    fig, ax = plt.subplots(figsize=(8.4, 7.0))
+    effect_heatmap(
+        ax,
+        effects,
+        row_labels=ACTS,
+        column_labels=JUDGES,
+        p_values=p_values,
+        row_dividers=[4],
+    )
+    header_bottom = titled(
+        fig,
+        "Who wins on what",
+        subtitle="invented effects; the dash is an act that criterion never judged",
+    )
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, header_bottom))
+    render(fig, "14_effect_heatmap")
+
+
 def violin_grid() -> None:
     """One violin panel per region, on one shared scale.
 
@@ -577,7 +607,7 @@ def comparison_table() -> None:
         "every row but hair.",
         heading="Super Saiyan forms, compared",
     )
-    render(fig, "14_comparison_table")
+    render(fig, "15_comparison_table")
 
 
 # Grouped by what the panel IS, and numbered to match. A gallery ordered by the date each example
@@ -633,7 +663,8 @@ EXAMPLES = (
     coupling_triangle,
     # What a family of tests leaves once it is treated as a family.
     multiplicity_ladder_example,
-    # A table drawn as a figure.
+    # Matrices: many effects at once, then the same shape set as a table.
+    effect_matrix,
     comparison_table,
 )
 
