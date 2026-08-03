@@ -9,7 +9,7 @@ uv add "ogviz @ git+https://github.com/OrenGurevitch/ogviz"
 ```
 
 ```python
-from ogviz import group_violins, save, titled, use_house_style, value_ticks
+from ogviz import fit_under_header, group_violins, save, titled, use_house_style, value_ticks
 
 use_house_style()
 fig, ax = plt.subplots(figsize=(7, 8))
@@ -17,9 +17,34 @@ group_violins(ax, [(0.0, control, "#E8A838", "#B97C10"),
                    (1.0, treated, "#7C9A6E", "#4A6136")],
               comparisons=[(0.0, 1.0, p_value)], display_scale=1e3)
 value_ticks(ax, count=4, scale=1e3)
-titled(fig, "Two groups")
-save(fig, out_dir, "figure")
+header_bottom = titled(fig, "Two groups")     # returns where the header ends
+fit_under_header(fig, header_bottom)          # ...and this puts the panels under it
+save(fig, out_dir, "figure")                  # writes AND runs the gate
 ```
+
+Those last three lines are the shape of every figure here, whatever the panel. `titled` returning a
+float is easy to drop — a function that draws a title looks finished — and a figure without
+`fit_under_header` survives until it gains a legend, a caption or a second subtitle line, at which
+point the panels grow into the header. A caller who found `group_violins` and not these rebuilt the
+surrounding layout three times before finding them.
+
+## The style call
+
+`use_house_style()` sets the colours and the typography together, which is what a project with no
+constraint on its font wants.
+
+**Exporting for a manuscript: `use_house_style(PAPER_WHITE)`.** The default page is a warm off-white,
+which cuts glare on screen; a journal typesets on white, and there the warm page composites as a
+visible grey rectangle behind the figure. It is the kind of thing noticed at proof stage.
+
+**Pinning your own font: `use_house_ink()`.** Take the colours and leave the typography alone. Two
+reasons a project must: significance brackets stacked by measuring rendered ink are calibrated
+against one font's metrics, so changing the family makes stars collide; and byte-identical SVGs
+across machines need matplotlib's bundled DejaVu rather than a font that may or may not be
+installed. `use_house_type()` is the other half, for the reverse case.
+
+The halves exist because a project that could take neither hand-rolled the ink instead — in one of
+its two renderers — and shipped two different blacks in one paper for months.
 
 ## Testing
 
@@ -44,14 +69,46 @@ Each row adds one thing to the row above it.
 | ![](examples/out/05_split_violins.png) | ![](examples/out/06_stacked_brackets.png) |
 | `split_violins` — one quantity measured two ways, sharing a spine | three groups — `bracket_stack`, stars anchored by their ink |
 
+**The central marks are a set.** `violin`, `points`, `iqr_box`, `mean_line` and the median dot stack
+in a defined order — `Z_VIOLIN 2 < Z_POINTS 3 < Z_IQR 4 < Z_MEAN_LINE 6 < Z_MEDIAN_DOT 8`, exported
+at the top level — and the order is the point: the mean line reads over the IQR bar and under the
+median dot. Take them together rather than cherry-picking. A project that hand-rolled the box,
+whiskers, median and mean drew the mean at 11 over the median at 10, and the mean covered the median
+it was supposed to sit under.
+
+**Grids of panels.** `panel_row(n)` for one row, `panel_grid(count, ncol=...)` for many. In both,
+`width` is the TOTAL figure width, so every figure in a set places at one width — sizing by CELL
+instead makes a one-panel figure half as wide as a four-panel one, and a document that places both
+at one column magnifies the small one. `grid_warnings` reports an empty slot and a grid too tall for
+the page, and is in the gate.
+
 ### Bars
+
+The examples are the specification, not illustrations. This is the whole skeleton of a bar figure,
+and every line of it is a decision the examples already made — departing from one is a choice rather
+than a default:
+
+```python
+fig, ax = plt.subplots(figsize=(9.0, 6.0))
+bar_panel(ax, [Series(...)], labels)
+ax.set_ylabel(..., fontsize=17, fontweight="bold")
+baseline(ax)
+header_bottom = titled(fig, title, subtitle=...)   # the return value is not optional
+fit_under_header(fig, header_bottom, bottom=0.0)   # this is what puts the panels under it
+save(fig, out_dir, name)                           # writes AND runs the gate
+```
+
+`save`, `assert_clean` and `fit_under_header` are the load-bearing three, and none of them is
+obvious from a panel's own name. A caller who found `bar_panel` alone rebuilt the surrounding layout
+by hand three times, each version visibly worse than `examples/07_bars_with_reference`, which had
+already answered every one of those questions.
 
 | | |
 |---|---|
 | ![](examples/out/07_bars_with_reference.png) | ![](examples/out/08_grouped_bars.png) |
 | one series, an asymmetric CI, a threshold drawn over the bars | two series — signed bars, sign-aware labels |
 | ![](examples/out/09_headline_bars.png) | ![](examples/out/10_horizontal.png) |
-| `rounded` / `highlight` / `reference_band` | `orientation="horizontal"`, for names too long for a tick |
+| `rounded` / `highlight` | `orientation="horizontal"`, for names too long for a tick |
 
 ### Relationships over a continuous axis
 
@@ -64,6 +121,25 @@ The lower half of that figure is `estimate_strip`, which is a **forest plot** an
 dot and interval per row, a zero rule, row names, and a significance column whose wording is the
 caller's (`label_for`, so a row can read `q=0.083 n.s.` rather than only its stars). `sort_by`
 orders it — rows draw bottom-up, so sorting a list by hand puts the largest effect at the bottom.
+
+### A comparison where one bar is not comparable
+
+| | |
+|---|---|
+| ![](examples/out/17_controlled_comparison.png) | |
+| `positions`, `highlight=(first, last)`, `reference_line(span=...)`, `label_rows` | |
+
+Four things that are about what a figure MEANS rather than what its numbers are, and each was a
+reason a house project rebuilt its flagship bar figure by hand instead of using `bar_panel`:
+
+- `positions=` sets the category positions, so a bar that is not comparable with the rest can stand
+  a gap away from them;
+- `highlight=(first, last)` shades a RANGE of categories, which is how the figure says "these belong
+  together and that one does not" — a single index could not;
+- `reference_line(span=(low, high))` draws the level over part of the axis only, because a ceiling
+  the comparable arms are measured against says nothing about the reference standing beside them;
+- `label_rows` stacks the category axis: which metric, then which arm, then what each was trained
+  on. Three levels a reader takes in separately, evenly spaced by construction.
 
 ### A family of tests, treated as a family
 
@@ -95,10 +171,11 @@ shaded like a measured zero.
 | `slopegraph` — evenly spaced stages, a point at each, spread as a band | |
 
 Stages are evenly spaced whatever they represent, since uneven spacing makes a slope mean something
-the data did not say. `slopegraph` returns any end-label crowding it found, so a figure whose series
-converge is told before it is written rather than after it is looked at. `null_distance` puts metrics
-with different chance levels — an OOS correlation at 0, an AUC at 0.5 — on one axis where zero is
-chance.
+the data did not say. The end labels are placed by `stack_without_overlap`, which solves the whole
+set at once: it returns the arrangement with the least total movement that has no two labels
+overlapping and keeps their order, so five series ending within a hair of each other spread
+symmetrically instead of piling up. `null_distance` puts metrics with different chance levels — an
+OOS correlation at 0, an AUC at 0.5 — on one axis where zero is chance.
 
 ### A table drawn as a figure
 
@@ -106,6 +183,47 @@ chance.
 |---|---|
 | ![](examples/out/16_comparison_table.png) | |
 | `table_panel` — highlighted column, shaded best value, `caption` | |
+
+## Numbers
+
+From a thousand up, a number is grouped: `1,200,000`, not `1200000`. One is read at a glance and the
+other is counted digit by digit. Everything the library prints does this by default — value labels,
+printed means, ticks, matrix cells — and `ungrouped_thousands` catches the numbers a caller
+formatted itself.
+
+Trailing zeros go the other way: `0.55`, not `0.550`. `auto_decimals` aims at three significant
+figures, so 0.55 asks for three decimal places and the third is a zero nobody measured. Where the
+CALLER states a decimal count the padding is kept, because stating a count is stating a precision
+and a row states it once for the whole row — stripping per value would leave `1` beside `2.5`.
+
+Pass `thousands_separator=False` where grouping would be wrong: a year, an identifier, a part
+number. Those are not quantities, and nothing in a figure can tell them apart from one — which is
+also why the check leaves a four-digit number in a plausible year range alone.
+
+## Making room, and saying what a mark means
+
+`titled` returns where the header ends and `fit_under_header` puts the panels under it. `room_below`
+is the other end: a row of text under an axis has to come from somewhere, and `subplots_adjust`
+takes it from the plot — one project measured that as every bar shrinking 10% in a figure whose
+whole job was comparing bar heights. `room_below` grows the PAGE and leaves the panel alone.
+
+`width_for_bars(count)` is the width a bar panel needs to hold that many bars without its labels
+colliding. The gate will tell you when a panel is too narrow; this is how not to find out that way.
+
+`mark(artist, "anchored")` is how a caller says a label it placed is deliberate, so the "is this
+label on the data" rule leaves it alone. The vocabulary is a `Literal`, so a typo is a typecheck
+error at both the writing and the reading end — `marked` and `value_of` read it back.
+
+`wrap_to_panel(ax, text, size)` wraps to the width of an axes, which is what a caller has; the
+points conversion is the part that goes wrong by a factor.
+
+`required_margins(figures)` is for a PINNED layout — one axes rectangle across a set, so a panel is
+the same size on every page. `tight_layout` cannot do that, so the margins get pinned, and the
+pinned value has to fit the worst figure in the set. This renders them and measures the ink, which
+beats guessing in both directions: too generous leaves the tightest figures half-empty, and the
+obvious correction crops the ones whose ink reaches furthest. It takes figures rather than a
+directory on purpose — a partial regeneration leaves stale PNGs, and measuring those reads as a
+floor that is not one.
 
 ## Captions
 
@@ -172,6 +290,7 @@ bracket — say nothing about a figure that has none. The rest apply to anything
 - panels on one scale carrying different value ticks
 - stars at different distances from their brackets, or an uneven stack
 - a jittered dot on the mean line, the box or the median
+- a number of a thousand or more printed without a separator
 - a glyph missing from the resolved font
 - a non-finite value, a p outside [0, 1], two groups at one position, an empty tick range
 
@@ -192,8 +311,8 @@ ogviz
 │   │   ├── drawn_value_extent(ax: Axes) -> tuple[float, float] | None
 │   │   └── ticks_over_data(...) -> ...
 │   ├── bounds
-│   │   ├── figure_text(fig: Figure) -> Iterator[tuple[Text, Axes | None]]
-│   │   ├── panel_text(ax: Axes) -> Iterator[Text]
+│   │   ├── figure_text(...) -> ...
+│   │   ├── panel_text(ax: Axes, *, ticks: bool, legend: bool) -> Iterator[Text]
 │   │   ├── text_off_canvas(fig: Figure) -> list[str]
 │   │   └── text_wider_than_its_panel(fig: Figure) -> list[str]
 │   ├── caption
@@ -215,21 +334,26 @@ ogviz
 │   │   └── text_over_data(fig: Figure) -> list[str]
 │   ├── density
 │   │   ├── Density(...) -> ...
+│   │   ├── Margins(left: float, right: float, bottom: float, top: float) -> None
 │   │   ├── data_ink_mask(fig: Figure, ax: Axes) -> NDArray[np.bool_]
 │   │   ├── dead_space(fig: Figure) -> list[str]
+│   │   ├── figure_margins(fig: Figure, *, tolerance: int) -> Margins | None
 │   │   ├── ink_mask(fig: Figure, *, tolerance: int) -> NDArray[np.bool_]
 │   │   ├── measure(fig: Figure) -> Density
 │   │   ├── panel_emptiness(fig: Figure, ax: Axes) -> dict[str, float]
+│   │   ├── required_margins(figures: Iterable[Figure], *, pad: float) -> Margins
 │   │   └── trim_margins(fig: Figure, *, pad_px: float) -> bool
 │   ├── frame
 │   │   ├── baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
 │   │   ├── hairline_grid(ax: Axes, *, axis: "Literal[x, y]") -> None
+│   │   ├── label_rows(...) -> ...
 │   │   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
 │   │   ├── pill_frame(legend: Legend) -> Legend
 │   │   └── zero_baseline(ax: Axes) -> None
 │   ├── header
 │   │   ├── fit_under_header(...) -> ...
 │   │   ├── panel_left_edge(fig: Figure) -> float
+│   │   ├── room_below(fig: Figure, bottom: float, *, keep_panels: bool) -> float
 │   │   ├── settle_header(fig: Figure) -> list[str]
 │   │   └── titled(...) -> ...
 │   ├── ink
@@ -242,13 +366,22 @@ ogviz
 │   │   ├── assert_nothing_clipped(fig: Figure) -> None
 │   │   ├── clipped_artists(fig: Figure) -> list[str]
 │   │   ├── drawn_tick_labels(ax: Axes) -> list[Text]
+│   │   ├── opaque_backing(text: Text) -> Bbox | None
 │   │   ├── text_hidden_behind_knockouts(fig: Figure) -> list[str]
 │   │   └── text_overlaps(fig: Figure, *, min_gap: float) -> list[str]
 │   ├── panels
+│   │   ├── grid_warnings(fig: Figure) -> list[str]
+│   │   ├── panel_grid(...) -> ...
 │   │   ├── panel_row(...) -> ...
+│   │   ├── rows_that_fit(...) -> ...
 │   │   ├── settle_caption(fig: Figure, *, gap_px: float) -> bool
 │   │   ├── text_width_points(text: str, fontsize: float) -> float
+│   │   ├── width_for_bars(count: int, *, minimum: float, per_bar: float) -> float
+│   │   ├── wrap_to_panel(ax: Axes, text: str, fontsize: float, *, fraction: float) -> list[str]
 │   │   └── wrap_to_width(text: str, width_points: float, fontsize: float) -> list[str]
+│   ├── stacking
+│   │   ├── place_end_labels(...) -> ...
+│   │   └── stack_without_overlap(...) -> ...
 │   ├── ticks
 │   │   ├── auto_decimals(value: float) -> int
 │   │   ├── format_value(...) -> ...
@@ -259,6 +392,7 @@ ogviz
 │       └── save(...) -> ...
 ├── marks
 │   ├── central_clearance(...) -> ...
+│   ├── error_bars(...) -> ...
 │   ├── iqr_box(...) -> ...
 │   ├── jitter_x(...) -> ...
 │   ├── mean_line(...) -> ...
@@ -285,8 +419,6 @@ ogviz
 │   │   ├── Series(...) -> ...
 │   │   ├── bar_panel(...) -> ...
 │   │   ├── default_value_format(values: NDArray[np.float64]) -> str
-│   │   ├── error_bars(...) -> ...
-│   │   ├── reference_line(...)
 │   │   └── value_labels(...) -> ...
 │   ├── coupling
 │   │   ├── Cloud(...) -> ...
@@ -317,6 +449,9 @@ ogviz
 │   │   ├── benjamini_hochberg_rank(sorted_p: NDArray[np.float64], *, alpha: float) -> int
 │   │   ├── bonferroni_threshold(count: int, *, alpha: float) -> float
 │   │   └── multiplicity_ladder(...) -> ...
+│   ├── reference
+│   │   ├── reference_line(...)
+│   │   └── slide_label_clear(ax: Axes, label: Text) -> None
 │   ├── slopegraph
 │   │   ├── Strand(...) -> ...
 │   │   ├── crowded_ends(strands: Sequence[Strand], ax: Axes, *, gap_px: float) -> list[str]
@@ -337,29 +472,46 @@ ogviz
 ├── qc
 │   ├── assert_clean(fig: Figure, *, min_gap: float) -> None
 │   ├── audit(fig: Figure, *, thorough: bool, min_gap: float) -> list[str]
-│   ├── buried_baselines(fig: Figure) -> list[str]
-│   ├── colliding_ink(fig: Figure) -> list[str]
-│   ├── dots_off_the_marks(fig: Figure) -> list[str]
-│   ├── drawn_but_invisible(fig: Figure) -> list[str]
-│   ├── layout_not_applied(fig: Figure) -> list[str]
-│   ├── mean_rows_unaligned(fig: Figure) -> list[str]
-│   ├── one_minus_sign(fig: Figure) -> list[str]
-│   ├── panels_disagree_about_ticks(fig: Figure) -> list[str]
-│   ├── rows_outside_their_panel(fig: Figure) -> list[str]
-│   ├── series_confusable_under_cvd(fig: Figure) -> list[str]
-│   ├── significance_gaps(fig: Figure) -> list[str]
-│   ├── stack_spacing(fig: Figure) -> list[str]
-│   ├── ticks_in_the_headroom(fig: Figure) -> list[str]
 │   ├── __main__
 │   │   └── main(argv: Sequence[str] | None) -> int
+│   ├── arrangement
+│   │   ├── layout_not_applied(fig: Figure) -> list[str]
+│   │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
+│   │   ├── panels_disagree_about_ticks(fig: Figure) -> list[str]
+│   │   ├── rows_outside_their_panel(fig: Figure) -> list[str]
+│   │   └── ticks_in_the_headroom(fig: Figure) -> list[str]
+│   ├── color
+│   │   └── series_confusable_under_cvd(fig: Figure) -> list[str]
+│   ├── ink
+│   │   ├── colliding_ink(fig: Figure) -> list[str]
+│   │   └── drawn_but_invisible(fig: Figure) -> list[str]
+│   ├── marks
+│   │   ├── buried_baselines(fig: Figure) -> list[str]
+│   │   └── dots_off_the_marks(fig: Figure) -> list[str]
+│   ├── reading
+│   │   ├── artist_name(artist) -> str
+│   │   ├── bracket_spans_px(ax: Axes) -> list[tuple[float, float, float]]
+│   │   ├── bracket_tops_px(ax: Axes) -> list[float]
+│   │   ├── drawn_artists(ax) -> list
+│   │   ├── ensure_rendered(fig: Figure) -> None
+│   │   ├── is_backdrop(artist) -> bool
+│   │   ├── is_excused(label, other) -> bool
+│   │   ├── knocked_out_over(label, other) -> bool
+│   │   └── orientation_of(ax: Axes) -> str
 │   ├── repair
 │   │   ├── knock_out_labels_over_rules(fig: Figure) -> list[str]
 │   │   ├── move_labels_off_the_marks(fig: Figure) -> list[str]
 │   │   ├── raise_buried_lines(fig: Figure) -> list[str]
 │   │   └── repair(fig: Figure) -> list[str]
-│   └── report
-│       ├── group_by_subject(complaints: list[str]) -> list[str]
-│       └── subject_of(complaint: str) -> str | None
+│   ├── report
+│   │   ├── group_by_subject(complaints: list[str]) -> list[str]
+│   │   └── subject_of(complaint: str) -> str | None
+│   ├── significance
+│   │   ├── significance_gaps(fig: Figure) -> list[str]
+│   │   └── stack_spacing(fig: Figure) -> list[str]
+│   └── typography
+│       ├── one_minus_sign(fig: Figure) -> list[str]
+│       └── ungrouped_thousands(fig: Figure) -> list[str]
 ├── significance
 │   ├── bracket_stack(...) -> ...
 │   ├── ink_bounds_points(text: str, fontsize: float, *, weight: str) -> tuple[float, float]
@@ -369,11 +521,17 @@ ogviz
 │   ├── significance_row(...) -> ...
 │   ├── spaced_stars(p: float) -> str
 │   └── stars(p: float) -> str
+├── tags
+│   ├── mark(artist: Artist | Figure, tag: Tag, value: Any) -> None
+│   ├── marked(artist: Artist | Figure, tag: Tag) -> bool
+│   └── value_of(artist: Artist | Figure, tag: Tag, default: Any) -> Any
 ├── theme
 │   ├── glyphs_must_render() -> Iterator[None]
 │   ├── house_style(canvas: str) -> Iterator[None]
 │   ├── page_color() -> str
-│   └── use_house_style(canvas: str) -> None
+│   ├── use_house_ink(canvas: str) -> None
+│   ├── use_house_style(canvas: str) -> None
+│   └── use_house_type() -> None
 └── units
     ├── midpoint(ax: Axes, low: float, high: float, *, orientation: str) -> float
     ├── panel_px(ax: Axes, *, orientation: str) -> float

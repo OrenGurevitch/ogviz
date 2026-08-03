@@ -26,13 +26,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ogviz.layout.collision import (
-    ANCHORED,
     clear_position,
     hits_data,
     quoted,
     text_box,
     text_over_data,
 )
+from ogviz.tags import marked
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -60,7 +60,7 @@ def move_labels_off_the_marks(fig: Figure) -> list[str]:
     for ax in fig.axes:
         for text in ax.texts:
             content = text.get_text().strip()
-            if not content or not text.get_visible() or getattr(text, ANCHORED, False):
+            if not content or not text.get_visible() or marked(text, "anchored"):
                 continue
             if not hits_data(ax, text_box(text)):
                 continue
@@ -134,7 +134,7 @@ def raise_buried_lines(fig: Figure) -> list[str]:
                 spine.set_zorder(highest + 0.5)
                 changed.append(f"raised the {side} spine above the marks standing on it")
         for line in ax.lines:
-            if not getattr(line, "ogviz_reference", False) or line.get_zorder() > highest:
+            if not marked(line, "reference") or line.get_zorder() > highest:
                 continue
             line.set_zorder(highest + 0.75)
             changed.append("raised a reference line above the marks it is read against")

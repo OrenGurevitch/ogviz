@@ -49,6 +49,15 @@ def test_every_exported_name_is_reachable() -> None:
     import ogviz
 
     missing = [name for name in ogviz.__all__ if not hasattr(ogviz, name)]
+    # Every facade, not only the top one. `ogviz.panels.__all__` promised `slide_label_clear`
+    # while the import had been dropped, and this test could not see it: a subpackage's promise
+    # is as breakable as the package's, and is the one a `from ogviz.panels import ...` relies on.
+    for module in _facades():
+        missing += [
+            f"{module.__name__}.{name}"
+            for name in getattr(module, "__all__", ())
+            if not hasattr(module, name)
+        ]
     assert not missing, f"exported but unreachable: {missing}"
 
 
@@ -58,15 +67,47 @@ def test_the_layout_facade_defines_nothing() -> None:
     It used to hold ten function bodies alongside the re-exports from six submodules, which left no
     way to tell which names were its own.
     """
+    import ogviz.layout
+
+    assert not _definitions(ogviz.layout), f"the facade defines {_definitions(ogviz.layout)}"
+
+
+def test_the_qc_facade_holds_only_the_registry_and_the_runner() -> None:
+    """`ogviz.qc` was 725 lines: every check body plus fourteen private helpers between them.
+
+    What it may still define is the list of checks and the two functions that run it — everything
+    else belongs beside the question it answers.
+    """
+    import ogviz.qc
+
+    assert set(_definitions(ogviz.qc)) <= {"_run", "audit", "assert_clean"}, _definitions(ogviz.qc)
+
+
+def _definitions(module) -> list[str]:
+    """The names a module defines itself, as opposed to the ones it re-exports."""
     import ast
     from pathlib import Path
 
-    import ogviz.layout
-
-    source = Path(ogviz.layout.__file__).read_text()
-    defined = [
+    source = Path(module.__file__).read_text()
+    return [
         node.name
         for node in ast.parse(source).body
         if isinstance(node, (ast.FunctionDef, ast.ClassDef))
     ]
-    assert not defined, f"the facade defines {defined}"
+
+
+def _facades() -> list:
+    """Every subpackage of ogviz that publishes an `__all__`."""
+    import importlib
+    import pkgutil
+
+    import ogviz
+
+    found = []
+    for info in pkgutil.iter_modules(ogviz.__path__, prefix="ogviz."):
+        if not info.ispkg:
+            continue
+        module = importlib.import_module(info.name)
+        if hasattr(module, "__all__"):
+            found.append(module)
+    return found

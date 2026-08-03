@@ -16,6 +16,7 @@ from ogviz.layout.collision import (
     text_box,
     text_over_data,
 )
+from ogviz.tags import mark
 
 
 @pytest.fixture(autouse=True)
@@ -105,7 +106,7 @@ def test_a_deliberately_anchored_label_is_left_where_the_panel_put_it() -> None:
     placed = ax.text(1.0, 0.2, "on the fill by design")
     fig.canvas.draw()
     assert text_over_data(fig)
-    placed.ogviz_anchored = True
+    mark(placed, "anchored")
     assert not text_over_data(fig)
 
 

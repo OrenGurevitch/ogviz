@@ -9,6 +9,7 @@ import pytest
 
 from ogviz.layout.ticks import MINUS
 from ogviz.panels import group_violins
+from ogviz.tags import marked
 
 CONTROL, TREATED = ("#E8A838", "#B97C10"), ("#7C9A6E", "#4A6136")
 
@@ -205,7 +206,7 @@ def test_a_shared_scale_puts_every_printed_mean_on_one_line() -> None:
     for index, ax in enumerate(axes):
         values = rng.normal(index * 0.8, 1.0, 30)
         group_violins(ax, [(0.0, values, "#E8A838", "#B97C10")])
-    rows = [t for ax in axes for t in ax.texts if getattr(t, "ogviz_mean_row", False)]
+    rows = [t for ax in axes for t in ax.texts if marked(t, "mean_row")]
     assert len({round(t.get_position()[1], 6) for t in rows}) > 1, "they start out unaligned"
 
     share_value_limits(axes)
@@ -244,7 +245,7 @@ def test_a_single_panel_and_a_grid_place_the_mean_row_the_same_way() -> None:
             for path in collection.get_paths()
             if np.asarray(path.vertices, dtype=float).size
         )
-        row = next(t for t in ax.texts if getattr(t, "ogviz_mean_row", False))
+        row = next(t for t in ax.texts if marked(t, "mean_row"))
         return float(row.get_position()[1]), (floor + drawn) / 2
 
     rng = np.random.default_rng(11)
@@ -361,7 +362,7 @@ def test_the_printed_row_is_public_and_shares_one_format() -> None:
     labels = printed_means(ax, [0.0, 1.0, 2.0], [0.0887, 0.545, 1.57], -0.5)
     printed = [label.get_text() for label in labels]
     assert printed == ["0.09", "0.55", "1.57"], printed
-    assert all(getattr(label, "ogviz_mean_row", False) for label in labels)
+    assert all(marked(label, "mean_row") for label in labels)
 
 
 def test_the_estimate_column_can_print_the_value_and_not_only_its_stars() -> None:
@@ -376,14 +377,14 @@ def test_the_estimate_column_can_print_the_value_and_not_only_its_stars() -> Non
     ]
     _fig, ax = plt.subplots(figsize=(6.0, 3.0))
     estimate_strip(ax, rows, limits=(-0.3, 0.7))
-    assert [t.get_text() for t in ax.texts if getattr(t, "ogviz_column_star", False)] == [
+    assert [t.get_text() for t in ax.texts if marked(t, "column_star")] == [
         "*",
         "n.s.",
     ]
 
     _fig2, ax2 = plt.subplots(figsize=(6.0, 3.0))
     estimate_strip(ax2, rows, limits=(-0.3, 0.7), label_for=lambda q: f"q={q:.3f} {stars(q)}")
-    assert [t.get_text() for t in ax2.texts if getattr(t, "ogviz_column_star", False)] == [
+    assert [t.get_text() for t in ax2.texts if marked(t, "column_star")] == [
         "q=0.012 *",
         "q=0.083 n.s.",
     ]

@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pytest
 
 from ogviz import use_house_style
+from ogviz.tags import mark, marked
 
 
 @pytest.fixture(autouse=True)
@@ -34,7 +35,7 @@ def test_the_mean_row_is_the_visual_midpoint_on_any_scale() -> None:
         ax.set_ylim(1.0, 1000.0)
         ax.fill_between([-0.4, 0.4], [100.0, 100.0], [800.0, 800.0])
         row = ax.text(0.0, 50.0, "123", ha="center")
-        row.ogviz_mean_row = True
+        mark(row, "mean_row")
         fig.canvas.draw()
 
         line = align_mean_rows([ax], floor=1.0)
@@ -66,7 +67,7 @@ def test_the_rows_align_whatever_the_grid_shape() -> None:
             round(float(text.get_position()[1]), 6)
             for ax in axes.flat
             for text in ax.texts
-            if getattr(text, "ogviz_mean_row", False)
+            if marked(text, "mean_row")
         }
         assert len(heights) == 1, f"{rows}x{columns} put its rows at {len(heights)} heights"
         plt.close(fig)
@@ -88,7 +89,7 @@ def test_a_shared_scale_puts_every_bracket_on_one_line() -> None:
         return [
             float(np.asarray(line.get_ydata(), dtype=float).max())
             for line in ax.lines
-            if getattr(line, "ogviz_bracket", False)
+            if marked(line, "bracket")
         ]
 
     rng = np.random.default_rng(9)
@@ -133,7 +134,7 @@ def test_aligning_a_stack_keeps_its_internal_spacing() -> None:
         tops = sorted(
             float(np.asarray(line.get_ydata(), dtype=float).max())
             for line in ax.lines
-            if getattr(line, "ogviz_bracket", False)
+            if marked(line, "bracket")
         )
         return [round(b - a, 6) for a, b in pairwise(tops)]
 

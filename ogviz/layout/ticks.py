@@ -68,14 +68,30 @@ def format_value(
     *,
     scale: float = 1.0,
     decimals: int | None = None,
-    thousands_separator: bool = False,
-    strip_trailing_zeros: bool = False,
+    thousands_separator: bool = True,
+    strip_trailing_zeros: bool | None = None,
 ) -> str:
-    """A value in its DISPLAY unit. `scale` converts the stored unit; the data is untouched."""
+    """A value in its DISPLAY unit. `scale` converts the stored unit; the data is untouched.
+
+    A thousands separator is the HOUSE DEFAULT: from 1000 up, a number is grouped. Below 1000 the
+    setting changes nothing, so this is a decision about large numbers only — and there, an
+    ungrouped "1200000" has to be counted digit by digit while "1,200,000" is read at a glance.
+
+    Pass `thousands_separator=False` for the cases where grouping is wrong: a year, an identifier, a
+    part number. Those are not quantities, and nothing here can tell them apart from one.
+    """
     scaled = value * scale
+    chosen_here = decimals is None
     if decimals is None:
         decimals = auto_decimals(scaled)
     text = format(scaled, f"{',' if thousands_separator else ''}.{decimals}f")
+    # Stripped when the decimals were chosen HERE, kept when the caller stated a count. Stating a
+    # count is stating a precision, and a row states it once for the whole row: padding [1.0, 2.5]
+    # to "1.00" and "2.50" is what makes them read as one measurement, and stripping would leave
+    # "1" beside "2.5". Alone, "0.550" has no such excuse — `auto_decimals` aims at three
+    # significant figures, and the third one there is a zero nobody measured.
+    if strip_trailing_zeros is None:
+        strip_trailing_zeros = chosen_here
     if strip_trailing_zeros and "." in text:
         text = text.rstrip("0").rstrip(".")
     # Only the exact "-0", which is a float sign artefact at a zero tick. "-0.00" from -0.0014
@@ -98,7 +114,7 @@ def value_ticks(
     count: int = 4,
     scale: float = 1.0,
     decimals: int | None = None,
-    thousands_separator: bool = False,
+    thousands_separator: bool = True,
     strip_trailing_zeros: bool = True,
     orientation: Orientation = "vertical",
 ) -> list[float]:

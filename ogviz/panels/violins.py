@@ -31,6 +31,7 @@ from ogviz.orientation import (
 )
 from ogviz.panels.grid import align_mean_rows
 from ogviz.significance import bracket_stack
+from ogviz.tags import mark
 from ogviz.theme import INK, KNOCKOUT_PAD, MEAN_LABEL_SIZE, page_color
 
 if TYPE_CHECKING:
@@ -65,7 +66,7 @@ def printed_means(
     decimals: int | None = None,
     orientation: Orientation = "vertical",
     scale: float = 1.0,
-    thousands_separator: bool = False,
+    thousands_separator: bool = True,
 ) -> list[Text]:
     """A row of numbers under the marks they describe, ONE format for the whole row.
 
@@ -114,7 +115,7 @@ def printed_means(
         # common but each panel's lowest violin is not, so a row placed from a panel's own data
         # lands at a different height in every panel — which is the thing a shared scale exists to
         # prevent.
-        label.ogviz_mean_row = True  # type: ignore[attr-defined]
+        mark(label, "mean_row")
         drawn.append(label)
     return drawn
 
@@ -229,7 +230,7 @@ def group_violins(
     mean_fontsize: float = MEAN_LABEL_SIZE,
     mean_decimals: int | None = None,
     display_scale: float = 1.0,
-    thousands_separator: bool = False,
+    thousands_separator: bool = True,
     label_for: Callable[[float], str] | None = None,
     mean_row_offset: float = MEAN_ROW_OFFSET,
     bottom_pad: float = BOTTOM_PAD,

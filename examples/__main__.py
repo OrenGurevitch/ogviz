@@ -9,6 +9,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib
+
+# Pinned BEFORE pyplot is imported, and this is not a formality. The committed gallery is a
+# reproducibility claim — the whole point of `svg.hashsalt` and of dropping the date stamp — and a
+# backend is part of what a figure is rendered by. On a Mac with a display, matplotlib picks
+# `macosx`, which lays text out differently from `Agg`: `06_stacked_brackets` came out with SEVEN
+# y-ticks under `macosx` and FOUR under `Agg`, from identical code and identical data, because the
+# text metrics moved the axis limits enough to change what the locator chose.
+#
+# Every test runs under `Agg`. So without this line the gallery was rendered by something the suite
+# never exercises, and could not be reproduced on a headless machine or in CI.
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import MaxNLocator
@@ -55,11 +68,14 @@ from ogviz import (
     caption,
     coupling_panels,
     effect_heatmap,
+    error_bars,
     fit_under_header,
     group_violins,
+    label_rows,
     legend_pill,
     line_panel,
     multiplicity_ladder,
+    reference_line,
     save,
     series_colors,
     share_value_limits,
@@ -67,6 +83,7 @@ from ogviz import (
     split_violins,
     table_panel,
     ticks_over_data,
+    tint,
     titled,
     use_house_style,
     value_floor,
@@ -307,7 +324,6 @@ def headline_bars() -> None:
         rounded=True,
         highlight=3,
         emphasis=3,
-        reference_band=(0.70, 0.76, "reported agreement range"),
         value_format="{:.3f}",
     )
     ax.set_ylabel("Score", fontsize=17, fontweight="bold")
@@ -452,16 +468,91 @@ def rounds_slopegraph() -> None:
         Strand(name, values, SERIES[index], spread)
         for index, (name, (values, spread)) in enumerate(scores.items())
     ]
-    fig, ax = plt.subplots(figsize=(9.0, 5.6))
-    slopegraph(ax, strands, ROUNDS)
+    fig, ax = plt.subplots(figsize=(10.0, 5.6))
+    # Named at their ends rather than in a legend: a legend costs the reader a lookup per line, and
+    # the labels are placed by solving all three together, so converging series do not pile up.
+    slopegraph(ax, strands, ROUNDS, end_labels=True)
     ax.set_ylabel("Judge score, centred", fontsize=15, fontweight="bold", labelpad=8)
     header_bottom = titled(
         fig,
         "Who improves, and who is found out",
         subtitle="invented scores; the band is the spread across judges",
     )
-    fig.tight_layout(rect=(0.0, 0.0, 1.0, header_bottom))
+    # The end labels live outside the panel, so the panel has to stop before the page does.
+    fig.tight_layout(rect=(0.0, 0.0, 0.86, header_bottom))
     render(fig, "15_slopegraph")
+
+
+def controlled_comparison() -> None:
+    """A head-to-head where one bar is NOT comparable with the others, and the axis says so.
+
+    Four things a plain grouped bar panel cannot do, all of them about saying what the figure means
+    rather than what the numbers are: the reference stands apart on the category axis; a backdrop
+    covers only the arms that ARE comparable; the ceiling line is drawn over those arms alone,
+    because it says nothing about the reference beside them; and the axis carries three rows —
+    which metric, which arm, and what each was trained on.
+    """
+    from examples.data import ARM_COLORS, ARMS, arm_comparison
+
+    metrics = arm_comparison()
+    # The reference sits a gap away from the three arms it is not comparable with.
+    positions = [0.0, 1.0, 2.0, 3.45]
+    fair = (0, 2)
+    ceiling = metrics["Fine score"][0][-1]
+
+    fig, ax = plt.subplots(figsize=(9.0, 6.6))
+    bar_panel(
+        ax,
+        [
+            Series(
+                "Coarse",
+                metrics["Coarse score"][0],
+                [tint(color, strength=0.45) for color in ARM_COLORS],
+            ),
+            Series("Fine", metrics["Fine score"][0], list(ARM_COLORS)),
+        ],
+        list(ARMS),
+        positions=positions,
+        highlight=fair,
+        show_values=False,
+    )
+    for name, offset in (("Coarse score", -0.155), ("Fine score", 0.155)):
+        values, spread = metrics[name]
+        error_bars(
+            ax,
+            [place + offset for place in positions],
+            values,
+            [low for low, _high in spread],
+            [high for _low, high in spread],
+        )
+    reference_line(
+        ax,
+        ceiling,
+        "reference level",
+        span=(positions[fair[0]] - 0.46, positions[fair[1]] + 0.46),
+    )
+    label_rows(
+        ax,
+        positions,
+        [
+            ["coarse / fine"] * len(ARMS),
+            list(ARMS),
+            ["the three on the left saw the same data"],
+        ],
+        sizes=[9.5, 12.0, 10.5],
+        weights=["normal", "bold", "bold"],
+        colors=[None, list(ARM_COLORS), None],
+    )
+    ax.set_xticks([])
+    ax.set_ylabel("Score", fontsize=15, fontweight="bold", labelpad=8)
+    ax.set_ylim(0.0, 0.86)
+    header_bottom = titled(
+        fig,
+        "One of these is not like the others",
+        subtitle="invented scores; the reference stands apart",
+    )
+    fig.tight_layout(rect=(0.0, 0.14, 1.0, header_bottom))
+    render(fig, "17_controlled_comparison")
 
 
 def violin_grid() -> None:
@@ -697,6 +788,7 @@ EXAMPLES = (
     # A sequence of stages, where the shape of each series is the comparison.
     rounds_slopegraph,
     comparison_table,
+    controlled_comparison,
 )
 
 

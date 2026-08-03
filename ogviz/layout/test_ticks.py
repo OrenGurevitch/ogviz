@@ -73,3 +73,55 @@ def test_value_ticks_follows_the_orientation():
     value_ticks(ax, count=3, orientation="horizontal")
     labels = [t.get_text() for t in value_ticks_labels(ax)]
     assert labels == ["3", "6", "9"], "the largest round step that fits wins"
+
+
+def test_a_thousand_and_up_is_grouped_by_default() -> None:
+    """The house rule: from 1000 a number is grouped, because an ungrouped 1200000 is counted."""
+    from ogviz.layout.ticks import MINUS, format_value
+
+    assert format_value(1000.0) == "1,000"
+    assert format_value(1200000.0) == "1,200,000"
+    # Grouped AND typeset: the sign is the typographic minus, not a hyphen.
+    assert format_value(-45678.0) == f"{MINUS}45,678"
+
+
+def test_below_a_thousand_the_grouping_rule_changes_nothing() -> None:
+    from ogviz.layout.ticks import format_value
+
+    assert format_value(999.0) == "999"
+    assert format_value(0.55) == "0.55"
+
+
+def test_a_trailing_zero_nobody_measured_is_dropped() -> None:
+    """`auto_decimals` aims at three significant figures, so 0.55 asks for three decimals.
+
+    The third is a zero the value does not carry, and "0.550" claims a precision to the thousandth
+    that was never measured.
+    """
+    from ogviz.layout.ticks import format_value
+
+    assert format_value(0.55) == "0.55"
+    assert format_value(1.0) == "1"
+    assert format_value(0.0887) == "0.0887", "a digit that IS measured stays"
+
+
+def test_a_stated_decimal_count_is_a_stated_precision_and_is_kept() -> None:
+    """A row states its count once for the whole row, and the padding is what makes it a row.
+
+    Stripping per value would leave "1" beside "2.5" and the two would read as two different
+    measurements — which is the thing a shared format exists to prevent.
+    """
+    from ogviz.layout.ticks import format_value
+
+    assert [format_value(value, decimals=2) for value in (1.0, 2.5, 0.55)] == [
+        "1.00",
+        "2.50",
+        "0.55",
+    ]
+
+
+def test_grouping_can_be_turned_off_for_a_number_that_is_not_a_quantity() -> None:
+    """A year, an identifier, a part number: grouping those is wrong and the caller knows which."""
+    from ogviz.layout.ticks import format_value
+
+    assert format_value(2026.0, decimals=0, thousands_separator=False) == "2026"

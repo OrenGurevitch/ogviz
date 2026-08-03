@@ -118,3 +118,60 @@ def test_a_caller_can_still_override_the_halo():
     mean_line(ax, np.linspace(0, 1, 10), 0.0, halo="none")
     assert ax.lines[0].get_path_effects()[0]._gc["foreground"] == "none"
     plt.close("all")
+
+
+def test_the_two_halves_are_exactly_the_whole() -> None:
+    """`use_house_style` must set what it always set, so the split cannot drift into a difference.
+
+    A project that can take only one half — one pinning its own font for byte-identical SVGs, say —
+    still needs the other half to be the same ink everyone else gets.
+    """
+    import matplotlib as mpl
+
+    from ogviz.theme import CANVAS, PAPER_WHITE, use_house_ink, use_house_style, use_house_type
+
+    def written(apply) -> dict[str, str]:
+        with mpl.rc_context():
+            before = {key: repr(value) for key, value in mpl.rcParams.items()}
+            apply()
+            return {
+                key: repr(value)
+                for key, value in mpl.rcParams.items()
+                if repr(value) != before.get(key)
+            }
+
+    for canvas in (CANVAS, PAPER_WHITE):
+        both = written(lambda canvas=canvas: (use_house_ink(canvas), use_house_type()))
+        whole = written(lambda canvas=canvas: use_house_style(canvas))
+        assert whole == both, {
+            "only in use_house_style": {k: v for k, v in whole.items() if k not in both},
+            "only in the halves": {k: v for k, v in both.items() if k not in whole},
+        }
+
+
+def test_the_halves_do_not_overlap() -> None:
+    """Ink and type are separable only while neither writes the other's keys."""
+    import matplotlib as mpl
+
+    from ogviz.theme import use_house_ink, use_house_type
+
+    def keys(apply) -> set[str]:
+        with mpl.rc_context():
+            before = {key: repr(value) for key, value in mpl.rcParams.items()}
+            apply()
+            return {key for key, value in mpl.rcParams.items() if repr(value) != before.get(key)}
+
+    assert not keys(use_house_ink) & keys(use_house_type)
+
+
+def test_a_project_can_take_the_ink_and_keep_its_own_font() -> None:
+    """The case this split exists for: pin DejaVu, and still get the house ink."""
+    import matplotlib as mpl
+
+    from ogviz.theme import INK, use_house_ink
+
+    with mpl.rc_context():
+        mpl.rcParams["font.sans-serif"] = ["DejaVu Sans"]
+        use_house_ink()
+        assert mpl.rcParams["font.sans-serif"] == ["DejaVu Sans"], "its font is untouched"
+        assert mpl.rcParams["text.color"] == INK, "and it gets the house ink"

@@ -28,6 +28,7 @@ from ogviz.marks import (
 )
 from ogviz.orientation import violin_orientation_kwarg
 from ogviz.panels.grid import align_mean_rows
+from ogviz.tags import mark
 from ogviz.theme import KNOCKOUT_PAD, VALUE_LABEL_SIZE, page_color
 
 if TYPE_CHECKING:
@@ -218,4 +219,4 @@ def _printed_pairs(
                     "boxstyle": "square",
                 },
             )
-            printed.ogviz_mean_row = True  # type: ignore[attr-defined]
+            mark(printed, "mean_row")

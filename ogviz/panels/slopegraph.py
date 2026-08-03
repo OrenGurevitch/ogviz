@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout import hairline_grid, legend_pill
+from ogviz.layout.stacking import place_end_labels
 from ogviz.orientation import stamp_orientation
 from ogviz.theme import INK, MUTED_INK
 
@@ -152,17 +153,16 @@ def slopegraph(
     ax.figure.canvas.draw()  # the crowding question is asked in pixels
     crowding = crowded_ends(strands, ax)
     if end_labels:
-        for strand in strands:
-            ax.text(
-                len(stages) - 1 + END_LABEL_PAD,
-                float(strand.values[-1]),
-                strand.label,
-                ha="left",
-                va="center",
-                color=strand.color,
-                fontweight="bold",
-                fontsize=label_size,
-            )
+        # Solved together, not one at a time: the labels compete for one column, and placing them
+        # greedily is what made a legend the better option before `stack_without_overlap` existed.
+        place_end_labels(
+            ax,
+            [strand.label for strand in strands],
+            [float(strand.values[-1]) for strand in strands],
+            x=len(stages) - 1 + END_LABEL_PAD,
+            colors=[strand.color for strand in strands],
+            fontsize=label_size,
+        )
     elif legend:
         legend_pill(ax, loc="best")
     return crowding

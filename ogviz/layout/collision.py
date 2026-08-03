@@ -6,9 +6,16 @@ two rectangles, but a filled area is nothing like its bounding box, and a rising
 a thin diagonal of the box that contains it. Testing rectangles against rectangles reports a label
 sitting in the empty corner above a curve as a collision, and misses one sitting under it.
 
-So this tests the drawn PATHS. `Path.intersects_bbox` answers exactly the question being asked —
-does this outline, filled or not, enter this rectangle — for a line, a violin body, a bar, or a
-`fill_between` polygon, without any of them needing a special case.
+So this tests what was DRAWN, in the two shapes drawn things come in.
+
+Anything continuous is a path, and `Path.intersects_bbox` answers exactly the question being asked —
+does this outline, filled or not, enter this rectangle — for a line, a violin body, a bar or a
+`fill_between` polygon alike.
+
+A cloud of separate marks is not a path and cannot be made into one. Joining the marks claims ink
+along every segment between them, and a compound path of one square per mark does not help either,
+since `intersects_bbox` answers True for a box lying BETWEEN two subpaths. Those go through
+`data_points` as positions with a measured footprint, and `hits_data` asks both.
 
 Two kinds of thing can sit under a label, and they want opposite fixes:
 
@@ -33,6 +40,8 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.text import Text as _Text
 from matplotlib.transforms import Bbox
+
+from ogviz.tags import marked
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -60,7 +69,6 @@ PADDING_PX = 3.0  # breathing room between a label's ink and whatever it is avoi
 # It excuses a label from the DATA check, and from nothing else. Reading it as a blanket pardon is
 # what let "league average" sit on a bar unreported: the label is fixed to its line vertically and
 # free to slide along it, so it was exempt from the one axis it was actually free on.
-ANCHORED = "ogviz_anchored"
 # How much of a label a complaint quotes. ONE number, because a report groups complaints by the
 # string they name: two checks quoting the same label at 32 and 40 characters describe it as two
 # different labels, and the reader is shown one problem twice.
@@ -78,9 +86,16 @@ def decoration_ids(ax: Axes) -> set[int]:
     A gridline is not data. Neither is the spine. A label may cross either, provided it knocks it
     out; treating them as marks would send every label on a gridded panel off to hunt for space
     that does not exist.
+
+    A BACKDROP is not data either — a highlighted column, a reference band, a shaded window a label
+    names. `colliding_ink` has always known that and this did not, so the same figure was told its
+    label was fine on the pixels and had to move off the marks. One tag, two checks, two answers.
     """
     lines = [*ax.get_xgridlines(), *ax.get_ygridlines()]
-    return {id(line) for line in lines}
+    shaded = [
+        artist for artist in [*ax.patches, *ax.collections, *ax.lines] if marked(artist, "backdrop")
+    ]
+    return {id(artist) for artist in (*lines, *shaded)}
 
 
 def data_paths(ax: Axes) -> list[tuple[Path, bool]]:
@@ -329,7 +344,17 @@ def text_box(text: Text) -> Bbox:
 
 
 def _knocked_out(text: Text) -> bool:
-    """Whether the label carries an opaque box, which is what makes crossing a line acceptable."""
+    """Whether the label hides what runs behind it, which is what makes crossing a line acceptable.
+
+    TWO ways do that, and only the box was recognised. A `withStroke` halo in the page colour knocks
+    a gridline out just as effectively and hugs the glyphs instead of boxing them, which is the
+    better typography — so a figure using it was told its labels crossed a gridline "with nothing
+    behind it" and had to exclude the complaint by matching on its text.
+    """
+    return _boxed(text) or _haloed(text)
+
+
+def _boxed(text: Text) -> bool:
     patch = text.get_bbox_patch()
     if patch is None:
         return False
@@ -338,6 +363,22 @@ def _knocked_out(text: Text) -> bool:
     red, green, blue, alpha = to_rgba(patch.get_facecolor(), patch.get_alpha())
     del red, green, blue
     return bool(alpha >= 1.0 and patch.get_visible())
+
+
+def _haloed(text: Text) -> bool:
+    """A stroke drawn behind the glyphs in the page colour, wide enough to cover a hairline."""
+    from ogviz.theme import page_color
+
+    page = to_rgba(page_color())
+    for effect in text.get_path_effects():
+        foreground = getattr(effect, "_gc", {}).get("foreground")
+        width = getattr(effect, "_gc", {}).get("linewidth", 0.0)
+        if foreground is None or not width:
+            continue
+        red, green, blue, alpha = to_rgba(foreground)
+        if alpha >= 1.0 and (red, green, blue) == page[:3]:
+            return True
+    return False
 
 
 def clear_position(
@@ -380,6 +421,20 @@ def clear_position(
     return None
 
 
+def _spans_the_panel(ax: Axes, box: Bbox) -> bool:
+    """Whether an untagged patch under `box` reaches across the panel, as a band or column does."""
+    frame = ax.get_window_extent()
+    for patch in ax.patches:
+        if marked(patch, "backdrop") or not patch.get_visible():
+            continue
+        extent = patch.get_window_extent()
+        if not extent.overlaps(box):
+            continue
+        if extent.width >= frame.width * 0.98 or extent.height >= frame.height * 0.98:
+            return True
+    return False
+
+
 def text_over_data(fig: Figure) -> list[str]:
     """Labels sitting on the marks, and labels crossing a gridline with nothing behind them.
 
@@ -395,12 +450,22 @@ def text_over_data(fig: Figure) -> list[str]:
             content = text.get_text().strip()
             if not content or not text.get_visible():
                 continue
-            if getattr(text, ANCHORED, False):
+            if marked(text, "anchored"):
                 continue
             box = text_box(text)
             struck = hits_data(ax, box)
             if struck:
-                complaints.append(f"{quoted(content)!r} sits on {struck} mark(s) — it has to move")
+                # The remedy depends on WHAT it sits on, and a consumer's first move is a knockout
+                # box, which does nothing here: a box hides the artist, and this check is about a
+                # label standing on the data rather than about what shows through it. When the
+                # thing underneath spans the panel it is almost always a shaded region the label
+                # NAMES, and the fix is to say so.
+                remedy = (
+                    'tag the shaded region with `mark(span, "backdrop")` if the label names it'
+                    if _spans_the_panel(ax, box)
+                    else "it has to move"
+                )
+                complaints.append(f"{quoted(content)!r} sits on {struck} mark(s) — {remedy}")
             elif hits_decoration(ax, box) and not _knocked_out(text):
                 complaints.append(
                     f"{quoted(content)!r} crosses a gridline with nothing behind it — knock it out"

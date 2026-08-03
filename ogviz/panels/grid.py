@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout import drawn_value_extent
+from ogviz.tags import marked
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -190,10 +191,10 @@ def _bracket_top(bracket) -> float:
 def _bracket_artists(ax: Axes) -> tuple[list, list]:
     """This panel's bracket lines and their stars, lowest bracket first."""
     lines = sorted(
-        (line for line in ax.lines if getattr(line, "ogviz_bracket", False)),
+        (line for line in ax.lines if marked(line, "bracket")),
         key=lambda line: float(np.asarray(line.get_ydata(), dtype=float).max()),
     )
-    stars = [text for text in ax.texts if getattr(text, "ogviz_bracket_star", False)]
+    stars = [text for text in ax.texts if marked(text, "bracket_star")]
     return lines, stars
 
 
@@ -215,7 +216,7 @@ def align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float | None:
     108 px from the middle of a 308 px gap. Every panel here happens to be linear today, which is
     exactly why the error would have sat unnoticed until the first log axis.
     """
-    rows = [text for ax in axes for text in ax.texts if getattr(text, "ogviz_mean_row", False)]
+    rows = [text for ax in axes for text in ax.texts if marked(text, "mean_row")]
     if not rows:
         return None
     extents = [drawn_value_extent(ax) for ax in axes]

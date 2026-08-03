@@ -31,6 +31,7 @@ from matplotlib.colors import to_rgba
 from matplotlib.patches import FancyBboxPatch, Rectangle
 
 from ogviz.layout.panels import text_width_points
+from ogviz.tags import mark
 from ogviz.theme import GRID, INK, MUTED_INK, SERIES, page_color
 
 if TYPE_CHECKING:
@@ -160,7 +161,7 @@ def table_panel(
         somewhere emptier, which for a table means nowhere.
         """
         drawn = ax.text(*args, **kwargs)  # type: ignore[arg-type]
-        drawn.ogviz_anchored = True  # type: ignore[attr-defined]
+        mark(drawn, "anchored")
         return drawn
 
     if highlight is not None:
@@ -230,7 +231,7 @@ def table_panel(
                     zorder=0,
                 )
                 # the cell tint; its value is meant to sit on it
-                fill.ogviz_backdrop = True  # type: ignore[attr-defined]
+                mark(fill, "backdrop")
                 ax.add_patch(fill)
             cell_text(
                 centre,

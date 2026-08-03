@@ -14,6 +14,7 @@ import pytest
 from ogviz import bracket_stack, group_violins, use_house_style
 from ogviz.marks import iqr_box, mean_line, violin
 from ogviz.qc import audit, dots_off_the_marks, significance_gaps, stack_spacing
+from ogviz.tags import mark
 
 
 @pytest.fixture(autouse=True)
@@ -104,8 +105,8 @@ def test_dots_on_the_marks_are_caught() -> None:
     iqr_box(ax, values, 0.0)
     mean_line(ax, values, 0.0)
     scatter = ax.scatter(np.zeros(40), values, s=30)
-    scatter.ogviz_lane = np.full(40, 0.1)
-    scatter.ogviz_position = 0.0
+    mark(scatter, "lane", np.full(40, 0.1))
+    mark(scatter, "position", 0.0)
     assert dots_off_the_marks(fig) == ["40 dot(s) sit on the central marks"]
 
 
@@ -211,7 +212,7 @@ def test_a_bar_panel_with_error_bars_is_not_read_as_horizontal() -> None:
 
     from ogviz import bar_panel, bracket_stack
     from ogviz.panels.bars import Series
-    from ogviz.qc import _orientation, significance_gaps
+    from ogviz.qc import orientation_of, significance_gaps
 
     values = [0.9, 0.6, 0.45]
     fig, ax = plt.subplots(figsize=(8.0, 5.0))
@@ -220,7 +221,7 @@ def test_a_bar_panel_with_error_bars_is_not_read_as_horizontal() -> None:
     fig.canvas.draw()
     votes = [line for line in ax.lines if np.asarray(line.get_xdata()).size == 2]
     assert len(votes) == 1, "the premise: exactly one line votes, and it votes wrongly"
-    assert _orientation(ax) == "vertical"
+    assert orientation_of(ax) == "vertical"
 
     reach = max(values)
     for index in range(3):
@@ -257,7 +258,8 @@ def test_a_non_significant_label_is_checked_like_any_other() -> None:
     import numpy as np
 
     from ogviz import group_violins
-    from ogviz.qc import _stars, significance_gaps
+    from ogviz.qc import significance_gaps
+    from ogviz.qc.significance import _stars
 
     rng = np.random.default_rng(0)
     groups = [(float(i), rng.normal(i * 0.2, 1.0, 30), "#E8A838", "#B97C10") for i in range(3)]
@@ -299,3 +301,273 @@ def test_a_real_mix_of_minus_glyphs_is_still_caught() -> None:
     ax.text(0.5, 0.0, f"{-0.42:.2f}", ha="center")  # an ASCII hyphen from format
     fig.canvas.draw()
     assert any("two different minus signs" in c for c in one_minus_sign(fig))
+
+
+def test_a_knockout_box_excuses_the_ink_it_actually_hides() -> None:
+    """The gate cried wolf when a band grew dashed edges under labels that already had boxes.
+
+    Measured on the figure that raised it: label and edge shared 62 px of ink, and NONE of those
+    pixels were visible — the knockout covered every one. Paint order decides it, so the same box
+    painted UNDER the line excuses nothing.
+    """
+    from ogviz.qc import colliding_ink
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    ax.plot([0.0, 1.0], [0.5, 0.5], color="#333333", lw=3)
+    label = ax.text(0.5, 0.5, "0.636", ha="center", va="center")
+    fig.canvas.draw()
+    assert colliding_ink(fig), "a bare label crossed by a rule is a real collision"
+
+    label.set_bbox({"facecolor": "#FCFCFA", "edgecolor": "none", "pad": 2})
+    fig.canvas.draw()
+    assert not colliding_ink(fig), "and the knockout hides it"
+
+    label.set_zorder(0.5)
+    fig.canvas.draw()
+    assert colliding_ink(fig), "but a box painted under the line hides nothing"
+
+
+def test_an_ungrouped_thousand_is_caught_and_a_year_is_not() -> None:
+    """The rule holds for numbers a CALLER formatted, which is where it gets forgotten.
+
+    A four-digit number that could be a year is left alone: a year is an identifier rather than a
+    quantity, and nothing in a figure carries the fact of which it is.
+    """
+    from ogviz.qc import ungrouped_thousands
+
+    fig, ax = plt.subplots(figsize=(8.0, 4.0))
+    ax.set_axis_off()
+    for index, printed in enumerate(["1200000", "1,200,000", "999", "2026", "0.5000", "45.6%"]):
+        ax.text(0.05, 0.9 - index * 0.15, printed, transform=ax.transAxes)
+    fig.canvas.draw()
+    complaints = ungrouped_thousands(fig)
+    assert len(complaints) == 1, complaints
+    assert "1200000" in complaints[0]
+
+
+def test_the_house_panels_group_their_own_numbers() -> None:
+    """Everything the library prints follows the rule without being asked."""
+
+    from ogviz import bar_panel
+    from ogviz.panels.bars import Series
+    from ogviz.qc import ungrouped_thousands
+
+    fig, ax = plt.subplots(figsize=(9.0, 5.0))
+    bar_panel(ax, [Series("arm", [1200000.0, 950000.0, 1400000.0], "#7C9A6E")], ["A", "B", "C"])
+    fig.canvas.draw()
+    printed = [t.get_text() for t in ax.texts]
+    assert "1,200,000" in printed, printed
+    assert not ungrouped_thousands(fig)
+
+
+def test_the_gallery_build_pins_its_backend() -> None:
+    """The committed figures are a reproducibility claim, and a backend is part of the render.
+
+    On a Mac with a display matplotlib picks `macosx`, which lays text out differently from `Agg`:
+    `06_stacked_brackets` came out with seven y-ticks under one and four under the other, from
+    identical code and data, because the text metrics moved the axis limits enough to change what
+    the locator chose. Every test runs under `Agg`, so an unpinned gallery is rendered by something
+    the suite never exercises and cannot be reproduced headlessly.
+    """
+    import re
+    from pathlib import Path
+
+    source = (Path(__file__).parent.parent.parent / "examples" / "__main__.py").read_text()
+    pinned = re.search(r'^matplotlib\.use\("Agg"\)$', source, re.M)
+    pyplot = re.search(r"^import matplotlib\.pyplot", source, re.M)
+    assert pinned, "the gallery build must pin a backend"
+    assert pyplot and pinned.start() < pyplot.start(), "and pin it BEFORE pyplot is imported"
+
+
+def test_audit_renders_a_figure_that_has_no_canvas_yet() -> None:
+    """It failed with `'FigureCanvasBase' object has no attribute 'get_renderer'` — an internal.
+
+    A `Figure` built without pyplot cannot produce a renderer, and every check reads rendered
+    geometry. Attaching Agg is what the caller wanted when they asked for an audit.
+    """
+    from matplotlib.figure import Figure
+
+    from ogviz.qc import audit
+
+    bare = Figure(figsize=(4.0, 3.0))
+    ax = bare.add_subplot()
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    assert audit(bare) == []
+
+
+def test_a_halo_knocks_a_gridline_out_as_well_as_a_box_does() -> None:
+    """`withStroke` in the page colour hugs the glyphs instead of boxing them, which reads better.
+
+    Only the box was recognised, so a figure using the halo was told its labels crossed a gridline
+    "with nothing behind it" and had to exclude the complaint by matching on its own text.
+    """
+    import matplotlib.patheffects as path_effects
+
+    from ogviz.layout.collision import _knocked_out
+    from ogviz.theme import page_color
+
+    _fig, ax = plt.subplots()
+    plain = ax.text(0.5, 0.5, "plain")
+    boxed = ax.text(0.5, 0.4, "boxed", bbox={"facecolor": page_color(), "edgecolor": "none"})
+    haloed = ax.text(
+        0.5,
+        0.3,
+        "haloed",
+        path_effects=[path_effects.withStroke(linewidth=3, foreground=page_color())],
+    )
+    coloured = ax.text(
+        0.5,
+        0.2,
+        "red halo",
+        path_effects=[path_effects.withStroke(linewidth=3, foreground="#FF0000")],
+    )
+    assert not _knocked_out(plain)
+    assert _knocked_out(boxed)
+    assert _knocked_out(haloed)
+    assert not _knocked_out(coloured), "a halo in another colour hides nothing"
+
+
+def test_two_panels_on_one_scale_are_judged_on_what_they_share() -> None:
+    """A tick real on the left panel is above every mark on the right, by design.
+
+    And the check must survive: a tick above ALL the shared data is still in the headroom.
+    """
+    import numpy as np
+
+    from ogviz import group_violins
+    from ogviz.qc import ticks_in_the_headroom
+
+    rng = np.random.default_rng(0)
+    fig, axes = plt.subplots(1, 2, figsize=(10.0, 5.0), sharey=True)
+    group_violins(
+        axes[0],
+        [
+            (0.0, rng.normal(0.0, 1.0, 40), "#E8A838", "#B97C10"),
+            (1.0, rng.normal(3.5, 1.0, 40), "#7C9A6E", "#4A6136"),
+        ],
+        comparisons=[(0.0, 1.0, 1e-4)],
+    )
+    group_violins(
+        axes[1],
+        [
+            (0.0, rng.normal(0.0, 0.3, 12), "#E8A838", "#B97C10"),
+            (1.0, rng.normal(1.0, 0.3, 12), "#7C9A6E", "#4A6136"),
+        ],
+        comparisons=[(0.0, 1.0, 0.02)],
+    )
+    fig.canvas.draw()
+    assert not ticks_in_the_headroom(fig)
+
+    # A ladder above everything the pair shares is still reported.
+    axes[0].set_yticks([*axes[0].get_yticks(), 12.0, 14.0, 16.0])
+    axes[0].set_ylim(axes[0].get_ylim()[0], 17.0)
+    fig.canvas.draw()
+    assert ticks_in_the_headroom(fig)
+
+
+def test_two_brackets_that_share_no_x_need_not_clear_each_other() -> None:
+    """Two independent comparisons side by side in one panel cannot collide, whatever their heights.
+
+    Reported as "brackets are 0 px apart" by a project drawing one bracket over its first pair of
+    groups and another over its last. Levelling by height fixed the equal-height case; this is the
+    general rule — a bracket only has to clear one it overlaps along the category axis.
+    """
+    import numpy as np
+
+    from ogviz import bracket_stack, group_violins
+    from ogviz.qc import stack_spacing
+
+    def panel(pairs, starts) -> list[str]:
+        rng = np.random.default_rng(0)
+        groups = [
+            (float(index), rng.normal(index * 0.2, 1.0, 30), "#E8A838", "#B97C10")
+            for index in range(5)
+        ]
+        fig, ax = plt.subplots(figsize=(10.0, 6.0))
+        group_violins(ax, groups)
+        reach = max(float(np.max(values)) for _p, values, _f, _e in groups)
+        for pair, start in zip(pairs, starts, strict=True):
+            bracket_stack(ax, [(pair[0], pair[1], 1e-3)], start=reach * start, span=1.0)
+        fig.canvas.draw()
+        return stack_spacing(fig)
+
+    assert not panel([(0.0, 1.0), (3.0, 4.0)], [1.15, 1.22]), "disjoint, different heights"
+    assert not panel([(0.0, 1.0), (3.0, 4.0)], [1.15, 1.15]), "disjoint, one height"
+    assert panel([(0.0, 2.0), (1.0, 3.0)], [1.15, 1.19]), "overlapping and crowded is still caught"
+    assert not panel([(0.0, 2.0), (1.0, 3.0)], [1.15, 1.45]), "overlapping and clear"
+
+
+def test_a_label_on_its_own_backdrop_is_judged_the_same_way_by_both_checks() -> None:
+    """`colliding_ink` believed the backdrop tag and `text_over_data` did not.
+
+    So a project labelling its own shaded window was told the label was fine on the pixels and had
+    to move off the marks — one tag, two checks, two answers.
+    """
+    from ogviz import mark
+    from ogviz.qc import audit
+
+    def window(*, tagged: bool) -> list[str]:
+        fig, ax = plt.subplots(figsize=(8.0, 4.5))
+        ax.plot([0.0, 1.0, 2.0, 3.0], [1.0, 2.0, 1.5, 2.5])
+        span = ax.axvspan(0.0, 0.85, color="#EFEDE4", zorder=0)
+        if tagged:
+            mark(span, "backdrop")
+        ax.text(0.42, 2.2, "physiological window", ha="center")
+        fig.canvas.draw()
+        return audit(fig)
+
+    assert len(window(tagged=False)) == 2, "an untagged shape is data, and a label on it moves"
+    assert not window(tagged=True), "a backdrop is not data, and both checks must say so"
+
+
+def test_a_complaint_names_the_fix_that_matches_what_the_label_sits_on() -> None:
+    """A knockout box is a consumer's first move and does nothing for this check.
+
+    When the thing underneath spans the panel it is almost always a shaded region the label NAMES,
+    and the fix is to say so rather than to move the label off it.
+    """
+    from ogviz.qc import audit
+
+    def sits_on(kind: str) -> list[str]:
+        fig, ax = plt.subplots(figsize=(8.0, 4.5))
+        ax.plot([0.0, 1.0, 2.0, 3.0], [1.0, 2.0, 1.5, 2.5])
+        if kind == "band":
+            ax.axvspan(0.0, 0.85, color="#EFEDE4", zorder=0)
+            ax.text(0.42, 2.2, "physiological window", ha="center")
+        else:
+            ax.text(1.5, 1.75, "on the line itself", ha="center")
+        fig.canvas.draw()
+        return [c for c in audit(fig) if "sits on" in c]
+
+    (band,) = sits_on("band")
+    assert "backdrop" in band, band
+    (line,) = sits_on("line")
+    assert "has to move" in line and "backdrop" not in line, line
+
+
+def test_a_covered_spine_names_what_covered_it() -> None:
+    """A full-width `axhspan` masking a cropped band erases the spine through the headroom."""
+    from ogviz.qc import buried_baselines
+    from ogviz.theme import page_color
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    ax.plot([0.0, 1.0, 2.0], [1.0, 2.0, 1.5])
+    ax.axhspan(1.8, 2.4, color=page_color(), zorder=4)
+    ax.set_ylim(0.8, 2.4)
+    fig.canvas.draw()
+    (complaint,) = buried_baselines(fig)
+    assert "Rectangle" in complaint and "zorder 4" in complaint
+    assert "under the frame" in complaint
+
+
+def test_a_clipped_line_complaint_says_what_actually_fixes_it() -> None:
+    """Two natural fixes do nothing, and the second especially looks like it must have worked."""
+    from ogviz.layout.overlap import clipped_artists
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    ax.plot([0.5, 0.5], [1.0, 4.0], color="#333333")
+    ax.set_ylim(0.8, 2.4)
+    fig.canvas.draw()
+    (complaint,) = clipped_artists(fig)
+    assert "clipping it does not change this" in complaint
+    assert "shorten the data or raise the limit" in complaint

@@ -17,28 +17,32 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+import matplotlib.patheffects as path_effects
 import numpy as np
 from matplotlib.patches import FancyBboxPatch
 
 from ogviz.layout.frame import hairline_grid
 from ogviz.layout.panels import text_width_points
 from ogviz.layout.ticks import typeset
+from ogviz.marks import (
+    Z_ERROR,
+    _draw_error_bars,
+)
 from ogviz.orientation import (
     category_limits,
     category_tick_labels,
     category_ticks,
-    constant_value_line,
     is_vertical,
     place_many,
     stamp_orientation,
     value_span,
-    value_transform,
 )
+from ogviz.panels.reference import reference_line, slide_label_clear
+from ogviz.tags import mark
 from ogviz.theme import (
     INK,
     KNOCKOUT_PAD,
     MUTED_INK,
-    REFERENCE,
     VALUE_LABEL_SIZE,
     page_color,
 )
@@ -53,12 +57,26 @@ if TYPE_CHECKING:
 
 BAR_WIDTH = 0.62  # one series; grouped series divide this between them
 BAR_ALPHA = 0.85
-ERROR_CAPSIZE = 4.0
-ERROR_LINEWIDTH = 1.4
 LABEL_PAD_FRACTION = 0.02  # of the value span, between the whisker cap and the label
 CATEGORY_MARGIN = 0.22  # slack past the outermost bar on the value axis
 HIGHLIGHT_FILL = "#EFEDE4"  # the shaded column behind a highlighted category
-BAR_ROUNDING = 0.05  # corner radius of a rounded bar top, as a fraction of the tallest bar
+BAR_ROUNDING = 0.16  # corner radius, as a fraction of the BAR'S OWN WIDTH
+
+
+def _data_aspect(ax: Axes, span_hint: float) -> float:
+    """Data units of y per data unit of x, as the page sees them.
+
+    `FancyBboxPatch` applies `rounding_size` in x and scales y by `mutation_aspect`, so this is what
+    turns a radius stated in x units into a corner that is round rather than an ellipse.
+    """
+    box = ax.get_window_extent()
+    if not box.width or not box.height:
+        return 1.0
+    low, high = ax.get_ylim()
+    y_span = abs(high - low) or max(span_hint, 1e-9)
+    x_low, x_high = ax.get_xlim()
+    x_span = abs(x_high - x_low) or 1.0
+    return float((y_span / box.height) / (x_span / box.width))
 
 
 def _rounded_bars(
@@ -72,7 +90,13 @@ def _rounded_bars(
 ) -> None:
     """Bars with softened tops. matplotlib has no rounded bar, so each is a FancyBboxPatch."""
     colors = [entry.color] * len(values) if isinstance(entry.color, str) else list(entry.color)
-    radius = BAR_ROUNDING * max(span_hint, 1e-9)
+    # The radius is a fraction of the bar's WIDTH, and the patch is told the data aspect so the
+    # corner comes out round on the page. It used to be a fraction of the tallest VALUE, which is
+    # only sensible when the value axis happens to be order-1: `rounding_size` applies to both axes,
+    # so on a counts axis the corner measured 394,460% of the bar's own width — a lozenge rather
+    # than a bar. The look was arithmetic rather than taste.
+    radius = BAR_ROUNDING * width
+    aspect = _data_aspect(ax, span_hint)
     for index, (position, value, color) in enumerate(zip(positions, values, colors, strict=True)):
         ax.add_patch(
             FancyBboxPatch(
@@ -82,7 +106,7 @@ def _rounded_bars(
                 boxstyle=f"round,pad=0,rounding_size={radius}",
                 facecolor=color,
                 edgecolor="none",
-                mutation_aspect=1,
+                mutation_aspect=aspect,
                 zorder=Z_BAR,
                 # Only the first patch carries the label: one artist per BAR would put the series
                 # in the legend once per category.
@@ -92,7 +116,6 @@ def _rounded_bars(
 
 
 Z_BAR = 3
-Z_ERROR = 4
 Z_LABEL = 6
 # A bar grows FROM the category axis, so its base sits exactly on that spine. matplotlib draws a
 # spine at zorder 2.5, under the bars, and the line then survives only in the gaps between them —
@@ -102,7 +125,6 @@ Z_BASELINE = Z_ERROR + 0.5
 # leaves it visible only in the gaps — the same defect as bars covering the category axis, and it
 # costs the reader the one comparison the line was added to make. Under the value labels, which
 # knock it out where they cross.
-Z_REFERENCE = Z_ERROR + 0.75
 
 
 @dataclass(frozen=True)
@@ -144,7 +166,29 @@ def default_value_format(values: NDArray[np.float64]) -> str:
     """
     finite = np.asarray(values, dtype=float)
     signed = "+" if bool(np.any(finite[np.isfinite(finite)] < 0.0)) else ""
-    return f"{{:{signed}.{_auto_decimals(values)}f}}"
+    # Grouped from 1000 up, the house default. Below that the comma changes nothing, so it costs a
+    # small series nothing and saves a large one from being counted digit by digit.
+    return f"{{:{signed},.{_auto_decimals(values)}f}}"
+
+
+STROKE_HALO_WIDTH = 2.6  # points of page colour drawn around the glyphs, not around their box
+
+
+def _knockout_style(halo: object) -> str:
+    """Which knockout a caller asked for, accepting the old boolean.
+
+    A BOX is the default and is right over a gridline: it is opaque, square and cheap to read. It is
+    wrong over a shaded region — a rectangle punches a visible hole in a reference band wherever a
+    label crosses it, and the band stops reading as continuous. A STROKE follows the glyph outlines,
+    so it clears the digits and lets the band show through the gaps inside and between them.
+
+    The gate has accepted a stroke as a knockout since 2026-08-01; this is the other half, which the
+    package could not draw. A house project had to hand-roll its value labels to get one.
+    """
+    if isinstance(halo, bool):
+        return "box" if halo else "none"
+    assert halo in ("box", "stroke", "none"), f"unknown knockout {halo!r}"
+    return halo
 
 
 def value_labels(
@@ -154,7 +198,7 @@ def value_labels(
     *,
     errors: NDArray[np.float64] | None = None,
     value_format: str | None = None,
-    halo: bool = True,
+    halo: Literal["box", "stroke", "none"] | bool = "box",
     emphasis: int | None = None,
     knockout_colors: Sequence[str] | None = None,
     orientation: Orientation = "vertical",
@@ -213,139 +257,24 @@ def value_labels(
                     "pad": KNOCKOUT_PAD,
                     "boxstyle": "square",
                 }
-                if halo
+                if _knockout_style(halo) == "box"
+                else None
+            ),
+            path_effects=(
+                [
+                    path_effects.withStroke(
+                        linewidth=STROKE_HALO_WIDTH,
+                        foreground=(knockout_colors[index] if knockout_colors else page_color()),
+                    )
+                ]
+                if _knockout_style(halo) == "stroke"
                 else None
             ),
         )
         # Placed against its own bar and whisker on purpose, a measured pad beyond the free end.
         # `test_label_clears_the_whisker_cap` owns that clearance; the general "is this label on
         # the data" check must not drag the label away from the bar it is labelling.
-        drawn.ogviz_anchored = True  # type: ignore[attr-defined]
-
-
-def _draw_error_bars(
-    ax: Axes,
-    positions: NDArray[np.float64],
-    centres: NDArray[np.float64],
-    lengths: NDArray[np.float64],
-    *,
-    orientation: Orientation,
-    color: str = INK,
-    linewidth: float = ERROR_LINEWIDTH,
-    capsize: float = ERROR_CAPSIZE,
-    zorder: float = Z_ERROR,
-) -> None:
-    """One drawing of an interval, in matplotlib's own (2, N) below/above LENGTHS."""
-    horizontal, vertical = place_many(orientation, positions, centres)
-    upright = is_vertical(orientation)
-    ax.errorbar(
-        horizontal,
-        vertical,
-        yerr=lengths if upright else None,
-        xerr=None if upright else lengths,
-        fmt="none",
-        ecolor=color,
-        elinewidth=linewidth,
-        capsize=capsize,
-        capthick=linewidth,
-        zorder=zorder,
-    )
-
-
-def error_bars(
-    ax: Axes,
-    positions: ArrayLike,
-    centre: ArrayLike,
-    low: ArrayLike,
-    high: ArrayLike,
-    *,
-    orientation: Orientation = "vertical",
-    color: str = INK,
-    linewidth: float = ERROR_LINEWIDTH,
-    capsize: float = ERROR_CAPSIZE,
-    zorder: float = Z_ERROR,
-) -> None:
-    """Intervals from absolute BOUNDS, in the house style.
-
-    Bounds rather than lengths because that is what every statistics library hands back — a
-    bootstrap returns the 2.5th and 97.5th percentiles, not distances from the mean. matplotlib
-    wants `yerr=[[centre - low], [high - centre]]`, a (2, N) of lengths in below/above order, and
-    that subtraction is the step consumers were repeating and could get backwards: swapping the
-    rows draws a plausible interval on the wrong side of every point, and nothing errors.
-
-    Asymmetric intervals are the normal case here, which is why there is no single-length shortcut.
-    """
-    place = np.asarray(positions, dtype=float)
-    middle = np.asarray(centre, dtype=float)
-    lower = np.asarray(low, dtype=float)
-    upper = np.asarray(high, dtype=float)
-    assert place.shape == middle.shape == lower.shape == upper.shape, (
-        f"positions {place.shape}, centre {middle.shape}, low {lower.shape}, high {upper.shape} "
-        "must all describe the same points"
-    )
-    below = middle - lower
-    above = upper - middle
-    # A bound on the wrong side is a caller error, not something to draw politely: matplotlib takes
-    # a negative length without complaint and renders the cap inside the interval.
-    assert np.all(below >= 0.0) and np.all(above >= 0.0), (
-        "low must be at or below centre and high at or above it; got "
-        f"{np.count_nonzero(below < 0)} inverted lower and {np.count_nonzero(above < 0)} upper. "
-        "Passing lengths where bounds are wanted looks exactly like this."
-    )
-    _draw_error_bars(
-        ax,
-        place,
-        middle,
-        np.vstack([below, above]),
-        orientation=orientation,
-        color=color,
-        linewidth=linewidth,
-        capsize=capsize,
-        zorder=zorder,
-    )
-
-
-def reference_line(
-    ax: Axes,
-    value: float,
-    label: str,
-    *,
-    orientation: Orientation = "vertical",
-    label_side: Literal["left", "right"] = "left",
-):
-    """A dashed comparison level, labelled at whichever end the bars leave room.
-
-    The side is given rather than chosen, because it cannot be chosen here: `bar_panel` draws its
-    value labels LAST, after the limits have settled, so at this moment there is nothing to test a
-    collision against. A panel whose bars ascend to the right wants `label_side="right"`, and the
-    overlap check will say so if the wrong one is picked.
-    """
-    threshold = constant_value_line(
-        ax, orientation, value, ls="--", color=MUTED_INK, lw=1.4, zorder=Z_REFERENCE
-    )
-    threshold.ogviz_reference = True  # type: ignore[attr-defined]  # must stay readable
-    at_left = label_side == "left"
-    along, across = place_many(orientation, 0.012 if at_left else 0.988, value)
-    drawn = ax.text(
-        along,
-        across,
-        label,
-        transform=value_transform(ax, orientation),
-        ha="left" if at_left else "right",
-        va="bottom",
-        fontsize=VALUE_LABEL_SIZE * 0.8,
-        color=MUTED_INK,
-        zorder=2,
-    )
-    # This label names the line it sits on; moving it off that line is the opposite of the fix. It
-    # is excused against THAT line and nothing else — it slides freely along it, so a bar it lands
-    # on is a real defect and has to be reported.
-    drawn.ogviz_anchored = True  # type: ignore[attr-defined]
-    drawn.ogviz_anchor = threshold  # type: ignore[attr-defined]
-    return drawn
-
-
-LABEL_SLOTS = 24  # candidate positions along a threshold, left to right
+        mark(drawn, "anchored")
 
 
 def _slot_points(ax: Axes, each: float, orientation: Orientation) -> float:
@@ -354,46 +283,6 @@ def _slot_points(ax: Axes, each: float, orientation: Orientation) -> float:
     if not is_vertical(orientation):
         along = ax.transData.transform((0, each))[1] - ax.transData.transform((0, 0))[1]
     return abs(float(along)) / ax.figure.dpi * 72.0
-
-
-def _slide_clear(ax: Axes, label) -> None:
-    """Move a threshold's label along its own line until it sits on nothing.
-
-    It can only be done here, at the end. The label is placed when the line is drawn, and at that
-    moment the bars have no final heights and the value labels do not exist — so there is nothing
-    to test against. By now everything else is on the page.
-
-    The label slides along the line and never off it: that is the axis it is free on, and the line
-    is the thing it names. Both sides of the line are tried, because a threshold above a short bar
-    has room underneath it that a threshold below a tall one does not.
-    """
-    fig = ax.figure
-    fig.canvas.draw()
-    anchor = getattr(label, "ogviz_anchor", None)
-    obstacles = [
-        artist
-        for artist in [*ax.patches, *ax.texts, *ax.lines, *ax.collections]
-        if artist is not label and artist is not anchor
-    ]
-    boxes = [artist.get_window_extent() for artist in obstacles]
-    original = label.get_position()
-    for vertical in ("bottom", "top"):
-        for slot in range(LABEL_SLOTS):
-            fraction = 0.012 + slot * (0.976 / max(LABEL_SLOTS - 1, 1))
-            label.set_position((fraction, original[1]))
-            label.set_va(vertical)
-            label.set_ha("left" if fraction < 0.5 else "right")
-            fig.canvas.draw()
-            if not any(label.get_window_extent().overlaps(box) for box in boxes):
-                return
-    # Nowhere along the line is clear — a crowded panel, which is normal rather than exceptional.
-    # The label goes just outside the axes, level with its own line. It is still unambiguously that
-    # line's label, it is legible, and it is the one place in a full panel guaranteed to be empty.
-    # `save` writes with a tight bounding box, so the margin it needs comes with it.
-    label.set_position((1.012, original[1]))
-    label.set_ha("left")
-    label.set_va("center")
-    fig.canvas.draw()
 
 
 def bar_panel(
@@ -406,9 +295,9 @@ def bar_panel(
     show_values: bool = True,
     reference: tuple[float, str] | None = None,
     reference_side: Literal["left", "right"] = "left",
+    positions: Sequence[float] | None = None,
     grid: bool = True,
-    reference_band: tuple[float, float, str] | None = None,
-    highlight: int | None = None,
+    highlight: int | tuple[int, int] | None = None,
     emphasis: int | None = None,
     rounded: bool = False,
     orientation: Orientation = "vertical",
@@ -417,9 +306,7 @@ def bar_panel(
 
     `series` carries its own colour and errors; `categories` labels the x axis. Grouped series
     divide `width` between them, so two series stay inside the space one series would occupy.
-    `reference` is (value, label) for a dashed comparison level, and `reference_band` is
-    (low, high, label) for a shaded one — a published range has width, and drawing it as a single
-    line claims a precision the source did not have.
+    `reference` is (value, label) for a dashed comparison level.
 
     `highlight` shades one category's column, to say which one the figure is about without
     claiming it won. `emphasis` prints one bar's value in bold — the ranking, where the whiskers
@@ -433,7 +320,14 @@ def bar_panel(
     stamp_orientation(ax, orientation)
     upright = is_vertical(orientation)
     count = len(series)
-    centres = np.arange(len(categories), dtype=float)
+    centres = (
+        np.arange(len(categories), dtype=float)
+        if positions is None
+        else np.asarray(positions, dtype=float)
+    )
+    assert centres.shape == (len(categories),), (
+        f"{centres.size} positions for {len(categories)} categories"
+    )
     each = width / count
 
     for index, entry in enumerate(series):
@@ -453,7 +347,7 @@ def bar_panel(
             "impute them in the project, where the choice is visible."
         )
         offset = (index - (count - 1) / 2) * each
-        positions = centres + offset
+        bars_at = centres + offset
         caps = _error_pairs(values, entry.errors)
         # Explicit branches rather than a **{name: value} splat: the keyword genuinely differs
         # between the two calls, and a dynamic key defeats the type checker and the reader alike.
@@ -466,14 +360,14 @@ def bar_panel(
         }
         if rounded and upright:
             _rounded_bars(
-                ax, positions, values, each * 0.92, entry, span_hint=float(np.max(np.abs(values)))
+                ax, bars_at, values, each * 0.92, entry, span_hint=float(np.max(np.abs(values)))
             )
         elif upright:
-            ax.bar(positions, values, width=each * 0.92, **shared)  # type: ignore[arg-type]
+            ax.bar(bars_at, values, width=each * 0.92, **shared)  # type: ignore[arg-type]
         else:
-            ax.barh(positions, values, height=each * 0.92, **shared)  # type: ignore[arg-type]
+            ax.barh(bars_at, values, height=each * 0.92, **shared)  # type: ignore[arg-type]
         if entry.errors is not None:
-            _draw_error_bars(ax, positions, values, caps, orientation=orientation)
+            _draw_error_bars(ax, bars_at, values, caps, orientation=orientation)
 
     category_ticks(ax, orientation)(centres)
     category_tick_labels(ax, orientation)(list(categories))
@@ -484,10 +378,16 @@ def bar_panel(
     else:
         ax.margins(x=CATEGORY_MARGIN)
     if highlight is not None:
-        assert 0 <= highlight < len(categories), f"highlight {highlight} is not a category index"
+        # One category or a RANGE of them. A range is how a figure says "these belong together and
+        # that one does not" — a set of comparable arms beside a reference that is not comparable —
+        # and a single index could not say it, so a consumer drew its own `axvspan` instead.
+        first, last = (highlight, highlight) if isinstance(highlight, int) else highlight
+        assert 0 <= first <= last < len(categories), (
+            f"highlight {highlight} is not a category index or range of them"
+        )
         shade = ax.axvspan if upright else ax.axhspan
-        column = shade(highlight - 0.46, highlight + 0.46, color=HIGHLIGHT_FILL, zorder=0)
-        column.ogviz_backdrop = True  # type: ignore[attr-defined]
+        column = shade(centres[first] - 0.46, centres[last] + 0.46, color=HIGHLIGHT_FILL, zorder=0)
+        mark(column, "backdrop")
     if grid:
         hairline_grid(ax, axis="y" if upright else "x")
     threshold_label = None
@@ -495,24 +395,6 @@ def bar_panel(
         threshold_label = reference_line(
             ax, *reference, orientation=orientation, label_side=reference_side
         )
-    if reference_band is not None:
-        low_edge, high_edge, band_label = reference_band
-        shade = ax.axhspan if upright else ax.axvspan
-        band = shade(low_edge, high_edge, color=REFERENCE, zorder=1)
-        band.ogviz_backdrop = True  # type: ignore[attr-defined]
-        along, across = place_many(orientation, 0.012, (low_edge + high_edge) / 2)
-        banded = ax.text(
-            along,
-            across,
-            band_label,
-            transform=value_transform(ax, orientation),
-            ha="left",
-            va="center",
-            fontsize=VALUE_LABEL_SIZE * 0.8,
-            color=INK,
-            zorder=4,
-        )
-        banded.ogviz_anchored = True  # type: ignore[attr-defined]  # names its own band
 
     # Labels last: placement reads ax.get_ylim(), which margins and the reference line both move.
     if show_values:
@@ -541,4 +423,4 @@ def bar_panel(
                 ],
             )
     if threshold_label is not None:
-        _slide_clear(ax, threshold_label)
+        slide_label_clear(ax, threshold_label)

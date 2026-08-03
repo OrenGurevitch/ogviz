@@ -9,6 +9,7 @@ import pytest
 from matplotlib.colors import to_rgb
 
 from ogviz.panels.heatmap import MISSING_MARK, effect_heatmap
+from ogviz.tags import marked
 from ogviz.theme import page_color
 
 
@@ -89,7 +90,7 @@ def test_a_missing_cell_carries_no_star_even_when_given_a_p() -> None:
         p_values=p,
     )
     fig.canvas.draw()
-    stars = [t for t in ax.texts if getattr(t, "ogviz_column_star", False)]
+    stars = [t for t in ax.texts if marked(t, "column_star")]
     assert len(stars) == 1, [t.get_text() for t in stars]
 
 

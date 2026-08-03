@@ -27,21 +27,39 @@ from ogviz.layout.collision import (
     point_offsets,
     text_over_data,
 )
-from ogviz.layout.density import dead_space, trim_margins
+from ogviz.layout.density import Margins, dead_space, figure_margins, required_margins, trim_margins
 from ogviz.layout.density import measure as measure_density
-from ogviz.layout.frame import baseline, hairline_grid, legend_pill, pill_frame, zero_baseline
-from ogviz.layout.header import fit_under_header, panel_left_edge, settle_header, titled
+from ogviz.layout.frame import (
+    baseline,
+    hairline_grid,
+    label_rows,
+    legend_pill,
+    pill_frame,
+    zero_baseline,
+)
+from ogviz.layout.header import fit_under_header, panel_left_edge, room_below, settle_header, titled
 from ogviz.layout.overlap import (
     assert_no_text_overlap,
     assert_nothing_clipped,
     clipped_artists,
     text_overlaps,
 )
-from ogviz.layout.panels import panel_row, text_width_points, wrap_to_width
+from ogviz.layout.panels import (
+    grid_warnings,
+    panel_grid,
+    panel_row,
+    rows_that_fit,
+    text_width_points,
+    width_for_bars,
+    wrap_to_panel,
+    wrap_to_width,
+)
+from ogviz.layout.stacking import place_end_labels, stack_without_overlap
 from ogviz.layout.ticks import auto_decimals, format_value, round_ticks, value_ticks
 from ogviz.layout.write import save
 
 __all__ = [
+    "Margins",
     "annotate_clear",
     "assert_no_text_overlap",
     "assert_nothing_clipped",
@@ -52,20 +70,29 @@ __all__ = [
     "clipped_artists",
     "dead_space",
     "drawn_value_extent",
+    "figure_margins",
     "fit_under_header",
     "format_value",
+    "grid_warnings",
     "hairline_grid",
     "hits_data",
+    "label_rows",
     "legend_pill",
     "measure_density",
     "overflowing_text",
+    "panel_grid",
     "panel_left_edge",
     "panel_row",
     "pill_frame",
+    "place_end_labels",
     "point_offsets",
+    "required_margins",
+    "room_below",
     "round_ticks",
+    "rows_that_fit",
     "save",
     "settle_header",
+    "stack_without_overlap",
     "text_over_data",
     "text_overlaps",
     "text_width_points",
@@ -73,6 +100,8 @@ __all__ = [
     "titled",
     "trim_margins",
     "value_ticks",
+    "width_for_bars",
+    "wrap_to_panel",
     "wrap_to_width",
     "zero_baseline",
 ]

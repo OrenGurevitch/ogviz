@@ -39,31 +39,55 @@ if TYPE_CHECKING:
 EDGE_TOLERANCE_PX = 1.0  # rendering rounds to the pixel grid
 
 
-def panel_text(ax: Axes) -> Iterator[Text]:
-    """Every label an axes owns that a person put there: its title, its axis labels, its texts.
+def panel_text(ax: Axes, *, ticks: bool = False, legend: bool = False) -> Iterator[Text]:
+    """Every label an axes owns: its title, its axis labels, its own texts, and what is asked for.
 
-    Tick labels are NOT included, and the reason is measured rather than assumed. An ordinary panel
-    puts its end tick labels a few pixels past the canvas — 19 px on a plain `subplots` — because
-    `bbox_inches="tight"` is expected to absorb exactly that, which is what tight saving is for.
-    Counting them reported four complaints on a figure with nothing wrong.
+    Tick labels and legend text are OPTIONAL rather than always-or-never, because the two checks
+    that walk a figure's text want different sets and each reason is a measurement:
 
-    What remains is the text a caller placed, where landing off the page is never intended.
+    Tick labels are out for the canvas check. An ordinary panel puts its end ticks a few pixels past
+    the canvas — 19 px on a plain `subplots` — because `bbox_inches="tight"` is expected to absorb
+    exactly that. Counting them reported four complaints on a figure with nothing wrong. They are IN
+    for the spacing check, where two ticks running together is the commonest collision there is.
+
+    `ax.axis("off")` stops the axis being DRAWN but leaves its tick label artists visible with
+    positions, so those are read through `drawn_tick_labels` — a table on a bare axes otherwise
+    collides with every tick it never shows.
+
+    This existed twice with different contents until 2026-07-31, once here and once in `overlap`,
+    and the sets disagreed about ticks, legends and invisible axes. Two walkers means a check
+    silently covers a different figure from its neighbour, with each exclusion documented in the
+    file that does not apply it.
     """
+    from ogviz.layout.overlap import drawn_tick_labels
+
     yield ax.title
     yield ax.xaxis.label
     yield ax.yaxis.label
     yield from ax.texts
+    if ticks and ax.axison:
+        yield from drawn_tick_labels(ax)
+    if legend:
+        drawn = ax.get_legend()
+        if drawn is not None:
+            yield from drawn.get_texts()
 
 
-def figure_text(fig: Figure) -> Iterator[tuple[Text, Axes | None]]:
-    """Every visible label in the figure, paired with the axes that owns it, or None."""
+def figure_text(
+    fig: Figure, *, ticks: bool = False, legend: bool = True
+) -> Iterator[tuple[Text, Axes | None]]:
+    """Every visible label in the figure, paired with the axes that owns it, or None.
+
+    Legend text is IN by default: a legend that runs off the page is as cropped as any other label,
+    and it was outside the only walker that asked.
+    """
     for text in fig.texts:
         if text.get_visible() and text.get_text().strip():
             yield text, None
     for ax in fig.axes:
         if not ax.get_visible():
             continue
-        for text in panel_text(ax):
+        for text in panel_text(ax, ticks=ticks, legend=legend):
             if text.get_visible() and text.get_text().strip():
                 yield text, ax
 

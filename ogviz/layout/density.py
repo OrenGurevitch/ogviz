@@ -30,6 +30,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
@@ -214,3 +216,71 @@ def trim_margins(fig: Figure, *, pad_px: float = 6.0) -> bool:
         return False  # the trim would invert the axes; leave it alone
     fig.subplots_adjust(**moved)
     return True
+
+
+@dataclass(frozen=True)
+class Margins:
+    """The room one figure's ink actually needs, per side, as a figure FRACTION.
+
+    Fractions rather than pixels so the numbers go straight into `subplots_adjust`, which is what a
+    pinned layout sets. `left` and `bottom` are distances from those edges; `right` and `top` are
+    the coordinates of the far edges, matching `subplots_adjust`'s own convention so a caller can
+    pass them without inverting anything.
+    """
+
+    left: float
+    right: float
+    bottom: float
+    top: float
+
+    def padded(self, pad: float) -> Margins:
+        """The same margins with `pad` of slack on every side, clamped to the page."""
+        return Margins(
+            left=max(0.0, self.left - pad),
+            right=min(1.0, self.right + pad),
+            bottom=max(0.0, self.bottom - pad),
+            top=min(1.0, self.top + pad),
+        )
+
+
+def figure_margins(fig: Figure, *, tolerance: int = INK_TOLERANCE) -> Margins | None:
+    """Where this figure's ink actually reaches, per side. None for a blank page."""
+    mask = ink_mask(fig, tolerance=tolerance)
+    bounds = _ink_bounds(mask)
+    if bounds is None:
+        return None
+    left, right, top, bottom = bounds
+    height, width = mask.shape
+    # The mask's rows run top-down and a figure fraction runs bottom-up.
+    return Margins(
+        left=left / width,
+        right=(right + 1) / width,
+        bottom=1.0 - (bottom + 1) / height,
+        top=1.0 - top / height,
+    )
+
+
+def required_margins(figures: Iterable[Figure], *, pad: float = 0.0) -> Margins:
+    """The margins that fit EVERY figure in a set — the widest demand on each side.
+
+    For a pinned layout. Wanting one axes rectangle across a set rules out `tight_layout`, so the
+    margins get pinned, and the pinned value has to fit the WORST figure in the set. There is no way
+    to know which that is without rendering all of them, so it gets guessed — and a guess fails in
+    both directions: too generous leaves the tightest figures looking half-empty, and the obvious
+    correction crops the ones whose ink reaches furthest.
+
+    Takes FIGURES, and renders each here. Measuring PNGs already on disk gives a contaminated
+    answer: a partial regeneration leaves stale files from the previous candidate, and two separate
+    attempts in that project reported the same count and looked like a floor when they were not.
+
+    `pad` is slack added on every side, in figure fractions.
+    """
+    measured = [margins for margins in map(figure_margins, figures) if margins is not None]
+    assert measured, "required_margins needs at least one figure with ink on it"
+    widest = Margins(
+        left=min(m.left for m in measured),
+        right=max(m.right for m in measured),
+        bottom=min(m.bottom for m in measured),
+        top=max(m.top for m in measured),
+    )
+    return widest.padded(pad) if pad else widest

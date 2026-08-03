@@ -66,12 +66,45 @@ def page_color() -> str:
     `use_house_style(canvas=...)`. Reading a module constant would freeze them at import and
     leave white marks on a coloured page.
     """
-    color = mpl.rcParams.get("figure.facecolor", CANVAS)
-    return str(color)
+    # Indexed, not `.get(..., CANVAS)`: `figure.facecolor` is always present in rcParams, so the
+    # default could never fire, and if it ever could this would quietly return a colour that
+    # disagrees with the figure instead of saying so.
+    return str(mpl.rcParams["figure.facecolor"])
 
 
-def use_house_style(canvas: str = CANVAS) -> None:
-    """Set the rcParams every house figure shares. Call once, before creating figures.
+def use_house_type() -> None:
+    """Set the TYPOGRAPHY every house figure shares: families, sizes, weight.
+
+    Separate from the ink because a project can be unable to take it. One that stacks its
+    significance brackets by measuring rendered ink extents is calibrated against a particular
+    font's metrics — change the family and its stars collide — and one that needs byte-identical
+    SVGs across machines must resolve to matplotlib's bundled DejaVu rather than to a font that may
+    or may not be installed. Either has to pin its own family.
+
+    Bundled with the colours, that meant such a project could call NOTHING, and one did: it
+    hand-rolled the ink instead, in one of its two renderers, so its two-panel figures used the
+    house near-black and its condition grids inherited matplotlib's pure #000000. Two blacks in one
+    paper, side by side, undetected for months because each renderer was internally consistent.
+
+    `svg.fonttype` belongs here rather than with the ink: it decides whether text stays text.
+    """
+    mpl.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.sans-serif": list(DISPLAY_FONTS),
+            "font.serif": list(SERIF_FONTS),
+            "axes.labelsize": AXIS_LABEL_SIZE,
+            "axes.labelweight": "bold",
+            "xtick.labelsize": TICK_SIZE,
+            "ytick.labelsize": TICK_SIZE,
+            "legend.fontsize": TICK_SIZE,
+            "svg.fonttype": "none",  # keep SVG text as text
+        }
+    )
+
+
+def use_house_ink(canvas: str = CANVAS) -> None:
+    """Set the COLOURS and the weights every house figure shares — everything but the type.
 
     `canvas` defaults to the warm page, which is what these figures are read on: it cuts glare and
     keeps saturated marks forward. Pass `PAPER_WHITE` when exporting for a manuscript — a journal
@@ -79,7 +112,9 @@ def use_house_style(canvas: str = CANVAS) -> None:
 
     Which colour is right depends on the destination; what matters is that ONE call decides it for
     every figure in a project, since three projects each picking their own is how a set of figures
-    stops looking like a set.
+    stops looking like a set. That argument is the reason this half is callable on its own: a
+    project pinning its own font still gets one source of truth for ink instead of five hex values
+    copied into its own module.
     """
     mpl.rcParams.update(
         {
@@ -90,31 +125,32 @@ def use_house_style(canvas: str = CANVAS) -> None:
             "figure.facecolor": canvas,
             "savefig.facecolor": canvas,
             "axes.facecolor": canvas,
-            "font.family": "sans-serif",
-            "font.sans-serif": list(DISPLAY_FONTS),
-            "font.serif": list(SERIF_FONTS),
             "text.color": INK,
             "axes.labelcolor": INK,
-            "axes.labelsize": AXIS_LABEL_SIZE,
-            "axes.labelweight": "bold",
             "axes.edgecolor": INK,
             "axes.linewidth": 1.6,
             "axes.spines.top": False,
             "axes.spines.right": False,
             "xtick.color": INK,
             "ytick.color": INK,
-            "xtick.labelsize": TICK_SIZE,
-            "ytick.labelsize": TICK_SIZE,
             "xtick.major.size": 0.0,
             "ytick.major.size": 4.0,
             "ytick.major.width": 1.2,
             "grid.color": GRID,
             "grid.linewidth": 1.0,
             "legend.frameon": False,
-            "legend.fontsize": TICK_SIZE,
-            "svg.fonttype": "none",  # keep SVG text as text
         }
     )
+
+
+def use_house_style(canvas: str = CANVAS) -> None:
+    """Both halves, which is what a project with no constraint on its font wants. Call once.
+
+    Unchanged in what it sets — `use_house_ink` plus `use_house_type` is exactly the set this always
+    wrote, and a test holds that so the split cannot drift into a difference.
+    """
+    use_house_ink(canvas)
+    use_house_type()
 
 
 @contextmanager

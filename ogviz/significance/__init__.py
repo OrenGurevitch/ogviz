@@ -26,6 +26,7 @@ from ogviz.orientation import (
     place_many,
     stamp_orientation,
 )
+from ogviz.tags import mark, marked, value_of
 from ogviz.theme import INK, MUTED_INK, STAR_SIZE, WORD_LABEL_SIZE
 
 if TYPE_CHECKING:
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
 
     from ogviz.orientation import Orientation
 
+NOT_SIGNIFICANT = "n.s."  # the wording this module owns; other modules read it, never repeat it
 INK_GAP_PX = 3.0  # star ink to its OWN bracket
 STACK_GAP_PX = 26.0  # star ink to the NEXT bracket up — must stay >> INK_GAP_PX
 TICK_FRACTION = 0.022  # bracket end-tick length, as a fraction of the data span
@@ -55,7 +57,7 @@ def stars(p: float) -> str:
         return "**"
     if p < 0.05:
         return "*"
-    return "n.s."
+    return NOT_SIGNIFICANT
 
 
 STAR_SEPARATOR = "\u2009\u2009"  # two thin spaces: wider than one space, tighter than two
@@ -185,7 +187,7 @@ def bracket_stack(
                 lw=linewidth,
                 zorder=10,
             )
-            bracket.ogviz_bracket = True  # type: ignore[attr-defined]
+            mark(bracket, "bracket")
         size = label_size(label, fontsize)
         ink_low, ink_high = (
             v * px_per_pt
@@ -217,9 +219,9 @@ def bracket_stack(
             )
             # Placed against its own bracket on purpose; `significance_gaps` owns that
             # relationship and measures it far more precisely than a box test could.
-            drawn.ogviz_bracket_star = True  # type: ignore[attr-defined]
-            drawn.ogviz_anchored = True  # type: ignore[attr-defined]
-            drawn.ogviz_anchor = bracket  # type: ignore[attr-defined]  # its own line, only
+            mark(drawn, "bracket_star")
+            mark(drawn, "anchored")
+            mark(drawn, "anchor", bracket)  # its own line, only
         top = at(baseline_px + ink_high)
         y = at(baseline_px + ink_high + STACK_GAP_PX)
     return top
@@ -277,8 +279,8 @@ def settle_bracket_labels(fig: Figure) -> list[str]:
         orientation = read_orientation(ax) or "vertical"
         axis = 1 if is_vertical(orientation) else 0
         for text in ax.texts:
-            bracket = getattr(text, "ogviz_anchor", None)
-            if not getattr(text, "ogviz_bracket_star", False) or bracket is None:
+            bracket = value_of(text, "anchor", None)
+            if not marked(text, "bracket_star") or bracket is None:
                 continue
             along = bracket.get_ydata() if axis == 1 else bracket.get_xdata()
             top = float(np.max(np.asarray(along, dtype=float)))

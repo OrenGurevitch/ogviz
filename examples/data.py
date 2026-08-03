@@ -354,3 +354,26 @@ def scores_by_round(seed: int = 18) -> dict[str, tuple[list[float], list[tuple[f
             [(0.22, 0.38), (0.09, 0.27), (-0.08, 0.12), (-0.26, -0.02)],
         ),
     }
+
+
+ARMS = ("From scratch", "Frozen probe", "Fine-tuned", "Reference")
+ARM_COLORS = ("#ED6B3B", "#2E7CE0", "#2E7CE0", "#9B3B8F")
+
+
+def arm_comparison(seed: int = 19) -> dict[str, tuple[list[float], list[tuple[float, float]]]]:
+    """Two metrics per arm with an interval each. Invented, round, and nobody's result.
+
+    Shaped like a controlled head-to-head: three arms that ARE comparable and one reference that is
+    not, which is why the reference stands apart on the axis and outside the backdrop.
+    """
+    del seed
+    return {
+        "Coarse score": (
+            [0.42, 0.61, 0.66, 0.70],
+            [(0.38, 0.46), (0.57, 0.65), (0.62, 0.70), (0.66, 0.74)],
+        ),
+        "Fine score": (
+            [0.30, 0.52, 0.58, 0.63],
+            [(0.26, 0.34), (0.48, 0.56), (0.54, 0.62), (0.59, 0.67)],
+        ),
+    }

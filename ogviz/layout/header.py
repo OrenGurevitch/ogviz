@@ -11,15 +11,13 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Literal
 
+from ogviz.tags import mark, marked
 from ogviz.theme import INK, MUTED_INK, SUBTITLE_SIZE, TITLE_SIZE
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 TITLE_CLEARANCE = 1.35  # an axes title needs its own height plus the pad under it
-
-
-LEFT_ALIGNED = "ogviz_header_left"  # marks a header line that hangs off the panels' left edge
 
 
 def panel_left_edge(fig: Figure) -> float:
@@ -45,7 +43,7 @@ def settle_header(fig: Figure) -> list[str]:
     left = panel_left_edge(fig)
     moved: list[str] = []
     for text in fig.texts:
-        if not getattr(text, LEFT_ALIGNED, False):
+        if not marked(text, "header_left"):
             continue
         x, y = text.get_position()
         if abs(x - left) < 1e-9:
@@ -65,7 +63,13 @@ def titled(
     subtitle_size: float = SUBTITLE_SIZE,
     align: Literal["center", "left"] = "center",
 ) -> float:
-    """Bold-sans title with a serif grey subtitle. Returns the header's bottom.
+    """Bold-sans title with a serif grey subtitle. PASS THE RETURN VALUE TO `fit_under_header`.
+
+    That is the first line because the return value is the point and it is easy to drop: a function
+    that draws a title looks like it has finished, and the float it hands back is what makes the
+    panels sit under the header instead of through it. A caller who found `titled` and not
+    `fit_under_header` hand-rolled the layout three times, and the first attempt put its caption
+    straight through the x tick labels.
 
     `size` is an argument because a title is sized against its figure, not against the house: the
     27 pt default suits a single tall panel and swamps a 12.8-inch report row, where it grows wide
@@ -101,7 +105,7 @@ def titled(
         header_bottom -= subtitle_size * 1.35 / figure_points
     if align == "left":
         for line in lines:
-            setattr(line, LEFT_ALIGNED, True)
+            mark(line, "header_left")
     return header_bottom
 
 
@@ -145,7 +149,7 @@ def fit_under_header(
         applied = not any("Tight layout not applied" in str(one.message) for one in raised)
     # Recorded on the figure as well as returned, because the return value went unread for a week
     # and the whole point was that this should not pass unnoticed.
-    fig.ogviz_layout_refused = not applied  # type: ignore[attr-defined]
+    mark(fig, "layout_refused", not applied)
     fig.canvas.draw()
     figure_px = fig.get_figheight() * fig.dpi
     titles_px = max(
@@ -155,3 +159,33 @@ def fit_under_header(
     reserved = titles_px / figure_px * TITLE_CLEARANCE
     fig.subplots_adjust(top=max(0.05, header_bottom - gap - reserved))
     return applied
+
+
+def room_below(fig: Figure, bottom: float, *, keep_panels: bool = True) -> float:
+    """Make room under the axes for `bottom` (a figure fraction) WITHOUT shrinking the panels.
+
+    Text added under an axis — a note row, a group bracket, a second strip — has to come from
+    somewhere, and `subplots_adjust(bottom=...)` takes it from the plot. In a figure whose whole
+    job is comparing bar heights, that silently shortens every bar.
+
+    So this grows the CANVAS instead: the axes keep the height they have, and the figure gets taller
+    by exactly the room the new margin needs. It is `fit_under_header`'s counterpart, and the same
+    rule `panel_grid` encodes for a grid — take the room from the page, never from the cell.
+
+    Returns the new figure height in inches. Pass `keep_panels=False` to take the room from the plot
+    after all, which is right when the panels have height to spare and the page does not.
+
+    The arithmetic is `height * (top - old_bottom) / (top - bottom)`, which is what a caller
+    otherwise writes out by hand and re-derives every time another row appears.
+    """
+    assert 0.0 <= bottom < 1.0, f"a bottom margin is a figure fraction, got {bottom}"
+    pars = fig.subplotpars
+    top, old_bottom = float(pars.top), float(pars.bottom)
+    assert bottom < top, f"a bottom margin of {bottom} leaves no room under a top of {top}"
+    height = float(fig.get_figheight())
+    if keep_panels:
+        panel_inches = height * (top - old_bottom)
+        height = panel_inches / (top - bottom)
+        fig.set_figheight(height)
+    fig.subplots_adjust(bottom=bottom)
+    return height

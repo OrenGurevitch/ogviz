@@ -8,6 +8,7 @@ import pytest
 from ogviz.layout import text_overlaps
 from ogviz.layout.ticks import MINUS
 from ogviz.panels import Series, bar_panel
+from ogviz.tags import marked
 from ogviz.theme import SERIES, use_house_style
 
 
@@ -136,7 +137,7 @@ def test_a_reference_line_is_drawn_over_the_bars_it_is_read_against() -> None:
     _fig, ax = plt.subplots()
     bar_panel(ax, [Series("s", np.array([0.3, 0.9, 1.4]), ["#8FA9C9"] * 3)], ["a", "b", "c"])
     reference_line(ax, 0.8, "threshold")
-    drawn = [line for line in ax.lines if getattr(line, "ogviz_reference", False)]
+    drawn = [line for line in ax.lines if marked(line, "reference")]
     assert len(drawn) == 1
     assert drawn[0].get_zorder() > Z_BAR, "the threshold must sit above the bars"
 
@@ -151,7 +152,31 @@ def test_a_buried_threshold_is_reported() -> None:
     fig.canvas.draw()
     assert not buried_baselines(fig)
 
-    [line] = [line for line in ax.lines if getattr(line, "ogviz_reference", False)]
+    [line] = [line for line in ax.lines if marked(line, "reference")]
     line.set_zorder(1)
     fig.canvas.draw()
     assert any("reference line" in complaint for complaint in buried_baselines(fig))
+
+
+def test_a_rounded_corner_is_the_same_size_on_any_axis() -> None:
+    """The radius was a fraction of the tallest VALUE, and `rounding_size` applies to BOTH axes.
+
+    So it was only sensible where the value axis happened to be order-1: measured on a counts axis,
+    the corner came out at 394,460% of the bar's own width — a lozenge rather than a bar.
+    """
+    from matplotlib.patches import FancyBboxPatch
+
+    from ogviz import bar_panel
+    from ogviz.panels.bars import Series
+
+    def corner_px(values: list[float]) -> float:
+        fig, ax = plt.subplots(figsize=(8.0, 5.0))
+        bar_panel(ax, [Series("s", values, "#7C9A6E")], ["A", "B", "C"], rounded=True)
+        fig.canvas.draw()
+        patch = next(p for p in ax.patches if isinstance(p, FancyBboxPatch))
+        low, high = ax.get_xlim()
+        return patch.get_boxstyle().rounding_size / (high - low) * ax.get_window_extent().width
+
+    near_one = corner_px([0.42, 0.61, 0.70])
+    near_thousands = corner_px([26000.0, 38000.0, 45000.0])
+    assert near_one == pytest.approx(near_thousands, rel=0.01), (near_one, near_thousands)

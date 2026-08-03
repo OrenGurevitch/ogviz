@@ -14,6 +14,7 @@ from ogviz.significance import (
     spaced_stars,
     stars,
 )
+from ogviz.tags import marked
 
 
 def test_stars_thresholds() -> None:
@@ -163,9 +164,7 @@ def test_a_row_puts_every_bracket_on_one_line() -> None:
     )
     fig.canvas.draw()
     tops = {
-        round(float(np.max(line.get_ydata())), 6)
-        for line in ax.lines
-        if getattr(line, "ogviz_bracket", False)
+        round(float(np.max(line.get_ydata())), 6) for line in ax.lines if marked(line, "bracket")
     }
     assert len(tops) == 1, f"a row sits at one height, got {sorted(tops)}"
 
@@ -210,7 +209,7 @@ def test_a_crowded_stack_is_still_caught() -> None:
     fig.canvas.draw()
     assert not stack_spacing(fig), "as drawn it is even"
 
-    brackets = [line for line in ax.lines if getattr(line, "ogviz_bracket", False)]
+    brackets = [line for line in ax.lines if marked(line, "bracket")]
     heights = sorted({float(np.max(line.get_ydata())) for line in brackets})
     highest = max(brackets, key=lambda line: np.max(line.get_ydata()))
     crowd = (heights[-1] - heights[-2]) * 0.85

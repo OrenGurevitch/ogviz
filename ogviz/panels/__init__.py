@@ -1,4 +1,9 @@
-from ogviz.panels.bars import Series, bar_panel, error_bars, reference_line, value_labels
+from ogviz.marks import error_bars
+from ogviz.panels.bars import (
+    Series,
+    bar_panel,
+    value_labels,
+)
 from ogviz.panels.coupling import (
     Cloud,
     Estimate,
@@ -30,9 +35,13 @@ from ogviz.panels.multiplicity import (
     bonferroni_threshold,
     multiplicity_ladder,
 )
+from ogviz.panels.reference import (
+    reference_line,
+    slide_label_clear,
+)
 from ogviz.panels.slopegraph import Strand, crowded_ends, null_distance, slopegraph
 from ogviz.panels.split import half_marks, half_violin, split_violins
-from ogviz.panels.table import Cell, Row, table_panel
+from ogviz.panels.table import Cell, Row, table_panel, tint
 from ogviz.panels.violins import group_violins, printed_means
 
 __all__ = [
@@ -71,9 +80,11 @@ __all__ = [
     "series_colors",
     "share_value_limits",
     "shared_limits",
+    "slide_label_clear",
     "slopegraph",
     "split_violins",
     "table_panel",
+    "tint",
     "trend_line",
     "value_floor",
     "value_labels",

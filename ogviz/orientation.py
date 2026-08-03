@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
 
+from ogviz.tags import mark, value_of
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -28,9 +30,6 @@ Orientation = Literal["vertical", "horizontal"]
 def is_vertical(orientation: Orientation) -> bool:
     assert orientation in ("vertical", "horizontal"), f"unknown orientation {orientation!r}"
     return orientation == "vertical"
-
-
-STAMP = "ogviz_orientation"
 
 
 def stamp_orientation(ax: Axes, orientation: Orientation) -> None:
@@ -47,12 +46,12 @@ def stamp_orientation(ax: Axes, orientation: Orientation) -> None:
     written down.
     """
     assert orientation in ("vertical", "horizontal"), f"unknown orientation {orientation!r}"
-    setattr(ax, STAMP, orientation)
+    mark(ax, "orientation", orientation)
 
 
 def read_orientation(ax: Axes) -> Orientation | None:
     """The orientation a panel recorded, or None for axes this package did not draw."""
-    return getattr(ax, STAMP, None)
+    return value_of(ax, "orientation")
 
 
 def place(orientation: Orientation, category: float, value: float) -> tuple[float, float]:

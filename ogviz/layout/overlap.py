@@ -29,19 +29,13 @@ HIDDEN_SHARE = 0.10  # of a label's area painted over before it is worth reporti
 
 
 def _visible_texts(fig: Figure) -> list[Text]:
-    items: list[Text] = list(fig.texts)
-    for ax in fig.axes:
-        items += [*ax.texts, ax.title, ax.xaxis.label, ax.yaxis.label]
-        if ax.axison:
-            # `ax.axis("off")` stops the axis being DRAWN but leaves its tick label artists with
-            # positions and `get_visible() is True`. Collecting them anyway reports collisions
-            # against labels that are not on the page — which a table, drawn on a bare axes, hits
-            # for every tick it never shows.
-            items += drawn_tick_labels(ax)
-        legend = ax.get_legend()
-        if legend is not None:
-            items += legend.get_texts()
-    return [t for t in items if t.get_visible() and t.get_text().strip()]
+    """Every label a SPACING check must consider: ticks and legend text included.
+
+    One walker, in `bounds`, so this set and the canvas check's set cannot drift apart.
+    """
+    from ogviz.layout.bounds import figure_text
+
+    return [text for text, _owner in figure_text(fig, ticks=True, legend=True)]
 
 
 SAME_ROW_FRACTION = 0.5  # of the shorter box's height, before two labels count as one row
@@ -134,6 +128,12 @@ def clipped_artists(fig: Figure) -> list[str]:
     that ran past the axis limit passes it with zero problems, which is how a star ended up
     floating over nothing in a shipped figure. matplotlib clips `Line2D` by default and does not
     clip `Text`, so an overflowing stack loses its lines and keeps its labels.
+
+    Measured from the artist's geometry, which is why the complaint names the two fixes that work.
+    Neither `set_clip_path` nor a page-coloured band painted over the overflow changes it —
+    `Line2D.get_window_extent` returns the data bounding box whether the artist is clipped or not,
+    and this asks where the ink WOULD be. A consumer tried both before shortening the data, and the
+    second especially looks like it must have worked.
     """
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()  # type: ignore[attr-defined]
@@ -146,7 +146,11 @@ def clipped_artists(fig: Figure) -> list[str]:
                 continue
             box = line.get_window_extent(renderer)
             if box.y1 > frame.y1 + 1 or box.y0 < frame.y0 - 1:
-                escaped.append(f"a line runs {box.y1 - frame.y1:.0f} px past the top of its axes")
+                escaped.append(
+                    f"a line runs {box.y1 - frame.y1:.0f} px past the top of its axes — "
+                    "clipping it does not change this, and neither does painting over it; "
+                    "shorten the data or raise the limit"
+                )
             elif box.x1 > frame.x1 + 1 or box.x0 < frame.x0 - 1:
                 escaped.append("a line runs past the side of its axes")
     return escaped
@@ -158,7 +162,7 @@ def assert_nothing_clipped(fig: Figure) -> None:
     assert not escaped, "clipped out of the axes: " + " | ".join(sorted(set(escaped)))
 
 
-def _opaque_backing(text: Text) -> Bbox | None:
+def opaque_backing(text: Text) -> Bbox | None:
     """The box a label paints behind itself, when it is opaque enough to hide what is under it."""
     from matplotlib.colors import to_rgba
 
@@ -188,7 +192,7 @@ def text_hidden_behind_knockouts(fig: Figure) -> list[str]:
     order = {id(text): index for index, text in enumerate(texts)}
     complaints: list[str] = []
     for over in texts:
-        backing = _opaque_backing(over)
+        backing = opaque_backing(over)
         if backing is None:
             continue
         for under in texts:

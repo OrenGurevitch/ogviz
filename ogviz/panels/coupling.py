@@ -30,6 +30,7 @@ from matplotlib.ticker import MaxNLocator
 
 from ogviz.layout import hairline_grid
 from ogviz.significance import stars
+from ogviz.tags import mark
 from ogviz.theme import AXIS_LABEL_SIZE, INK, STAR_SIZE, TICK_SIZE, page_color
 
 if TYPE_CHECKING:
@@ -242,8 +243,8 @@ def _star_column(
         # A strip star marks a ROW, not a comparison between two positions, so it has no bracket
         # and must not be measured against one. Marked rather than inferred: "this axes has no
         # brackets" would also excuse a violin panel whose brackets all failed to draw.
-        drawn.ogviz_column_star = True  # type: ignore[attr-defined]
-        drawn.ogviz_anchored = True  # type: ignore[attr-defined]
+        mark(drawn, "column_star")
+        mark(drawn, "anchored")
 
 
 def estimate_strip(

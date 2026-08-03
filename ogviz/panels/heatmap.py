@@ -27,7 +27,8 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgba
 from matplotlib.patches import Rectangle
 
-from ogviz.panels.bars import typeset
+from ogviz.layout.ticks import typeset
+from ogviz.tags import mark
 from ogviz.theme import INK, MUTED_INK, page_color
 
 if TYPE_CHECKING:
@@ -69,7 +70,7 @@ def effect_heatmap(
     p_values: NDArray[np.float64] | None = None,
     neutral: float = 0.0,
     reach: float | None = None,
-    value_format: str = "{:+.2f}",
+    value_format: str = "{:+,.2f}",
     label_for: Callable[[float], str] | None = None,
     row_dividers: Sequence[int] = (),
     column_dividers: Sequence[int] = (),
@@ -114,7 +115,7 @@ def effect_heatmap(
             # tint the number printed on it. Untagged, every cell reported its own number as
             # sitting on the data and the audit returned 46 complaints about a correct panel.
             patch = _cell(column, row, facecolor=fill)
-            patch.ogviz_backdrop = True  # type: ignore[attr-defined]
+            mark(patch, "backdrop")
             ax.add_patch(patch)
             # Per cell, from the fill actually behind it: one ink colour is unreadable at the dark
             # end of the map and white is unreadable in the pale middle.
@@ -132,7 +133,7 @@ def effect_heatmap(
                 zorder=3,
             )
             # Printed on its own cell on purpose, which is the whole design of the panel.
-            number.ogviz_anchored = True  # type: ignore[attr-defined]
+            mark(number, "anchored")
             if p_values is None or missing:
                 continue
             p = float(np.asarray(p_values)[row, column])
@@ -154,8 +155,8 @@ def effect_heatmap(
                 # It marks its own cell, so the general "is this label on the data" rule must leave
                 # it where it is; `ogviz_column_star` also keeps it out of the bracket checks, which
                 # measure a star against a bracket this one does not have.
-                marked.ogviz_column_star = True  # type: ignore[attr-defined]
-                marked.ogviz_anchored = True  # type: ignore[attr-defined]
+                mark(marked, "column_star")
+                mark(marked, "anchored")
 
     for index in row_dividers:
         ax.axhline(index - 0.5, color=INK, linewidth=1.8, zorder=4)
@@ -186,7 +187,16 @@ def _cell(column: int, row: int, *, facecolor) -> Rectangle:
 
 
 def _stars_for(p: float, label_for: Callable[[float], str] | None) -> str:
-    from ogviz.significance import stars
+    """What to print over a cell, or "" for nothing.
 
-    marked = (label_for or stars)(p)
-    return "" if marked == "n.s." and label_for is None else marked
+    A caller's own wording is printed as given. The DEFAULT drops the non-significant mark, because
+    a matrix already prints every number and a grid of "n.s." says only that most cells are most
+    cells. Which string that is comes from `significance`, which owns the wording — reading it from
+    there rather than repeating it means changing the wording cannot silently change this.
+    """
+    from ogviz.significance import NOT_SIGNIFICANT, stars
+
+    if label_for is not None:
+        return label_for(p)
+    glyphs = stars(p)
+    return "" if glyphs == NOT_SIGNIFICANT else glyphs
