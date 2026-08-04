@@ -54,24 +54,45 @@ FULL_RIGHT = 0.985
 
 
 def text_width_points(text: str, fontsize: float) -> float:
-    """Rendered width of `text` in points, measured from the glyph outlines."""
+    """Rendered width of `text` in points — the WIDEST line, measured from the glyph outlines.
+
+    Split here rather than handed to `TextPath` whole, because what `TextPath` does with a newline
+    has changed between matplotlib versions: 3.11 breaks the line, older versions measure the string
+    as one run and return roughly twice the true width. `table_panel` sizes each column with this,
+    so on the older behaviour a two-line header reserved about double the width it needed and
+    visibly ballooned its column — worked around downstream by forbidding multi-line headers, a
+    caller-side rule that existed only because of this.
+
+    Measuring per line makes the answer the same on every version, which a layout number has to be.
+    """
     if not text:
         return 0.0
-    return float(TextPath((0, 0), text, prop=FontProperties(size=fontsize)).get_extents().width)
+    return max(_line_width_points(line, fontsize) for line in text.split("\n"))
+
+
+def _line_width_points(line: str, fontsize: float) -> float:
+    if not line:
+        return 0.0
+    return float(TextPath((0, 0), line, prop=FontProperties(size=fontsize)).get_extents().width)
 
 
 def wrap_to_width(text: str, width_points: float, fontsize: float) -> list[str]:
-    """Greedy word wrap against measured glyph width, so no line exceeds `width_points`."""
+    """Greedy word wrap against measured glyph width, so no line exceeds `width_points`.
+
+    A newline the caller wrote is a HARD break and survives: each side is wrapped on its own.
+    `text.split()` alone collapses them, so a two-line heading came back as one long line and the
+    author's own layout was silently discarded.
+    """
     lines: list[str] = []
-    current = ""
-    for word in text.split():
-        candidate = f"{current} {word}".strip()
-        if current and text_width_points(candidate, fontsize) > width_points:
-            lines.append(current)
-            current = word
-        else:
-            current = candidate
-    if current:
+    for paragraph in text.split("\n"):
+        current = ""
+        for word in paragraph.split():
+            candidate = f"{current} {word}".strip()
+            if current and text_width_points(candidate, fontsize) > width_points:
+                lines.append(current)
+                current = word
+            else:
+                current = candidate
         lines.append(current)
     return lines or [""]
 

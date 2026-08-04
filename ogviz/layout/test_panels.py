@@ -184,3 +184,28 @@ def test_the_crop_makes_two_equal_canvases_write_unequal_files(tmp_path) -> None
         sizes[name] = Image.open(path).size
 
     assert sizes["plain"][0] != sizes["reaching"][0], sizes
+
+
+def test_a_multi_line_string_is_as_wide_as_its_widest_line() -> None:
+    """What `TextPath` does with a newline changed between matplotlib versions — 3.11 breaks the
+    line, older versions measure the whole string as one run and return roughly double.
+
+    `table_panel` sizes a column from this number, so on the older behaviour a two-line header
+    reserved about twice the width it needed and visibly ballooned its column. Measuring per line
+    is the same answer on every version, which is what a layout number has to be.
+    """
+    lines = ("a longer heading", "short")
+    assert text_width_points("\n".join(lines), 10.0) == pytest.approx(
+        max(text_width_points(line, 10.0) for line in lines)
+    )
+
+
+def test_a_trailing_or_empty_line_costs_no_width() -> None:
+    assert text_width_points("abc\n", 10.0) == pytest.approx(text_width_points("abc", 10.0))
+    assert text_width_points("\n\n", 10.0) == 0.0
+
+
+def test_a_deliberate_line_break_survives_the_wrap() -> None:
+    """`text.split()` collapses newlines, so a caller's own two-line heading came back as one long
+    line — their layout discarded silently by the helper meant to lay it out."""
+    assert wrap_to_width("first line\nsecond line", 500.0, 10.0) == ["first line", "second line"]
