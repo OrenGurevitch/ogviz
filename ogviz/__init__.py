@@ -12,6 +12,7 @@ significance star sits relative to its bracket, and how a figure is written to d
 
 from importlib.metadata import PackageNotFoundError, version
 
+from ogviz.guard import guard, guard_from_environment, guarded, is_guarded, unguard
 from ogviz.layout import (
     annotate_clear,
     assert_no_text_overlap,
@@ -186,9 +187,12 @@ __all__ = [
     "glyphs_must_render",
     "grid_warnings",
     "group_violins",
+    "guard",
+    "guarded",
     "hairline_grid",
     "house_style",
     "iqr_box",
+    "is_guarded",
     "jitter_x",
     "label_rows",
     "label_shared_scale_once",
@@ -233,6 +237,7 @@ __all__ = [
     "titled",
     "trend_line",
     "trim_margins",
+    "unguard",
     "use_house_ink",
     "use_house_style",
     "use_house_type",
@@ -246,3 +251,8 @@ __all__ = [
     "wrap_to_width",
     "zero_baseline",
 ]
+
+
+# Off unless a project asks. See `ogviz.guard` for why a bare import must not change how matplotlib
+# behaves, and why an environment variable is the right place for a project to decide once.
+_GUARDING = guard_from_environment()

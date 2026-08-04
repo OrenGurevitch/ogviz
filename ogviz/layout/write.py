@@ -45,13 +45,28 @@ def save(
     check_overlap: bool = True,
     formats: Sequence[str] = ("png", "svg"),
     close: bool = True,
+    crop: bool = True,
 ) -> list[Path]:
-    """Write `<directory>/<name>.<ext>` per format, on the figure's own canvas, and check it.
+    """Write `<directory>/<name>.<ext>` per format, checked on the way out.
 
     Both checks fail the build rather than write a broken figure: a missing glyph renders as a
     tofu box and overlapping labels render as mush, and both otherwise ship unnoticed because a
     figure build scrolls past. Pass `check_overlap=False` for a panel whose text legitimately
     abuts, such as a rendered table, and `close=False` to keep working on the figure.
+
+    `crop=True` (the default) writes `bbox_inches="tight"`: the file is cropped to the artists
+    rather than to the canvas, so the declared `figsize` is NOT what lands on disk. It trims dead
+    margin, and it keeps a label that reaches past the page instead of cutting it off.
+
+    THE COST, which this docstring claimed the opposite of until 2026-08-04: two figures declaring
+    the same canvas do not write the same size. Measured on a 7x4 in figure at dpi 100 — 700x400 px
+    declared — a plain panel writes 602x353 and the same panel with one label reaching past the
+    edge writes 829x353. A document placing both at one width then shows them at different scales.
+
+    So `crop=False` for a PINNED layout, where the point is that every figure has the same axes
+    rectangle: it writes the canvas as declared, and `required_margins` is how the margins get
+    chosen. Cropping and pinning are the two coherent choices; picking neither deliberately is how a
+    set ends up inconsistent.
     """
     assert formats, "save needs at least one format"
     # Before the checks, not after: a caption row is reserved when the panels are created and the
@@ -72,7 +87,7 @@ def save(
         for path in paths:
             fig.savefig(
                 path,
-                bbox_inches="tight",
+                bbox_inches="tight" if crop else None,
                 facecolor=canvas,
                 dpi=dpi,
                 metadata=_reproducible_metadata(path),

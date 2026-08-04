@@ -274,6 +274,10 @@ def required_margins(figures: Iterable[Figure], *, pad: float = 0.0) -> Margins:
     attempts in that project reported the same count and looked like a floor when they were not.
 
     `pad` is slack added on every side, in figure fractions.
+
+    Pair this with `save(..., crop=False)`. Measuring margins and then writing with the default
+    `bbox_inches="tight"` cancels the whole exercise: the crop resizes each file to its own ink, so
+    the pinned rectangle never reaches disk.
     """
     measured = [margins for margins in map(figure_margins, figures) if margins is not None]
     assert measured, "required_margins needs at least one figure with ink on it"

@@ -275,6 +275,31 @@ assert_clean(fig)  # raise rather than ship it
 Checks that read an ogviz tag — where a printed mean belongs, whether a star sits against its
 bracket — say nothing about a figure that has none. The rest apply to anything.
 
+## Every figure, not just the ones you remembered
+
+`save` audits what it writes. `guard()` makes that true of `fig.savefig` as well, so the checks run
+whichever way a figure leaves — `plt.savefig`, a notebook, a helper that saves for you:
+
+```python
+import ogviz
+ogviz.guard()                     # from here on, every savefig is audited
+ogviz.guard(mode="warn")          # write it anyway and say what is wrong
+ogviz.guard(mode="repair")        # fix what has one obvious fix first
+```
+
+`OGVIZ_GUARD=1` in the environment does the same with no code change, which is the form for CI and
+for a paper build — `warn`, `repair` and `+advise` pick the mode. `guarded(...)` is the scoped
+version, for a process that renders some figures under the house rules and some under its own.
+
+It is NOT on for a bare `import ogviz`, deliberately: a library that changes matplotlib's behaviour
+the moment it is imported would fail saves in code that never asked, break a notebook mid-session,
+and make "why did my savefig raise" a puzzle whose answer is an import three files away. Choosing it
+is one line; having it chosen for you is a footgun.
+
+`advise=True` adds the dead-space notes — unused canvas, an over-generous limit. Those never fail
+anything: the shipped gallery carries 76 of them and is correct, because an airy figure is a choice
+and a panel holding room for a bracket is not wasting it.
+
 ## Checks
 
 `save` runs `ogviz.qc.assert_clean` and raises instead of writing. It catches:

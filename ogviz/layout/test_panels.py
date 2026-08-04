@@ -134,3 +134,53 @@ def test_legend_reservation_narrows_the_panel_row():
     reserved, reserved_axes = panel_row(2, legend=True)
     assert reserved_axes[-1].get_position().x1 < plain_axes[-1].get_position().x1
     assert plain is not reserved
+
+
+def test_save_writes_the_declared_canvas_when_asked_not_to_crop(tmp_path) -> None:
+    """`save` crops to the artists by default; its docstring claimed the opposite until now.
+
+    The cost is that two figures declaring one canvas do not write one size — measured on a 7x4 in
+    figure at dpi 100, 700x400 declared: a plain panel writes 602x353 and the same panel with a
+    label reaching past the edge writes 829x353. A pinned layout needs `crop=False`, and
+    `required_margins` is how its margins get chosen.
+    """
+    from PIL import Image
+
+    from ogviz import save
+
+    written = {}
+    for crop in (True, False):
+        fig, ax = plt.subplots(figsize=(7.0, 4.0))
+        ax.plot([0.0, 1.0], [0.0, 1.0])
+        ax.set_ylabel("y")
+        path = save(
+            fig,
+            tmp_path,
+            f"crop_{crop}",
+            formats=("png",),
+            dpi=100,
+            check_overlap=False,
+            crop=crop,
+        )[0]
+        written[crop] = Image.open(path).size
+
+    assert written[False] == (700, 400), "crop=False writes the canvas as declared"
+    assert written[True] != written[False], "the default crops to the artists"
+
+
+def test_the_crop_makes_two_equal_canvases_write_unequal_files(tmp_path) -> None:
+    """Which is the reason a pinned layout cannot use it, and the reason it is now a parameter."""
+    from PIL import Image
+
+    from ogviz import save
+
+    sizes = {}
+    for name, wide in (("plain", False), ("reaching", True)):
+        fig, ax = plt.subplots(figsize=(7.0, 4.0))
+        ax.plot([0.0, 1.0], [0.0, 1.0])
+        if wide:
+            ax.text(1.0, 0.9, "a right-hand label that runs off the page", ha="left")
+        path = save(fig, tmp_path, name, formats=("png",), dpi=100, check_overlap=False)[0]
+        sizes[name] = Image.open(path).size
+
+    assert sizes["plain"][0] != sizes["reaching"][0], sizes
