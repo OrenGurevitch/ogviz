@@ -80,7 +80,11 @@ def test_a_two_line_x_label_no_longer_reaches_the_caption_row():
     fig, axes = panel_row(3, caption=CAPTION)
     for ax in axes:
         ax.plot([0, 1, 2], [1.0, 2.0, 1.5])
-        ax.set_xlabel("category\n(with a qualifying second line)")
+        # THREE lines, not two. The premise has to hold on every supported matplotlib, and how far
+        # a multi-line label grows downward is exactly what changed between 3.10 and 3.11 — at two
+        # lines the label reached the caption row on one and cleared it on the other, so the test
+        # failed on 3.10 by proving nothing rather than by finding a defect.
+        ax.set_xlabel("category\n(with a qualifying second line)\n(and a third)")
 
     def caption_collisions(figure):
         return [one for one in text_overlaps(figure) if "Each dot is one" in one]

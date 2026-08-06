@@ -74,10 +74,32 @@ def _domain_panel(width: float):
     return fig
 
 
+def _abutting_width() -> float:
+    """A figure width at which "cognition" and "autonomic" abut WITHOUT overlapping.
+
+    Searched rather than pinned. The distinction this test exists to make — zero shared area and
+    still unreadable — lives in about two pixels, and two pixels of text layout is not stable across
+    matplotlib versions: at a pinned 8.0 in the pair sits +2.3 px apart on 3.11 and -0.2 px on 3.10,
+    so the premise held on one and inverted on the other while the library behaved correctly on
+    both. The CONTRACT is version-independent; the width that exhibits it is not, so it is measured.
+    """
+    for tenths in range(70, 111):
+        width = tenths / 10.0
+        fig = _domain_panel(width)
+        if not text_overlaps(fig, min_gap=0.0) and any(
+            "cognition" in hit and "autonomic" in hit for hit in text_overlaps(fig)
+        ):
+            plt.close(fig)
+            return width
+        plt.close(fig)
+    raise AssertionError("no width in 7.0-11.0 in makes the pair abut without overlapping")
+
+
 def test_adjacent_labels_that_read_as_one_word_are_reported():
-    """Zero overlapping area, still broken: 2.3 px between "cognition" and "autonomic" renders
-    joined. The width is measured in the pinned font, so this holds on every machine."""
-    fig = _domain_panel(8.0)
+    """Zero overlapping area, still broken: a couple of pixels between "cognition" and "autonomic"
+    renders joined. This is what no overlap test can catch, and the reason the spacing rule exists.
+    """
+    fig = _domain_panel(_abutting_width())
     assert text_overlaps(fig, min_gap=0.0) == [], "these do not overlap, they abut"
     assert any("cognition" in hit and "autonomic" in hit for hit in text_overlaps(fig))
 
