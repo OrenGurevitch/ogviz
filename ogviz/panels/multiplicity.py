@@ -27,6 +27,7 @@ import numpy as np
 
 from ogviz.layout import hairline_grid, legend_pill
 from ogviz.orientation import stamp_orientation
+from ogviz.require import require
 from ogviz.theme import INK, MUTED_INK
 
 if TYPE_CHECKING:
@@ -43,7 +44,10 @@ POINT_SIZE = 62.0
 
 def bonferroni_threshold(count: int, *, alpha: float = ALPHA) -> float:
     """The one cutoff every test in a family of `count` must clear."""
-    assert count > 0, "a family needs at least one test"
+    require(
+        count > 0,
+        "a family needs at least one test",
+    )
     return alpha / count
 
 
@@ -55,7 +59,10 @@ def benjamini_hochberg_rank(sorted_p: NDArray[np.float64], *, alpha: float = ALP
     powerful than a fixed cutoff and the step a reader cannot see in a table.
     """
     count = len(sorted_p)
-    assert count > 0, "a family needs at least one test"
+    require(
+        count > 0,
+        "a family needs at least one test",
+    )
     ramp = alpha * np.arange(1, count + 1) / count
     clearing = np.nonzero(sorted_p <= ramp)[0]
     return int(clearing[-1]) + 1 if clearing.size else 0
@@ -82,12 +89,17 @@ def multiplicity_ladder(
     this panel does not know.
     """
     values = np.asarray(p_values, dtype=float)
-    assert values.ndim == 1 and values.size, "multiplicity_ladder needs a family of p-values"
-    assert np.all((values >= 0.0) & (values <= 1.0)), (
-        f"p-values must be in [0, 1]; got {values[(values < 0.0) | (values > 1.0)][:3]}"
+    require(
+        values.ndim == 1 and values.size,
+        "multiplicity_ladder needs a family of p-values",
     )
-    assert labels is None or len(labels) == len(values), (
-        f"{len(labels or ())} labels for {len(values)} p-values"
+    require(
+        np.all((values >= 0.0) & (values <= 1.0)),
+        f"p-values must be in [0, 1]; got {values[(values < 0.0) | (values > 1.0)][:3]}",
+    )
+    require(
+        labels is None or len(labels) == len(values),
+        f"{len(labels or ())} labels for {len(values)} p-values",
     )
 
     order = np.argsort(values)

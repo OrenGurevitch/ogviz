@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.require import require
 from ogviz.tags import mark
 
 if TYPE_CHECKING:
@@ -80,10 +81,14 @@ def stack_without_overlap(
     """
     desired = np.asarray(wanted, dtype=float)
     extents = np.asarray(sizes, dtype=float)
-    assert desired.shape == extents.shape, (
-        f"{desired.shape} positions against {extents.shape} sizes"
+    require(
+        desired.shape == extents.shape,
+        f"{desired.shape} positions against {extents.shape} sizes",
     )
-    assert np.all(extents >= 0.0), "a label cannot have negative extent"
+    require(
+        np.all(extents >= 0.0),
+        "a label cannot have negative extent",
+    )
     if desired.size <= 1:
         return desired.copy()
 
@@ -124,9 +129,13 @@ def place_end_labels(
     A label that had to move gets a leader line back to the value it names, because a label beside
     the wrong line is worse than no label.
     """
-    assert len(labels) == len(values), f"{len(labels)} labels for {len(values)} values"
-    assert colors is None or len(colors) == len(labels), (
-        f"{len(colors or ())} colours for {len(labels)} labels"
+    require(
+        len(labels) == len(values),
+        f"{len(labels)} labels for {len(values)} values",
+    )
+    require(
+        colors is None or len(colors) == len(labels),
+        f"{len(colors or ())} colours for {len(labels)} labels",
     )
     if not labels:
         return []

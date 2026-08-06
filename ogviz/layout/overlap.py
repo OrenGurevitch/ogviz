@@ -107,7 +107,6 @@ def text_overlaps(fig: Figure, *, min_gap: float = DEFAULT_MIN_GAP) -> list[str]
             if gap is not None and gap < min_gap:
                 verb = "touches" if gap >= 0 else "runs into"
                 hits.append(f"{first_label!r} {verb} {second_label!r} ({gap:.1f} px apart)")
-                continue
     return hits
 
 
@@ -116,9 +115,13 @@ def assert_no_text_overlap(
     *,
     min_gap: float = DEFAULT_MIN_GAP,
 ) -> None:
-    """Fail the build rather than write a figure whose labels sit on or against each other."""
+    """Fail the build rather than write a figure whose labels sit on or against each other.
+
+    Raised rather than asserted: `python -O` removes an `assert` and would take this gate with it.
+    """
     hits = text_overlaps(fig, min_gap=min_gap)
-    assert not hits, "text collisions: " + " | ".join(hits)
+    if hits:
+        raise AssertionError("text collisions: " + " | ".join(hits))
 
 
 def clipped_artists(fig: Figure) -> list[str]:
@@ -145,21 +148,30 @@ def clipped_artists(fig: Figure) -> list[str]:
             if not line.get_clip_on() or vertices.size == 0:
                 continue
             box = line.get_window_extent(renderer)
-            if box.y1 > frame.y1 + 1 or box.y0 < frame.y0 - 1:
+            # Both directions, not one or the other. The `elif` here meant a line escaping the top
+            # AND the side was only ever reported for the top, so a caller shortened the data,
+            # re-ran, and met a second complaint that had been there all along.
+            over_value = max(box.y1 - frame.y1, frame.y0 - box.y0)
+            over_category = max(box.x1 - frame.x1, frame.x0 - box.x0)
+            if over_value > 1:
                 escaped.append(
-                    f"a line runs {box.y1 - frame.y1:.0f} px past the top of its axes — "
+                    f"a line runs {over_value:.0f} px past the top or bottom of its axes — "
                     "clipping it does not change this, and neither does painting over it; "
                     "shorten the data or raise the limit"
                 )
-            elif box.x1 > frame.x1 + 1 or box.x0 < frame.x0 - 1:
-                escaped.append("a line runs past the side of its axes")
+            if over_category > 1:
+                escaped.append(
+                    f"a line runs {over_category:.0f} px past the side of its axes — same fix: "
+                    "shorten the data or widen the limit"
+                )
     return escaped
 
 
 def assert_nothing_clipped(fig: Figure) -> None:
     """Fail rather than write a figure whose ink was cropped away."""
     escaped = clipped_artists(fig)
-    assert not escaped, "clipped out of the axes: " + " | ".join(sorted(set(escaped)))
+    if escaped:
+        raise AssertionError("clipped out of the axes: " + " | ".join(sorted(set(escaped))))
 
 
 def opaque_backing(text: Text) -> Bbox | None:

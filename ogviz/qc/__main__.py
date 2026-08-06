@@ -14,6 +14,7 @@ from matplotlib.figure import Figure
 from ogviz.qc import CHECKS, audit
 from ogviz.qc.repair import repair
 from ogviz.qc.report import group_by_subject
+from ogviz.require import require
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -40,13 +41,17 @@ def _load_figures(target: str) -> list[Figure]:
         module_name, _, attribute = target.partition(":")
         module = importlib.import_module(module_name)
         builder = getattr(module, attribute, None)
-        assert callable(builder), f"{target}: {attribute!r} is not a callable in {module_name}"
+        # Written out rather than sent through `require`, here and at the four other places like
+        # it, because this one also NARROWS: the type checker learns `builder` is callable from the
+        # branch, and cannot learn it from a function call.
+        if not callable(builder):
+            raise AssertionError(f"{target}: {attribute!r} is not a callable in {module_name}")
         produced = builder()
         if isinstance(produced, Figure):
             return [produced]
     else:
         path = Path(target)
-        assert path.exists(), f"no such file: {target}"
+        require(path.exists(), f"no such file: {target}")
         runpy.run_path(str(path), run_name="__ogviz_qc__")
     return [plt.figure(number) for number in plt.get_fignums()]
 

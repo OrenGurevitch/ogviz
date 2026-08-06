@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ogviz import units
 from ogviz.layout.bounds import figure_text
 from ogviz.layout.panels import text_width_points, wrap_to_width
 from ogviz.theme import INK, MUTED_INK
@@ -55,7 +56,7 @@ def _fit_within(fig: Figure, text: Text, body: str, size: float, limit_px: float
     rendered with a different one, or hold a token with no break in it. Measuring what was actually
     drawn is the only check that cannot be argued with.
     """
-    target_pt = limit_px / fig.dpi * 72.0
+    target_pt = units.to_points(limit_px, fig=fig)
     for _attempt in range(FIT_ATTEMPTS):
         if _rendered_width_px(fig, text) <= limit_px + OVERFLOW_TOLERANCE_PX:
             return True
@@ -86,7 +87,7 @@ def caption(
     width_px = fig.get_figwidth() * fig.dpi
     height_px = fig.get_figheight() * fig.dpi
     limit_px = width_px * (1.0 - 2.0 * margin)
-    available_pt = limit_px / fig.dpi * 72.0
+    available_pt = units.to_points(limit_px, fig=fig)
 
     if heading is not None:
         lines = wrap_to_width(heading, available_pt, heading_size)
@@ -102,7 +103,13 @@ def caption(
             linespacing=LINE_SPACING,
         )
         _fit_within(fig, drawn, heading, heading_size, limit_px)
-        used = _rendered_width_px(fig, drawn) and float(drawn.get_window_extent().height)
+        # `_fit_within` may have re-wrapped, so the height has to be measured from a fresh render.
+        # This read `used = _rendered_width_px(...) and float(...height)`, using `and` to sequence a
+        # draw before a measurement — which quietly means "if the rendered WIDTH is 0.0, reserve the
+        # width instead of the height". It has never fired, because a drawn heading has a width; it
+        # is one empty string away from reserving nothing and putting the heading on the panels.
+        fig.canvas.draw()
+        used = float(drawn.get_window_extent().height)
         fig.subplots_adjust(top=min(0.97, 1.0 - (used + 0.022 * height_px) / height_px))
 
     if note is not None:

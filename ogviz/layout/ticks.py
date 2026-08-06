@@ -19,6 +19,7 @@ import math
 from typing import TYPE_CHECKING
 
 from ogviz.orientation import is_vertical, require_linear_value_axis, value_span
+from ogviz.require import require
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -32,10 +33,14 @@ INSET_FRACTION = 0.10  # keep ticks off the very ends, where a label collides wi
 
 def round_ticks(low: float, high: float, count: int) -> list[float]:
     """Exactly `count` round values inside [low, high], inset from both ends."""
-    assert count >= 2, "round_ticks needs at least two ticks"
-    assert high > low, (
+    require(
+        count >= 2,
+        "round_ticks needs at least two ticks",
+    )
+    require(
+        high > low,
         f"round_ticks got an empty range [{low}, {high}] and would return {count} identical "
-        "ticks, which matplotlib draws as one label."
+        "ticks, which matplotlib draws as one label.",
     )
     margin = (high - low) * INSET_FRACTION
     inner_low, inner_high = low + margin, high - margin
@@ -92,12 +97,22 @@ def format_value(
     # significant figures, and the third one there is a zero nobody measured.
     if strip_trailing_zeros is None:
         strip_trailing_zeros = chosen_here
+    # TWO rules about a zero, and conflating them is what hid the sign of a real measurement.
+    #
+    # A value that IS zero must not carry a minus. `-0.0` is a float artefact — it turns up at a
+    # zero tick and in a difference that cancelled — and a signed "-0.00" on an axis reads as a
+    # measurement. The sign goes; the decimals stay, so a row that stated a precision keeps it.
+    if scaled == 0.0:
+        text = format(0.0, f"{',' if thousands_separator else ''}.{decimals}f")
     if strip_trailing_zeros and "." in text:
-        text = text.rstrip("0").rstrip(".")
-    # Only the exact "-0", which is a float sign artefact at a zero tick. "-0.00" from -0.0014
-    # is a real small negative that the chosen decimals cannot show, and printing it as "0"
-    # would hide the sign.
-    return "0" if text == "-0" else typeset(text)
+        stripped = text.rstrip("0").rstrip(".")
+        # A value that merely ROUNDS to zero at the chosen decimals is a different thing, and
+        # stripping it flat is how its sign disappeared: -0.0014 at two decimals is "-0.00", which
+        # says "small and negative", and "-0" says nothing at all. Measured — before this,
+        # `format_value(-0.0014, decimals=2, strip_trailing_zeros=True)` returned "0".
+        if scaled == 0.0 or stripped not in ("-0", "0"):
+            text = stripped
+    return typeset(text)
 
 
 def auto_decimals(value: float) -> int:
@@ -115,13 +130,20 @@ def value_ticks(
     scale: float = 1.0,
     decimals: int | None = None,
     thousands_separator: bool = True,
-    strip_trailing_zeros: bool = True,
+    strip_trailing_zeros: bool | None = None,
     orientation: Orientation = "vertical",
 ) -> list[float]:
     """Place `count` round ticks on the value axis, labelled in the display unit.
 
     Call it after the limits are final — it reads them. Returns the tick positions in DATA units,
     so a caller can reuse them; the labels are what carry the scale.
+
+    `strip_trailing_zeros` defaults to `format_value`'s rule rather than to True, which is the fix
+    for a contradiction between the two: `format_value` documents that a decimal count the CALLER
+    stated is a statement of precision and must be kept, and this function then passed True
+    unconditionally and threw it away. Measured — `value_ticks(ax, count=4, decimals=2)` on a 0-3
+    axis wrote `0.6 1.2 1.8 2.4` where the caller had asked for `0.60 1.20 1.80 2.40`. The argument
+    was supported, documented, and overridden by its own caller.
     """
     require_linear_value_axis(ax, orientation, "value_ticks")
     low, high = value_span(ax, orientation)

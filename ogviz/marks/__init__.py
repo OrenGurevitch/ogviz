@@ -17,6 +17,7 @@ import matplotlib.patheffects as path_effects
 import numpy as np
 from scipy.stats import gaussian_kde
 
+from ogviz import units
 from ogviz.orientation import (
     is_vertical,
     place_many,
@@ -60,6 +61,13 @@ JITTER_FILL = 0.82  # fraction of the local half-width dots may occupy (<1 keeps
 CENTER_GAP = 0.06  # min x-gap dots keep from the centre marks where the violin is wide
 BOX_COLOR = "#6E6E6E"
 MEAN_HALF_WIDTH = 0.15
+# The widths of the central marks, named once. `iqr_box` DRAWS at these and `central_clearance`
+# reserves a lane against them, and they were two pairs of bare literals in two functions — which is
+# how the clearance came to reserve the IQR bar's width along the thin whisker.
+BOX_WIDTH = 5.5
+WHISKER_WIDTH = 1.5
+MEDIAN_SIZE = 7.5
+MEAN_LINEWIDTH = 3.2
 
 
 def violin(
@@ -142,9 +150,10 @@ def central_clearance(
     *,
     point_size: float = POINT_SIZE,
     mean_half_width: float = MEAN_HALF_WIDTH,
-    mean_linewidth: float = 3.2,
-    box_linewidth: float = 5.5,
-    median_size: float = 7.5,
+    mean_linewidth: float = MEAN_LINEWIDTH,
+    box_linewidth: float = BOX_WIDTH,
+    whisker_linewidth: float = WHISKER_WIDTH,
+    median_size: float = MEDIAN_SIZE,
     orientation: Orientation = "vertical",
 ) -> NDArray[np.float64]:
     """Per-point half-width, in data units, that a dot must keep clear of the central marks.
@@ -154,6 +163,13 @@ def central_clearance(
     own linewidth in y; the median dot only its own diameter. So the lane a dot has to respect
     depends on where the dot IS — which is why one `center_gap` could not do this, and why dots
     kept landing on the mean line, whose reach is more than twice that gap.
+
+    THE WHISKER CASE DID NOT WORK until 2026-08-06. The line that was supposed to narrow the lane
+    outside Q1-Q3 read `np.where(inside_the_box, box_linewidth / 2, lane)` where `lane` was already
+    `box_linewidth / 2` everywhere — both branches identical, so it did nothing at all and there was
+    no whisker width in the signature to do it with. Measured: a dot out in a tail reserved exactly
+    as much room as a dot against the IQR bar, 3.7x the ink it was actually avoiding, so every tail
+    was pushed needlessly wide of a shape the jitter is supposed to follow.
 
     Reads the axes transform, so the limits must be set before this is called.
     """
@@ -166,7 +182,7 @@ def central_clearance(
     q1, median, q3 = (float(x) for x in np.percentile(v, [25, 50, 75]))
     mean = float(np.mean(v))
 
-    lane = np.full(len(v), to_data_x * box_linewidth / 2.0)  # the whisker, everywhere
+    lane = np.full(len(v), to_data_x * whisker_linewidth / 2.0)  # the thin whisker, everywhere
     lane = np.where((v >= q1) & (v <= q3), to_data_x * box_linewidth / 2.0, lane)
     near_median = np.abs(v - median) <= (to_data_y * median_size / 2.0 + dot_radius_y)
     lane = np.where(near_median, to_data_x * median_size / 2.0, lane)
@@ -179,7 +195,7 @@ def _data_per_point(ax: Axes, orientation: Orientation) -> tuple[float, float]:
     """Data units per typographic point, on the (category, value) axes."""
     figure = ax.figure
     assert figure is not None, "the axes must belong to a figure"
-    px_per_point = figure.dpi / 72.0
+    px_per_point = units.px_per_point(figure)
     origin = ax.transData.transform((0.0, 0.0))
     unit = ax.transData.transform((1.0, 1.0))
     px_per_data_x = abs(unit[0] - origin[0]) or 1.0
@@ -251,9 +267,9 @@ def iqr_box(
     position: float,
     *,
     color: str = BOX_COLOR,
-    box_width: float = 5.5,
-    whisker_width: float = 1.5,
-    median_size: float = 7.5,
+    box_width: float = BOX_WIDTH,
+    whisker_width: float = WHISKER_WIDTH,
+    median_size: float = MEDIAN_SIZE,
     median_fill: str | None = None,
     orientation: Orientation = "vertical",
 ) -> None:
@@ -294,7 +310,7 @@ def mean_line(
     *,
     half_width: float = MEAN_HALF_WIDTH,
     color: str = INK,
-    linewidth: float = 3.2,
+    linewidth: float = MEAN_LINEWIDTH,
     halo: str | None = None,
     orientation: Orientation = "vertical",
 ) -> None:
@@ -374,19 +390,22 @@ def error_bars(
     middle = np.asarray(centre, dtype=float)
     lower = np.asarray(low, dtype=float)
     upper = np.asarray(high, dtype=float)
-    assert place.shape == middle.shape == lower.shape == upper.shape, (
-        f"positions {place.shape}, centre {middle.shape}, low {lower.shape}, high {upper.shape} "
-        "must all describe the same points"
-    )
+    if not place.shape == middle.shape == lower.shape == upper.shape:
+        raise AssertionError(
+            f"positions {place.shape}, centre {middle.shape}, low {lower.shape}, "
+            f"high {upper.shape} must all describe the same points"
+        )
     below = middle - lower
     above = upper - middle
     # A bound on the wrong side is a caller error, not something to draw politely: matplotlib takes
-    # a negative length without complaint and renders the cap inside the interval.
-    assert np.all(below >= 0.0) and np.all(above >= 0.0), (
-        "low must be at or below centre and high at or above it; got "
-        f"{np.count_nonzero(below < 0)} inverted lower and {np.count_nonzero(above < 0)} upper. "
-        "Passing lengths where bounds are wanted looks exactly like this."
-    )
+    # a negative length without complaint and renders the cap inside the interval. Raised rather
+    # than asserted so `python -O` cannot delete the refusal.
+    if not (np.all(below >= 0.0) and np.all(above >= 0.0)):
+        raise AssertionError(
+            "low must be at or below centre and high at or above it; got "
+            f"{np.count_nonzero(below < 0)} inverted lower and {np.count_nonzero(above < 0)} "
+            "upper. Passing lengths where bounds are wanted looks exactly like this."
+        )
     _draw_error_bars(
         ax,
         place,

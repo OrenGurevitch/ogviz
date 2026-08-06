@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+from ogviz.require import require
 from ogviz.theme import GRID, MUTED_INK, PANEL_FILL
 
 if TYPE_CHECKING:
@@ -36,9 +37,6 @@ def baseline(ax: Axes, *, axis: Literal["x", "y"] = "x") -> None:
     near, far = ("bottom", "left") if axis == "x" else ("left", "bottom")
     ax.spines[near].set(linewidth=1.2, color=MUTED_INK)
     ax.spines[far].set(linewidth=1.0, color=GRID)
-
-
-TITLE_CLEARANCE = 1.35  # an axes title needs its own height plus the pad under it
 
 
 def zero_baseline(ax: Axes) -> None:
@@ -96,12 +94,13 @@ def label_rows(
     """
     drawn: list[Text] = []
     for index, labels in enumerate(rows):
-        assert len(labels) in (1, len(positions)), (
-            f"row {index} has {len(labels)} labels for {len(positions)} positions"
+        require(
+            len(labels) in (1, len(positions)),
+            f"row {index} has {len(labels)} labels for {len(positions)} positions",
         )
         places = [sum(positions) / len(positions)] if len(labels) == 1 else list(positions)
         row_color = None if colors is None else colors[index]
-        for place, label in zip(places, labels, strict=True):
+        for column, (place, label) in enumerate(zip(places, labels, strict=True)):
             drawn.append(
                 ax.text(
                     place,
@@ -112,14 +111,20 @@ def label_rows(
                     va="top",
                     fontsize=None if sizes is None else sizes[index],
                     fontweight="normal" if weights is None else weights[index],
-                    color=_row_color(row_color, places, place),
+                    color=_row_color(row_color, column),
                 )
             )
     return drawn
 
 
-def _row_color(row_color, places: list[float], place: float) -> str | None:
-    """One colour for the whole row, or one per position."""
+def _row_color(row_color, column: int) -> str | None:
+    """One colour for the whole row, or one per position.
+
+    By the label's INDEX, not by looking its position up in the list. `places.index(place)` returns
+    the FIRST match, so two categories sharing a position — which `bar_panel`'s `positions=` exists
+    to allow, and which is exactly how a figure sets a non-comparable arm apart — both took the
+    first one's colour, and the last row's colour was never used.
+    """
     if row_color is None or isinstance(row_color, str):
         return row_color
-    return row_color[places.index(place)]
+    return row_color[column]

@@ -27,16 +27,34 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+from ogviz.require import require
+
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
-    from matplotlib.figure import Figure
+    from matplotlib.figure import Figure, SubFigure
 
+# A SubFigure carries a dpi of its own (delegated to its parent), and `ax.figure` is typed as
+# either — so every caller that reaches for a dpi has this union in hand. Writing it out here is
+# what centralising the conversion turned up: four sites did `.dpi` inline, where the union was
+# accepted silently, and the question of whether a sub-figure is a figure for this purpose was
+# never asked. It is: the answer is its dpi, and that is all any of this needs.
 Unit = Literal["px", "pt", "in", "cm", "mm", "em"]
 POINTS_PER_INCH = 72.0
 CM_PER_INCH = 2.54
 
 
-def to_px(value: float, unit: Unit, *, fig: Figure, em: float | None = None) -> float:
+def px_per_point(fig: Figure | SubFigure) -> float:
+    """How many display pixels one typographic point is on this figure.
+
+    The FACTOR, not a converted value, because that is the shape most of the callers need: a
+    placement that measures ink in points and then works in pixels reads it once and multiplies
+    several times, and `to_px` per multiplication would re-read the dpi each time and read less
+    clearly at the site. Five modules had `dpi / 72.0` written out for exactly this.
+    """
+    return fig.dpi / POINTS_PER_INCH
+
+
+def to_px(value: float, unit: Unit, *, fig: Figure | SubFigure, em: float | None = None) -> float:
     """A length in any physical unit, as display pixels on this figure.
 
     `em` is the type size the value is relative to, and is required for `"em"` — an em with no font
@@ -46,15 +64,31 @@ def to_px(value: float, unit: Unit, *, fig: Figure, em: float | None = None) -> 
     if unit == "px":
         return value
     if unit == "pt":
-        return value / POINTS_PER_INCH * dpi
+        return value * px_per_point(fig)
     if unit == "in":
         return value * dpi
     if unit == "cm":
         return value / CM_PER_INCH * dpi
     if unit == "mm":
         return value / 10.0 / CM_PER_INCH * dpi
-    assert em is not None, "an em is relative to a type size; pass the size it is relative to"
-    return value * em / POINTS_PER_INCH * dpi
+    require(em is not None, "an em is relative to a type size; pass the size it is relative to")
+    return value * float(em or 0.0) * px_per_point(fig)
+
+
+def to_points(pixels: float, *, fig: Figure | SubFigure) -> float:
+    """Display pixels back to typographic points — the direction this module could not go.
+
+    It converted TO pixels and never back, so every caller that had a measured extent and needed a
+    type size wrote `px / fig.dpi * 72.0` itself: the caption's wrap target, the panel wrapper, the
+    bar panel's slot width. A module whose whole claim is that the conversion is written once has to
+    be able to answer it in both directions, or the half it cannot answer goes on being written out.
+    """
+    return pixels / px_per_point(fig)
+
+
+def inches_to_points(inches: float) -> float:
+    """Figure inches as points. The one conversion with no figure in it — 72 is the definition."""
+    return inches * POINTS_PER_INCH
 
 
 def value_to_px(ax: Axes, value: float, *, orientation: str = "vertical") -> float:

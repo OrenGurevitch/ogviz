@@ -64,11 +64,17 @@ def _complaints(fig: Figure, *, mode: Mode, min_gap: float, advise: bool) -> lis
     found = audit(fig, min_gap=min_gap)
     if advise:
         from ogviz.layout.density import dead_space
+        from ogviz.qc.typography import type_too_small
 
         # Advisory, and kept separate on purpose: a deliberately airy figure is a real choice and a
         # panel holding room for a bracket is not wasting it. These never decide whether a figure is
         # written — the shipped gallery carries 76 of them and is correct.
-        found = found + [f"(advisory) {note}" for note in dead_space(fig)]
+        #
+        # `type_too_small` is here rather than in `CHECKS` for the same reason and one of its own:
+        # the figure it was written for and the densest figure this package ships are 1.3x apart on
+        # the measurement, which is not a margin to fail a build on. See its own note.
+        notes = dead_space(fig) + type_too_small(fig)
+        found = found + [f"(advisory) {note}" for note in notes]
     return found
 
 
@@ -138,13 +144,21 @@ def guarded(**settings: object) -> Iterator[None]:
 
     For a process that renders some figures under the house rules and others under a project's own,
     and for tests, which must not leave a patched `savefig` behind them.
+
+    `_INSTALLED` is restored along with the method, and that is not bookkeeping. It is what
+    `is_guarded()` compares against, and leaving it pointing at the wrapper this block installed
+    made that function LIE: measured, after `guard()` and then a `with guarded(...)` block,
+    `is_guarded()` returned False while `savefig` was still patched. A project that checks before
+    saving was told the gate was off when it was on.
     """
-    was = Figure.savefig
+    global _INSTALLED
+    was, was_installed = Figure.savefig, _INSTALLED
     guard(**settings)  # type: ignore[arg-type]
     try:
         yield
     finally:
         Figure.savefig = was  # type: ignore[method-assign]
+        _INSTALLED = was_installed
 
 
 def guard_from_environment() -> bool:

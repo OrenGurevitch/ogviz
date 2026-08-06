@@ -110,21 +110,28 @@ from ogviz.qc import assert_clean, audit
 from ogviz.significance import bracket_stack, significance_row, spaced_stars, stars
 from ogviz.tags import Tag, mark, marked, value_of
 from ogviz.theme import (
+    BAD,
     CANVAS,
+    GLYPH_FAMILY,
+    GOOD,
     GRID,
     INK,
     MUTED_INK,
+    NO,
     PANEL_FILL,
     PAPER_WHITE,
     REFERENCE,
     SERIES,
     WARM_CANVAS,
+    YES,
+    family_for,
     glyphs_must_render,
     house_style,
     page_color,
     use_house_ink,
     use_house_style,
     use_house_type,
+    use_reproducible_svg,
 )
 
 try:  # a project pins this so an ogviz change cannot silently alter a frozen figure
@@ -133,15 +140,20 @@ except PackageNotFoundError:  # running from a source tree that was never instal
     __version__ = "0+unknown"
 
 __all__ = [
+    "BAD",
     "CANVAS",
+    "GLYPH_FAMILY",
+    "GOOD",
     "GRID",
     "INK",
     "MUTED_INK",
+    "NO",
     "PANEL_FILL",
     "PAPER_WHITE",
     "REFERENCE",
     "SERIES",
     "WARM_CANVAS",
+    "YES",
     "Z_ERROR",
     "Z_IQR",
     "Z_MEAN_LINE",
@@ -182,6 +194,7 @@ __all__ = [
     "effect_heatmap",
     "error_bars",
     "estimate_strip",
+    "family_for",
     "figure_margins",
     "fit_under_header",
     "glyphs_must_render",
@@ -241,6 +254,7 @@ __all__ = [
     "use_house_ink",
     "use_house_style",
     "use_house_type",
+    "use_reproducible_svg",
     "value_floor",
     "value_labels",
     "value_of",

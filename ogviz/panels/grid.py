@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout import drawn_value_extent
+from ogviz.require import require
 from ogviz.tags import marked
 
 if TYPE_CHECKING:
@@ -49,7 +50,10 @@ def share_value_limits(
     Returns the shared (low, high).
     """
     panels = list(axes)
-    assert panels, "share_value_limits needs at least one axes"
+    require(
+        panels,
+        "share_value_limits needs at least one axes",
+    )
     reader = (lambda ax: ax.get_ylim()) if orientation == "vertical" else (lambda ax: ax.get_xlim())
     spans = [reader(ax) for ax in panels]
     low = min(bounds[0] for bounds in spans)
@@ -86,7 +90,10 @@ def label_shared_scale_once(
     Returns the panels that kept their numbers.
     """
     panels = list(axes)
-    assert panels, "label_shared_scale_once needs at least one axes"
+    require(
+        panels,
+        "label_shared_scale_once needs at least one axes",
+    )
     upright = orientation == "vertical"
     kept: list[Axes] = []
     for ax in panels:
@@ -121,7 +128,10 @@ def align_ticks(axes: Iterable[Axes], *, orientation: Orientation = "vertical") 
     from ogviz.layout import ticks_over_data
 
     panels = list(axes)
-    assert panels, "align_ticks needs at least one axes"
+    require(
+        panels,
+        "align_ticks needs at least one axes",
+    )
     upright = orientation == "vertical"
     reaches = [extent[1] for extent in (drawn_value_extent(ax) for ax in panels) if extent]
     if not reaches:
@@ -215,21 +225,29 @@ def align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float | None:
     linear: on a log axis running 1 to 1000, the data-space midpoint of a gap from 1 to 100 lands
     108 px from the middle of a 308 px gap. Every panel here happens to be linear today, which is
     exactly why the error would have sat unnoticed until the first log axis.
+
+    That conversion is `ogviz.units.midpoint`, which exists to be the one place it is written, and
+    was written out by hand here instead — the module had no callers at all.
     """
-    rows = [text for ax in axes for text in ax.texts if marked(text, "mean_row")]
+    from ogviz.units import midpoint
+
+    # Materialised in the first line, because the body walks it three times — the rows, the extents,
+    # then the reference axes. Given a generator that silently placed nothing: the first walk found
+    # the rows and the second found an exhausted iterator, so the function returned None and moved
+    # not one label. `Iterable` in the signature is what invited it.
+    panels = list(axes)
+    rows = [text for ax in panels for text in ax.texts if marked(text, "mean_row")]
     if not rows:
         return None
-    extents = [drawn_value_extent(ax) for ax in axes]
-    measured = [extent[0] for extent in extents if extent is not None]
+    measured = [extent[0] for extent in map(drawn_value_extent, panels) if extent is not None]
     if not measured:
         return None
     lowest = min(measured)
-    reference = next(iter(axes))
-    reference.figure.canvas.draw()
-    to_pixels, to_data = reference.transData, reference.transData.inverted()
-    floor_px = float(to_pixels.transform((0.0, floor))[1])
-    lowest_px = float(to_pixels.transform((0.0, lowest))[1])
-    line = float(to_data.transform((0.0, (floor_px + lowest_px) / 2.0))[1])
+    reference = panels[0]
+    figure = reference.get_figure()
+    if figure is not None:
+        figure.canvas.draw()
+    line = midpoint(reference, floor, lowest)
     for text in rows:
         text.set_position((text.get_position()[0], line))
     return line

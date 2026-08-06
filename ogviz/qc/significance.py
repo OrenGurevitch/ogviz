@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz import units
 from ogviz.qc.reading import (
     GAP_TOLERANCE_PX,
     bracket_spans_px,
@@ -68,7 +69,7 @@ def significance_gaps(fig: Figure) -> list[str]:
     Measured from the glyph's INK, never its layout box.
     """
     fig.canvas.draw()
-    px_per_point = fig.dpi / 72.0
+    px_per_point = units.px_per_point(fig)
     complaints: list[str] = []
     for ax in fig.axes:
         tops = bracket_tops_px(ax)
@@ -76,7 +77,14 @@ def significance_gaps(fig: Figure) -> list[str]:
         for star in _stars(ax):
             axis = 1 if orientation_of(ax) == "vertical" else 0
             size = star.get_fontsize()
-            ink_low, _ = ink_extents_points(star.get_text(), float(size), axis=axis)
+            # In the weight it was DRAWN in, not the default. A lighter weight is a different glyph
+            # shape with a different ink bottom, so measuring bold against a star set otherwise
+            # offsets this whole check by the difference — on a rule whose job is to notice a
+            # difference of a pixel. `bracket_stack` takes `fontweight` as an argument, and
+            # `settle_bracket_labels` has read it back correctly since it was written; this did not.
+            ink_low, _ = ink_extents_points(
+                star.get_text(), float(size), axis=axis, weight=str(star.get_fontweight())
+            )
             baseline_px = float(ax.transData.transform(star.get_position())[axis])
             ink_bottom_px = baseline_px + ink_low * px_per_point
             below = [t for t in tops if t <= ink_bottom_px + GAP_TOLERANCE_PX]

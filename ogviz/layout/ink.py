@@ -40,25 +40,19 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout.raster import INK_TOLERANCE, frame_rgb, ink_of
+
 if TYPE_CHECKING:
     from matplotlib.artist import Artist
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
 
-INK_TOLERANCE = 10  # per channel, against the page colour
 MIN_SHARED_PX = 2  # one shared pixel is antialiasing; two is contact
 HIDDEN_FRACTION = 0.05  # below this share of its own footprint, an artist is covered
 
 
 def _render(fig: Figure) -> NDArray[np.bool_]:
-    fig.canvas.draw()
-    read_back = getattr(fig.canvas, "buffer_rgba", None)
-    assert read_back is not None, (
-        "ink comparison needs a raster canvas — run under Agg, which is what the builders do; "
-        f"this figure has a {type(fig.canvas).__name__}"
-    )
-    frame = np.asarray(read_back(), dtype=np.int16)[:, :, :3]
-    return np.any(np.abs(frame - frame[0, 0, :]) > INK_TOLERANCE, axis=2)
+    return ink_of(frame_rgb(fig))
 
 
 def artist_ink(fig: Figure, artist: Artist, *, others: list[Artist] | None = None):
@@ -151,21 +145,21 @@ def visible_contribution(fig: Figure, artist: Artist) -> NDArray[np.bool_]:
     report almost every artist as buried.
     """
     was_visible = artist.get_visible()
-    artist.set_visible(True)
-    with_it = _frame(fig)
-    artist.set_visible(False)
     try:
+        artist.set_visible(True)
+        with_it = _frame(fig)
+        artist.set_visible(False)
         without = _frame(fig)
     finally:
         artist.set_visible(was_visible)
+    # Two RENDERS compared with each other rather than a render compared with the page, which is why
+    # this cannot go through `ink_of` — but it takes the same tolerance from the same place, or an
+    # artist could contribute a pixel by one measure and not by the other.
     return np.any(np.abs(with_it - without) > INK_TOLERANCE, axis=2)
 
 
 def _frame(fig: Figure) -> NDArray[np.int16]:
-    fig.canvas.draw()
-    read_back = getattr(fig.canvas, "buffer_rgba", None)
-    assert read_back is not None, "reading pixels back needs a raster canvas — run under Agg"
-    return np.asarray(read_back(), dtype=np.int16)[:, :, :3]
+    return frame_rgb(fig)
 
 
 def hidden_artists(

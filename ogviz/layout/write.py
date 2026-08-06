@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from ogviz.layout.header import settle_header
 from ogviz.layout.panels import settle_caption
+from ogviz.require import require
 from ogviz.significance import settle_bracket_labels
 from ogviz.theme import glyphs_must_render
 
@@ -68,7 +69,10 @@ def save(
     chosen. Cropping and pinning are the two coherent choices; picking neither deliberately is how a
     set ends up inconsistent.
     """
-    assert formats, "save needs at least one format"
+    require(
+        formats,
+        "save needs at least one format",
+    )
     # Before the checks, not after: a caption row is reserved when the panels are created and the
     # caller has not plotted yet, so what grows into it can only be measured here.
     settle_header(fig)

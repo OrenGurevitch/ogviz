@@ -28,6 +28,7 @@ from ogviz.marks import (
 )
 from ogviz.orientation import violin_orientation_kwarg
 from ogviz.panels.grid import align_mean_rows
+from ogviz.require import require
 from ogviz.tags import mark
 from ogviz.theme import KNOCKOUT_PAD, VALUE_LABEL_SIZE, page_color
 
@@ -64,7 +65,10 @@ def half_violin(
     a rectangular clip path would cut the body off at the axes' pixel grid instead of at the
     position.
     """
-    assert side in (-1, 1), f"side must be -1 (left) or +1 (right), got {side}"
+    require(
+        side in (-1, 1),
+        f"side must be -1 (left) or +1 (right), got {side}",
+    )
     parts = ax.violinplot(
         [values],
         positions=[position],
@@ -136,15 +140,17 @@ def split_violins(
     have to be the same length as each other, since a paired measurement can drop samples on one
     side.
     """
-    assert len(left) == len(right) == len(categories), (
-        f"{len(categories)} categories, {len(left)} left and {len(right)} right series"
+    require(
+        len(left) == len(right) == len(categories),
+        f"{len(categories)} categories, {len(left)} left and {len(right)} right series",
     )
     for name, side in (("left", left), ("right", right)):
         for index, values in enumerate(side):
             missing = int(np.count_nonzero(~np.isfinite(np.asarray(values, dtype=float))))
-            assert not missing, (
+            require(
+                not missing,
                 f"{name} series for {categories[index]!r} has {missing} non-finite value(s); drop "
-                "or impute them in the project, where the choice is visible."
+                "or impute them in the project, where the choice is visible.",
             )
 
     if grid:

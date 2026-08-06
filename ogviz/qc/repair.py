@@ -27,20 +27,27 @@ from typing import TYPE_CHECKING
 
 from ogviz.layout.collision import (
     clear_position,
-    hits_data,
+    labels_crossing_a_rule,
+    labels_on_the_marks,
     quoted,
     text_box,
-    text_over_data,
 )
 from ogviz.tags import marked
+from ogviz.theme import KNOCKOUT_PAD
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
-KNOCKOUT_PAD = 0.18  # in font-size units, which is what matplotlib's boxstyle pad means
-
 
 def _page_color(fig: Figure) -> str:
+    """This FIGURE's page colour, which is what a knockout painted on it has to match.
+
+    `theme.page_color()` answers the same question from rcParams, and the two disagree for a figure
+    whose facecolor was set per-figure — which is a real case, since `use_house_style(PAPER_WHITE)`
+    and a warm default can both be in one process. A knockout is paint going onto THIS canvas, so
+    it takes the canvas's own colour; the rcParams answer is right for a mark being drawn under the
+    style currently in force, and that is why both exist.
+    """
     from matplotlib.colors import to_hex
 
     return to_hex(fig.get_facecolor())
@@ -55,27 +62,17 @@ def move_labels_off_the_marks(fig: Figure) -> list[str]:
     of its labels is eligible, which is the right default — nothing else knows they were meant to
     be where they are.
     """
-    fig.canvas.draw()
     moved: list[str] = []
-    for ax in fig.axes:
-        for text in ax.texts:
-            content = text.get_text().strip()
-            if not content or not text.get_visible() or marked(text, "anchored"):
-                continue
-            if not hits_data(ax, text_box(text)):
-                continue
-            offset = clear_position(ax, text_box(text))
-            if offset is None or offset == (0.0, 0.0):
-                moved.append(
-                    f"{quoted(content)!r} sits on the marks and nowhere in the panel is free"
-                )
-                continue
-            start = ax.transData.transform(text.get_position())
-            shifted = ax.transData.inverted().transform(
-                (start[0] + offset[0], start[1] + offset[1])
-            )
-            text.set_position((float(shifted[0]), float(shifted[1])))
-            moved.append(f"moved {quoted(content)!r} clear of the marks")
+    for ax, text, _struck in labels_on_the_marks(fig):
+        content = text.get_text().strip()
+        offset = clear_position(ax, text_box(text))
+        if offset is None or offset == (0.0, 0.0):
+            moved.append(f"{quoted(content)!r} sits on the marks and nowhere in the panel is free")
+            continue
+        start = ax.transData.transform(text.get_position())
+        shifted = ax.transData.inverted().transform((start[0] + offset[0], start[1] + offset[1]))
+        text.set_position((float(shifted[0]), float(shifted[1])))
+        moved.append(f"moved {quoted(content)!r} clear of the marks")
     return moved
 
 
@@ -83,29 +80,27 @@ def knock_out_labels_over_rules(fig: Figure) -> list[str]:
     """Put an opaque box behind any label crossing a gridline, so the rule stops running through it.
 
     The right fix for a gridline and the wrong one for data: a knockout over the marks punches a
-    hole in the finding. `text_over_data` separates the two cases, and only the gridline one is
-    repaired here.
+    hole in the finding. `labels_crossing_a_rule` separates the two cases, and only the gridline one
+    is repaired here.
+
+    It works from the ARTISTS that check found. It used to re-derive them by splitting the complaint
+    STRING on apostrophes, which silently repaired nothing whenever a label contained one — `repr`
+    quotes such a string with double quotes, so the split returned a fragment that matched no label
+    on the figure. A repair that declines without saying so is worse than one that refuses out loud.
     """
-    fig.canvas.draw()
     changed: list[str] = []
-    wanted = {
-        complaint.split("'")[1] for complaint in text_over_data(fig) if "knock it out" in complaint
-    }
-    if not wanted:
-        return changed
-    for ax in fig.axes:
-        for text in ax.texts:
-            if quoted(text.get_text()) not in wanted or text.get_bbox_patch() is not None:
-                continue
-            text.set_bbox(
-                {
-                    "facecolor": _page_color(fig),
-                    "edgecolor": "none",
-                    "pad": KNOCKOUT_PAD,
-                    "boxstyle": "square",
-                }
-            )
-            changed.append(f"knocked out the rule behind {quoted(text.get_text())!r}")
+    for _ax, text in labels_crossing_a_rule(fig):
+        if text.get_bbox_patch() is not None:
+            continue
+        text.set_bbox(
+            {
+                "facecolor": _page_color(fig),
+                "edgecolor": "none",
+                "pad": KNOCKOUT_PAD,
+                "boxstyle": "square",
+            }
+        )
+        changed.append(f"knocked out the rule behind {quoted(text.get_text())!r}")
     return changed
 
 

@@ -99,6 +99,7 @@ def buried_baselines(fig: Figure) -> list[str]:
     for ax in fig.axes:
         if not ax.axison:
             continue  # `ax.axis("off")` leaves the spine objects visible but draws none of them
+        upright = orientation_of(ax) == "vertical"
         for side, spine in ax.spines.items():
             if not spine.get_visible():
                 continue
@@ -133,7 +134,12 @@ def buried_baselines(fig: Figure) -> list[str]:
                 and patch.get_window_extent().overlaps(line_box)
             ]
             if over:
-                value = float(np.asarray(line.get_ydata(), dtype=float)[0])
+                # Along the VALUE axis, which is x on a horizontal panel. Read from y regardless,
+                # the complaint named the category coordinate: measured, a threshold at 2.5 under
+                # the bars of a horizontal panel was reported as "the reference line at 0", sending
+                # a reader to look for a line that is not there.
+                along = line.get_ydata() if upright else line.get_xdata()
+                value = float(np.asarray(along, dtype=float)[0])
                 complaints.append(
                     f"the reference line at {value:g} is behind {len(over)} mark(s) — "
                     "a threshold has to stay readable across the panel"

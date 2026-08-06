@@ -27,8 +27,22 @@ if TYPE_CHECKING:
 Orientation = Literal["vertical", "horizontal"]
 
 
+ORIENTATIONS = ("vertical", "horizontal")
+
+
+def _check(orientation: Orientation) -> None:
+    """Refuse an orientation this package does not know.
+
+    Raised rather than asserted, as everywhere a CALLER's value is checked here: `python -O`
+    deletes an `assert`, and a misspelled orientation would then reach matplotlib as a keyword it
+    silently ignores, drawing the panel the other way round.
+    """
+    if orientation not in ORIENTATIONS:
+        raise AssertionError(f"unknown orientation {orientation!r}")
+
+
 def is_vertical(orientation: Orientation) -> bool:
-    assert orientation in ("vertical", "horizontal"), f"unknown orientation {orientation!r}"
+    _check(orientation)
     return orientation == "vertical"
 
 
@@ -45,7 +59,7 @@ def stamp_orientation(ax: Axes, orientation: Orientation) -> None:
     Inference is a fallback for a figure this package did not draw. Where the answer is known it is
     written down.
     """
-    assert orientation in ("vertical", "horizontal"), f"unknown orientation {orientation!r}"
+    _check(orientation)
     mark(ax, "orientation", orientation)
 
 
@@ -60,8 +74,13 @@ def place(orientation: Orientation, category: float, value: float) -> tuple[floa
 
 
 def place_many(orientation: Orientation, category, value) -> tuple:
-    """Vectorised `place`, for arrays."""
-    return (category, value) if is_vertical(orientation) else (value, category)
+    """`place` for arrays — the SAME operation, typed loosely enough to pass sequences through.
+
+    Nothing is vectorised, because there is nothing to vectorise: this swaps two references and
+    matplotlib does the rest. The two names exist only so the typed scalar call stays typed, and
+    the body is shared so they cannot come to disagree about which way round the pair goes.
+    """
+    return place(orientation, category, value)  # type: ignore[arg-type]
 
 
 def value_limits(ax: Axes, orientation: Orientation) -> Callable[..., object]:
@@ -124,7 +143,9 @@ def require_linear_value_axis(ax: Axes, orientation: Orientation, what: str) -> 
     axis wants 1/10/100/1000. Neither raised anything.
     """
     scale = value_scale(ax, orientation)
-    assert scale == "linear", (
-        f"{what} assumes a linear value axis and this one is {scale!r}. The data-to-pixel ratio "
-        "it needs does not exist on a non-linear scale, and the result would be silently wrong."
-    )
+    if scale != "linear":
+        raise AssertionError(
+            f"{what} assumes a linear value axis and this one is {scale!r}. The data-to-pixel "
+            "ratio it needs does not exist on a non-linear scale, and the result would be "
+            "silently wrong."
+        )

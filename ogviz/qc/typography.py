@@ -49,6 +49,57 @@ UNGROUPED = re.compile(r"(?<![\d,.])\d{4,}(?![\d,]*\.?\d*%)(?!\.\d)")
 YEARS = range(1800, 2200)
 
 
+# A figure whose smallest type would stack more than this many times up its short side is dense
+# enough to be worth a second look. MEASURED, not chosen: across the seventeen shipped examples the
+# densest is the comparison table, at 1.37% of its short side — about 73 lines stacked up the page.
+# The floor sits below that, so the gallery is silent, and a many-row table on a tall canvas — the
+# shape that gets reported as unreadable — falls under it.
+#
+# ADVISORY, and that is the finding rather than a hedge. The reported shape and the densest figure
+# here are about 1.3x apart on this measurement, which is not a separation a build should be failed
+# on. The same table is comfortable transposed to a handful of rows and cramped at twenty, with no
+# change of type size at all, so what the number really tracks is the ASPECT RATIO. A gate needs a
+# rule that is right; this is a rule that is worth reading.
+CRAMPED_SHARE = 0.012
+LINES_UP_THE_PAGE = "would stack {count:.0f} times up the figure's short side"
+
+
+def type_too_small(fig: Figure) -> list[str]:
+    """Text so small against its own figure that no zoom makes it comfortable. Advisory.
+
+    The gap `assert_clean` structurally cannot see: every check it runs is about COLLISION, and
+    cramped type collides with nothing. A table can pass the whole gate at every size and be
+    unreadable, which is what happened — the report was "hard to read", the cause was the aspect
+    ratio, and nothing in the package had a word to say about it.
+
+    Measured as a share of the figure's SHORT SIDE, which makes it a property of the figure alone.
+    Points are not: 12 pt is comfortable on a 5-inch panel and vanishes on a 20-inch canvas, because
+    what decides legibility is how far the figure is scaled when it is placed, and the figure cannot
+    know that. The ratio survives the scaling, so it can be asked here.
+    """
+    fig.canvas.draw()
+    short = min(float(fig.bbox.width), float(fig.bbox.height))
+    if short <= 0:
+        return []
+    smallest: tuple[float, str] | None = None
+    for text, _owner in figure_text(fig, ticks=True, legend=True):
+        height = float(text.get_window_extent().height)
+        if height <= 0:
+            continue
+        share = height / short
+        if smallest is None or share < smallest[0]:
+            smallest = (share, text.get_text())
+    if smallest is None or smallest[0] >= CRAMPED_SHARE:
+        return []
+    share, what = smallest
+    stacked = LINES_UP_THE_PAGE.format(count=1.0 / share)
+    return [
+        f"the smallest type on this figure ({quoted(what)!r}) {stacked} — it is the SHAPE of the "
+        "canvas rather than the point size that usually does this, so check the aspect ratio "
+        "before reaching for larger type"
+    ]
+
+
 def ungrouped_thousands(fig: Figure) -> list[str]:
     """Numbers of a thousand and up printed without a separator.
 

@@ -12,12 +12,18 @@ from typing import TYPE_CHECKING
 
 from ogviz.qc.reading import (
     bracket_tops_px,
+    orientation_of,
 )
 from ogviz.tags import marked
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+
+
+def _draws_anything(ax: Axes) -> bool:
+    """Whether this axes carries marks of any kind, whatever kind they are."""
+    return bool(ax.collections or ax.patches or ax.lines)
 
 
 def mean_rows_unaligned(fig: Figure) -> list[str]:
@@ -33,7 +39,15 @@ def mean_rows_unaligned(fig: Figure) -> list[str]:
     rows = [(ax, text) for ax in fig.axes for text in ax.texts if marked(text, "mean_row")]
     if len({id(ax) for ax, _text in rows}) < 2:
         return []
-    scales = {tuple(round(v, 9) for v in ax.get_ylim()) for ax, _text in rows}
+    # The VALUE axis, whichever screen axis that is. A row of printed means only exists on a
+    # vertical panel today, so reading `get_ylim` was right and looked like a fact about y.
+    scales = {
+        tuple(
+            round(v, 9)
+            for v in (ax.get_ylim() if orientation_of(ax) == "vertical" else ax.get_xlim())
+        )
+        for ax, _text in rows
+    }
     if len(scales) > 1:
         return []
     heights = {round(float(text.get_position()[1]), 6) for _ax, text in rows}
@@ -109,14 +123,22 @@ def panels_disagree_about_ticks(fig: Figure) -> list[str]:
 
     Only checked where the panels genuinely share a scale — panels on different scales are separate
     figures that happen to share a page.
+
+    It used to skip any axes with no `collections`, which is every panel that is not a violin or a
+    scatter: measured, two BAR panels on one 0-2.5 scale carrying three ticks and five produced no
+    complaint at all, which is the defect this exists for, on the panel type most likely to have it.
+    The filter was a leftover from the violin grid it was written against. What replaces it is a
+    question about the panel rather than about its artist types — does it draw anything at all.
     """
     scales: dict[tuple[float, float], set[tuple[float, ...]]] = {}
     for ax in fig.axes:
-        if not ax.axison or not ax.collections:
+        if not ax.axison or not _draws_anything(ax):
             continue
-        low, high = ax.get_ylim()
+        upright = orientation_of(ax) == "vertical"
+        low, high = ax.get_ylim() if upright else ax.get_xlim()
         key = (round(low, 9), round(high, 9))
-        ticks = tuple(round(float(t), 9) for t in ax.get_yticks() if low <= t <= high)
+        drawn = ax.get_yticks() if upright else ax.get_xticks()
+        ticks = tuple(round(float(t), 9) for t in drawn if low <= t <= high)
         scales.setdefault(key, set()).add(ticks)
     complaints = []
     for (low, high), sets in scales.items():

@@ -22,10 +22,13 @@ use two colours that converge if a marker or a dash tells them apart, and this c
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from matplotlib.colors import to_rgb
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 Deficiency = Literal["deuteranopia", "protanopia", "tritanopia"]
 
@@ -44,23 +47,67 @@ _COLLAPSE = {
     "deuteranopia": np.array([[1.0, 0.0, 0.0], [0.9513092, 0.0, 0.04866992], [0.0, 0.0, 1.0]]),
     "tritanopia": np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [-0.86744736, 1.86727089, 0.0]]),
 }
-CONFUSABLE_DISTANCE = 0.12  # in linear sRGB; below this two colours are hard to tell apart
+# In sRGB as written; below this two colours are hard to tell apart. Chosen from measurement, not
+# from taste, once `simulate` was corrected to work in light rather than in encoded values:
+#
+#   must be caught    matplotlib's own red/green   0.165    the textbook confusable pair
+#                     a traffic red/green          0.123
+#                     the violet/blue this palette 0.062    already fixed, and it must stay caught
+#                     dropped
+#   must not be       the tightest pair in SERIES  0.216    #14A97C against #9B3B8F
+#                     the tightest in the line wheel 0.216
+#
+# So anything in (0.165, 0.216] separates the two sets, and 0.18 sits in it with room either side.
+# The previous 0.12 was set against the ENCODED distances and let matplotlib's red/green through —
+# the open question of 2026-07-31, which measurement in the right space now answers.
+CONFUSABLE_DISTANCE = 0.18
+
+
+def _to_linear(channels: NDArray[np.float64]) -> NDArray[np.float64]:
+    """sRGB as written -> sRGB as light, undoing the transfer function.
+
+    The cone matrices below are a statement about LIGHT reaching the eye, and a hex colour is not
+    that: sRGB stores a gamma-encoded value, so `#808080` is about 22% of the light of `#FFFFFF`
+    rather than 50%. Feeding the encoded number straight into the matrices simulates a colour
+    nobody displayed, and the error is largest in the mid-tones, which is where a categorical
+    palette lives.
+
+    It went unnoticed for as long as it did because the output looks entirely plausible — the
+    simulation still collapses reds and greens onto one another, just by the wrong amount. Measured
+    on matplotlib's own red and green under deuteranopia: 0.145 apart encoded, 0.165 apart done
+    properly, a 14% error in a number a threshold is compared against.
+    """
+    return np.where(channels <= 0.04045, channels / 12.92, ((channels + 0.055) / 1.055) ** 2.4)
+
+
+def _to_srgb(channels: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Light -> sRGB as written. The inverse of `_to_linear`, so a simulation comes back comparable
+    with the hex colours it started from."""
+    clipped = np.clip(channels, 0.0, 1.0)
+    return np.where(clipped <= 0.0031308, clipped * 12.92, 1.055 * clipped ** (1 / 2.4) - 0.055)
 
 
 def simulate(color: str | tuple[float, float, float], deficiency: Deficiency) -> tuple[float, ...]:
-    """`color` as a dichromat with `deficiency` would distinguish it."""
-    assert deficiency in _COLLAPSE, f"unknown deficiency {deficiency!r}"
-    rgb = np.asarray(to_rgb(color), dtype=float)
+    """`color` as a dichromat with `deficiency` would distinguish it.
+
+    Returned in sRGB, the space it was given in, so the result can be handed to matplotlib or
+    compared with the original without a further conversion.
+    """
+    if deficiency not in _COLLAPSE:
+        raise AssertionError(f"unknown deficiency {deficiency!r}")
+    rgb = _to_linear(np.asarray(to_rgb(color), dtype=float))
     lms = _TO_LMS @ rgb
     seen = _FROM_LMS @ (_COLLAPSE[deficiency] @ lms)
-    return tuple(float(np.clip(channel, 0.0, 1.0)) for channel in seen)
+    return tuple(float(channel) for channel in _to_srgb(seen))
 
 
 def separation(first: str, second: str, deficiency: Deficiency | None = None) -> float:
     """How far apart two colours are, optionally as a dichromat sees them.
 
     Euclidean in sRGB, which is a crude perceptual metric and an honest one for a threshold: it
-    never claims two colours are further apart than they look, only sometimes closer.
+    never claims two colours are further apart than they look, only sometimes closer. Both ends are
+    measured in the SAME space — the simulation comes back in sRGB — so a distance means the same
+    thing whether or not a deficiency was asked for.
     """
     left = np.asarray(simulate(first, deficiency) if deficiency else to_rgb(first), dtype=float)
     right = np.asarray(simulate(second, deficiency) if deficiency else to_rgb(second), dtype=float)

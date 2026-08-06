@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout.collision import point_offsets
+from ogviz.tags import marked
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -70,6 +71,23 @@ def ticks_over_data(
         ax.set_xlim(*limits)
 
 
+def _is_furniture(artist) -> bool:
+    """Whether this artist is something drawn ABOUT the marks rather than a mark.
+
+    The distinction only started to matter when `drawn_value_extent` learned to read lines and
+    patches, and getting it wrong is silent in a way worth spelling out. A BRACKET is drawn in the
+    room held open above the data, so counting it makes "how far do the marks reach" answer "to the
+    top of the bracket stack" — which is what `ticks_in_the_headroom` subtracts to find the
+    headroom, so that check simply stops firing. Measured on a two-group panel with one comparison:
+    the extent came back at 3.961, the bracket's own crossbar to the digit, and the check went
+    quiet with nine ticks on the axis and two of them above every violin.
+
+    A reference level is the same kind of thing one step along: a threshold at 100% says nothing
+    about where the bars got to. A backdrop spans the panel by construction.
+    """
+    return any(marked(artist, tag) for tag in ("bracket", "reference", "backdrop"))
+
+
 def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
     """The lowest and highest value any MARK reaches, in data units, or None if nothing is drawn.
 
@@ -80,6 +98,13 @@ def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
     values of order 0.001 it puts the answer nowhere near the panel.
 
     So: offsets when a collection has them, path vertices when it does not.
+
+    BARS AND LINES COUNT TOO. This read `ax.collections` alone, which is every mark a violin panel
+    draws and none of the marks a bar or line panel draws — measured, a panel of bars plus a line
+    returned None. Three callers read that as "nothing is drawn here" and quietly did nothing:
+    `ticks_over_data`, so a bar panel kept its ticks in the room held open for brackets;
+    `align_mean_rows`; and `rows_outside_their_panel`. Right for the panels it was written against
+    and silently absent everywhere else, which is the worst way for a check to be wrong.
     """
     lows: list[float] = []
     highs: list[float] = []
@@ -94,6 +119,22 @@ def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
             if vertices.size:
                 lows.append(float(vertices[:, 1].min()))
                 highs.append(float(vertices[:, 1].max()))
+    for line in ax.lines:
+        if _is_furniture(line):
+            continue
+        values = np.asarray(line.get_ydata(), dtype=float)
+        values = values[np.isfinite(values)]
+        if values.size:
+            lows.append(float(values.min()))
+            highs.append(float(values.max()))
+    for patch in ax.patches:
+        if _is_furniture(patch):
+            continue
+        vertices = np.asarray(patch.get_path().transformed(patch.get_patch_transform()).vertices)
+        finite = vertices[np.isfinite(vertices[:, 1]), 1]
+        if finite.size:
+            lows.append(float(finite.min()))
+            highs.append(float(finite.max()))
     if not lows:
         return None
     return min(lows), max(highs)

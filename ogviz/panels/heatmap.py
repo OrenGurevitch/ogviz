@@ -28,6 +28,7 @@ from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgba
 from matplotlib.patches import Rectangle
 
 from ogviz.layout.ticks import typeset
+from ogviz.require import require
 from ogviz.tags import mark
 from ogviz.theme import INK, MUTED_INK, page_color
 
@@ -56,7 +57,15 @@ def diverging_map(colors: Sequence[str | None] = DIVERGING) -> LinearSegmentedCo
 
 
 def _luminance(color: tuple[float, float, float, float]) -> float:
-    """Relative luminance, so the cell decides what colour its own number is."""
+    """Relative luminance, so the cell decides what colour its own number is.
+
+    The WCAG coefficients applied to gamma-encoded channels rather than to linear ones, which is not
+    what relative luminance means — the formula looks like the standard one and is a cheaper
+    approximation of it. Kept deliberately: `DARK_FILL` was chosen by looking at cells rendered
+    through THIS function, so correcting the arithmetic without re-picking the threshold would flip
+    the ink on a band of mid-tone cells. It decides one thing, legibly, and the pair is calibrated.
+    `ogviz.color`, where the same shortcut was NOT deliberate, is corrected instead.
+    """
     red, green, blue, _alpha = color
     return 0.2126 * red + 0.7152 * green + 0.0722 * blue
 
@@ -88,19 +97,27 @@ def effect_heatmap(
     fall into groups.
     """
     grid = np.asarray(values, dtype=float)
-    assert grid.ndim == 2, f"effect_heatmap needs a 2-D matrix, got shape {grid.shape}"
-    assert grid.shape == (len(row_labels), len(column_labels)), (
-        f"matrix {grid.shape} against {len(row_labels)} rows and {len(column_labels)} columns"
+    require(
+        grid.ndim == 2,
+        f"effect_heatmap needs a 2-D matrix, got shape {grid.shape}",
     )
-    assert p_values is None or np.asarray(p_values).shape == grid.shape, (
-        f"p-values {np.asarray(p_values).shape} do not match the matrix {grid.shape}"
+    require(
+        grid.shape == (len(row_labels), len(column_labels)),
+        f"matrix {grid.shape} against {len(row_labels)} rows and {len(column_labels)} columns",
+    )
+    require(
+        p_values is None or np.asarray(p_values).shape == grid.shape,
+        f"p-values {np.asarray(p_values).shape} do not match the matrix {grid.shape}",
     )
 
     departures = np.abs(grid - neutral)
     if reach is None:
         widest = float(np.nanmax(departures)) if np.any(np.isfinite(departures)) else 1.0
         reach = widest if widest > 0.0 else 1.0
-    assert reach > 0.0, f"the scale must reach somewhere, got {reach}"
+    require(
+        reach > 0.0,
+        f"the scale must reach somewhere, got {reach}",
+    )
 
     colormap = diverging_map(colors)
     scale = Normalize(vmin=neutral - reach, vmax=neutral + reach)

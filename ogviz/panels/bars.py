@@ -21,6 +21,7 @@ import matplotlib.patheffects as path_effects
 import numpy as np
 from matplotlib.patches import FancyBboxPatch
 
+from ogviz import units
 from ogviz.layout.frame import hairline_grid
 from ogviz.layout.panels import text_width_points
 from ogviz.layout.ticks import typeset
@@ -38,6 +39,7 @@ from ogviz.orientation import (
     value_span,
 )
 from ogviz.panels.reference import reference_line, slide_label_clear
+from ogviz.require import require
 from ogviz.tags import mark
 from ogviz.theme import (
     INK,
@@ -121,10 +123,10 @@ Z_LABEL = 6
 # spine at zorder 2.5, under the bars, and the line then survives only in the gaps between them —
 # it reads as a broken axis. The axis is a boundary the bars stand on; it belongs on top of them.
 Z_BASELINE = Z_ERROR + 0.5
-# A threshold is drawn OVER the bars. It exists to be read against them, so burying it behind them
-# leaves it visible only in the gaps — the same defect as bars covering the category axis, and it
-# costs the reader the one comparison the line was added to make. Under the value labels, which
-# knock it out where they cross.
+# The z-order for a threshold — drawn over the bars it is read against, under the value labels that
+# knock it out where they cross — was described here for months after the constant itself moved to
+# `panels/reference.py` as `Z_REFERENCE`. A comment explaining a line that is not there is worse
+# than no comment: it is confidently about the wrong thing, and a reader trusts it.
 
 
 @dataclass(frozen=True)
@@ -143,15 +145,30 @@ def _error_pairs(values: NDArray[np.float64], errors: ArrayLike | None) -> NDArr
         return np.zeros((2, len(values)), dtype=float)
     array = np.asarray(errors, dtype=float)
     if array.ndim == 1:
-        assert len(array) == len(values), f"errors {len(array)} != values {len(values)}"
+        require(
+            len(array) == len(values),
+            f"errors {len(array)} != values {len(values)}",
+        )
         return np.vstack([array, array])
-    assert array.shape == (2, len(values)), f"asymmetric errors must be (2, {len(values)})"
+    require(
+        array.shape == (2, len(values)),
+        f"asymmetric errors must be (2, {len(values)})",
+    )
     return array
 
 
 def _auto_decimals(values: NDArray[np.float64]) -> int:
+    """`layout.ticks.auto_decimals`, asked about a whole SERIES rather than one value.
+
+    The clamp used to be written out a second time here, three lines that had to stay in agreement
+    with the ones in `ticks` by nobody's arrangement. What is genuinely different is only which
+    number to ask about: a row of labels takes its precision from the largest value in the row, so
+    they read as one measurement rather than as several.
+    """
+    from ogviz.layout.ticks import auto_decimals
+
     largest = max((abs(v) for v in values if math.isfinite(v) and v != 0), default=1.0)
-    return int(min(max(2 - math.floor(math.log10(largest)), 0), 6))
+    return auto_decimals(largest)
 
 
 def _format_of(values: NDArray[np.float64], given: str | None) -> str:
@@ -187,8 +204,9 @@ def _knockout_style(halo: object) -> str:
     """
     if isinstance(halo, bool):
         return "box" if halo else "none"
-    assert halo in ("box", "stroke", "none"), f"unknown knockout {halo!r}"
-    return halo
+    if halo not in ("box", "stroke", "none"):  # written out: this narrows `halo` to a str
+        raise AssertionError(f"unknown knockout {halo!r}")
+    return str(halo)
 
 
 def value_labels(
@@ -279,10 +297,12 @@ def value_labels(
 
 def _slot_points(ax: Axes, each: float, orientation: Orientation) -> float:
     """How wide one bar's slot is, in points — the room a label printed on it may occupy."""
+    figure = ax.get_figure()
+    assert figure is not None, "the axes must belong to a figure"
     along = ax.transData.transform((each, 0))[0] - ax.transData.transform((0, 0))[0]
     if not is_vertical(orientation):
         along = ax.transData.transform((0, each))[1] - ax.transData.transform((0, 0))[1]
-    return abs(float(along)) / ax.figure.dpi * 72.0
+    return units.to_points(abs(float(along)), fig=figure)
 
 
 def bar_panel(
@@ -315,8 +335,14 @@ def bar_panel(
     `orientation="horizontal"` draws the same panel with the categories down the left, which is
     what a long category name needs — the alternative is rotated tick labels that collide.
     """
-    assert series, "bar_panel needs at least one series"
-    assert len(categories), "bar_panel needs at least one category"
+    require(
+        series,
+        "bar_panel needs at least one series",
+    )
+    require(
+        len(categories),
+        "bar_panel needs at least one category",
+    )
     stamp_orientation(ax, orientation)
     upright = is_vertical(orientation)
     count = len(series)
@@ -325,26 +351,30 @@ def bar_panel(
         if positions is None
         else np.asarray(positions, dtype=float)
     )
-    assert centres.shape == (len(categories),), (
-        f"{centres.size} positions for {len(categories)} categories"
+    require(
+        centres.shape == (len(categories),),
+        f"{centres.size} positions for {len(categories)} categories",
     )
     each = width / count
 
     for index, entry in enumerate(series):
         values = np.asarray(entry.values, dtype=float)
-        assert len(values) == len(categories), (
-            f"series {entry.label!r} has {len(values)} values for {len(categories)} categories"
+        require(
+            len(values) == len(categories),
+            f"series {entry.label!r} has {len(values)} values for {len(categories)} categories",
         )
         if not isinstance(entry.color, str):
-            assert len(entry.color) == len(values), (
+            require(
+                len(entry.color) == len(values),
                 f"series {entry.label!r} has {len(entry.color)} colours for {len(values)} bars; "
-                "pass one colour, or one per bar."
+                "pass one colour, or one per bar.",
             )
         missing = int(np.count_nonzero(~np.isfinite(values)))
-        assert not missing, (
+        require(
+            not missing,
             f"series {entry.label!r} has {missing} non-finite value(s) of {len(values)}. "
             "A non-finite bar draws nothing and leaves a gap that reads as a zero — drop or "
-            "impute them in the project, where the choice is visible."
+            "impute them in the project, where the choice is visible.",
         )
         offset = (index - (count - 1) / 2) * each
         bars_at = centres + offset
@@ -377,14 +407,24 @@ def bar_panel(
         ax.margins(y=CATEGORY_MARGIN)
     else:
         ax.margins(x=CATEGORY_MARGIN)
+    # One category or a RANGE of them. A range is how a figure says "these belong together and that
+    # one does not" — a set of comparable arms beside a reference that is not comparable — and a
+    # single index could not say it, so a consumer drew its own `axvspan` instead.
+    #
+    # Worked out ONCE, into the set of shaded indices, because two places need it and the second one
+    # got it wrong: the value labels' knockout compared `position == highlight`, an int against
+    # something the signature allows to be a tuple, so for a RANGE the comparison was always false
+    # and every label over the shading knocked out to the page instead. Measured on `highlight=(0,
+    # 1)`: three labels, three page-coloured boxes, none of them the shade — a white patch punched
+    # in the shading at every bar, which is the exact defect the knockout colours exist to prevent.
+    shaded: set[int] = set()
     if highlight is not None:
-        # One category or a RANGE of them. A range is how a figure says "these belong together and
-        # that one does not" — a set of comparable arms beside a reference that is not comparable —
-        # and a single index could not say it, so a consumer drew its own `axvspan` instead.
         first, last = (highlight, highlight) if isinstance(highlight, int) else highlight
-        assert 0 <= first <= last < len(categories), (
-            f"highlight {highlight} is not a category index or range of them"
+        require(
+            0 <= first <= last < len(categories),
+            f"highlight {highlight} is not a category index or range of them",
         )
+        shaded = set(range(first, last + 1))
         shade = ax.axvspan if upright else ax.axhspan
         column = shade(centres[first] - 0.46, centres[last] + 0.46, color=HIGHLIGHT_FILL, zorder=0)
         mark(column, "backdrop")
@@ -416,9 +456,10 @@ def bar_panel(
                 slot_points=_slot_points(ax, each, orientation),
                 emphasis=emphasis,
                 # A label sitting over the highlighted column must knock out to the SHADE, not to
-                # the page, or its box reads as a white patch punched in the shading.
+                # the page, or its box reads as a white patch punched in the shading. Read from the
+                # set worked out above, so a RANGE is covered as well as a single index.
                 knockout_colors=[
-                    HIGHLIGHT_FILL if position == highlight else page_color()
+                    HIGHLIGHT_FILL if position in shaded else page_color()
                     for position in range(len(categories))
                 ],
             )

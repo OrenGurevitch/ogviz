@@ -41,6 +41,7 @@ from matplotlib.patches import Patch
 from matplotlib.text import Text as _Text
 from matplotlib.transforms import Bbox
 
+from ogviz import units
 from ogviz.tags import marked
 
 if TYPE_CHECKING:
@@ -59,16 +60,11 @@ if TYPE_CHECKING:
 SEARCH_RINGS = 40  # rings from the anchor to the far corner
 SEARCH_DIRECTIONS = 24  # candidates per ring, one every 15 degrees
 PADDING_PX = 3.0  # breathing room between a label's ink and whatever it is avoiding
-# Set on labels the library places AGAINST a particular mark on purpose — a significance star over
-# its bracket, a value label past its whisker, a strip star beside its row. Each has a dedicated
-# check measuring that relationship far more precisely than "do these two boxes touch", so the
-# general "is this label on the data" test must leave them alone or it would drag them off the
-# thing they label. Only for deliberate placement: a label a caller drops onto a curve has no
-# such claim, and is exactly what this module exists to catch.
+# The paragraph that used to sit here described a constant that no longer exists — the flag for a
+# label placed against a mark on purpose, which became the `"anchored"` tag in `ogviz.tags` and is
+# documented there, where the vocabulary is. Left behind, it ran straight into the comment below
+# with no blank line between them, so the two read as one paragraph about the wrong constant.
 #
-# It excuses a label from the DATA check, and from nothing else. Reading it as a blanket pardon is
-# what let "league average" sit on a bar unreported: the label is fixed to its line vertically and
-# free to slide along it, so it was exempt from the one axis it was actually free on.
 # How much of a label a complaint quotes. ONE number, because a report groups complaints by the
 # string they name: two checks quoting the same label at 32 and 40 characters describe it as two
 # different labels, and the reader is shown one problem twice.
@@ -158,7 +154,7 @@ def _marked(line: Line2D) -> bool:
 
 def _px_per_point(artist: Artist) -> float:
     figure = artist.get_figure()
-    return (figure.dpi / 72.0) if figure is not None else 1.0
+    return units.px_per_point(figure) if figure is not None else 1.0
 
 
 class MarkCloud(NamedTuple):
@@ -311,13 +307,38 @@ def _padded(box: Bbox, padding: float) -> Bbox:
     return Bbox.from_extents(box.x0 - padding, box.y0 - padding, box.x1 + padding, box.y1 + padding)
 
 
-def hits_data(ax: Axes, box: Bbox, *, padding: float = PADDING_PX) -> int:
-    """How many marks enter `box`, which is in display pixels."""
+class PanelMarks(NamedTuple):
+    """Everything in one axes that a label has to avoid, resolved to display space once.
+
+    A snapshot, and it has to be treated as one: it is valid until something is drawn, moved, or
+    the axes rescaled. `clear_position` takes it because the geometry cannot change during a
+    search — the search only moves a rectangle around.
+    """
+
+    paths: list[tuple[Path, bool]]
+    clouds: list[MarkCloud]
+
+    @classmethod
+    def of(cls, ax: Axes) -> PanelMarks:
+        return cls(data_paths(ax), data_points(ax))
+
+
+def hits_data(
+    ax: Axes, box: Bbox, *, padding: float = PADDING_PX, marks: PanelMarks | None = None
+) -> int:
+    """How many marks enter `box`, which is in display pixels.
+
+    `marks` is the panel resolved once. Without it every call rebuilds the whole panel — walking
+    each artist, transforming each path, re-deriving each marker footprint — and `clear_position`
+    makes up to `rings x directions` of those, which is 960 at the defaults. Measured on six
+    300-point scatters and six lines: 1.4 ms a call, so 0.31 s for one successful search and 1.4 s
+    for a failed one, per label, and `repair` runs it on every label in the figure. The geometry is
+    identical at every candidate; only the rectangle moves.
+    """
     target = _padded(box, padding)
-    struck = sum(
-        1 for path, filled in data_paths(ax) if path.intersects_bbox(target, filled=filled)
-    )
-    return struck + sum(_marks_in(cloud, target) for cloud in data_points(ax))
+    panel = marks if marks is not None else PanelMarks.of(ax)
+    struck = sum(1 for path, filled in panel.paths if path.intersects_bbox(target, filled=filled))
+    return struck + sum(_marks_in(cloud, target) for cloud in panel.clouds)
 
 
 def hits_decoration(ax: Axes, box: Bbox, *, padding: float = 0.0) -> int:
@@ -366,14 +387,25 @@ def _boxed(text: Text) -> bool:
 
 
 def _haloed(text: Text) -> bool:
-    """A stroke drawn behind the glyphs in the page colour, wide enough to cover a hairline."""
+    """A stroke drawn behind the glyphs in the page colour, wide enough to cover a hairline.
+
+    `withStroke` keeps its settings in a private `_gc` dict and offers no accessor, so this reads
+    one. That is a dependency on a matplotlib internal, and the failure mode if it is renamed is the
+    quiet one: `getattr(..., {})` would find nothing, every haloed label would start being reported
+    as crossing a gridline with nothing behind it, and the message would be about the label rather
+    than about this function. `test_a_halo_knocks_a_gridline_out_as_well_as_a_box_does` in
+    `qc/test.py` is what turns that into a failing test instead — if it ever breaks on a matplotlib
+    upgrade, this private read is the first place to look.
+    """
     from ogviz.theme import page_color
 
     page = to_rgba(page_color())
     for effect in text.get_path_effects():
-        foreground = getattr(effect, "_gc", {}).get("foreground")
-        width = getattr(effect, "_gc", {}).get("linewidth", 0.0)
-        if foreground is None or not width:
+        settings = getattr(effect, "_gc", None)
+        if not isinstance(settings, dict):
+            continue
+        foreground = settings.get("foreground")
+        if foreground is None or not settings.get("linewidth", 0.0):
             continue
         red, green, blue, alpha = to_rgba(foreground)
         if alpha >= 1.0 and (red, green, blue) == page[:3]:
@@ -392,11 +424,15 @@ def clear_position(
     """A display-space offset that lifts `box` clear of the marks, or None if there is none.
 
     Searched outward in rings so the label ends up as near its anchor as the data allows: the first
-    ring is a few pixels away in sixteen directions, and each ring after that is one step further.
+    ring is one step out in `directions` directions, and each ring after that is one step further.
     Candidates that leave the axes are rejected — a label outside the panel it belongs to is not an
     improvement on one over a curve.
+
+    The panel is resolved ONCE, before the search: nothing is drawn or moved while it runs, so the
+    marks cannot change between candidates. See `hits_data` for what rebuilding them each time cost.
     """
-    if not hits_data(ax, box, padding=padding):
+    marks = PanelMarks.of(ax)
+    if not hits_data(ax, box, padding=padding, marks=marks):
         return (0.0, 0.0)
     inside = ax.get_window_extent()
     reach = float(np.hypot(inside.width, inside.height))
@@ -416,7 +452,7 @@ def clear_position(
                 continue
             if not inside.containsy(moved.y0) or not inside.containsy(moved.y1):
                 continue
-            if not hits_data(ax, moved, padding=padding):
+            if not hits_data(ax, moved, padding=padding, marks=marks):
                 return offset
     return None
 
@@ -435,6 +471,51 @@ def _spans_the_panel(ax: Axes, box: Bbox) -> bool:
     return False
 
 
+def labels_on_the_marks(fig: Figure) -> list[tuple[Axes, Text, int]]:
+    """Every free-standing label sitting on the data, with how many marks it covers.
+
+    The ARTISTS, not sentences about them, because both the complaint and the repair need this and
+    only one of them can be written from prose. `repair` used to recover the label from the
+    complaint string with `complaint.split("'")[1]`, which fails the moment a label contains an
+    apostrophe: `repr` then quotes it with double quotes, the split returns a fragment matching
+    nothing, and the repair silently declines — no fix and no word about it. Measured with the label
+    `won't fit`, which the gate reported and `repair` returned nothing for.
+    """
+    fig.canvas.draw()
+    found: list[tuple[Axes, Text, int]] = []
+    for ax in fig.axes:
+        marks = PanelMarks.of(ax)  # once per panel, not once per label
+        for text in ax.texts:
+            if not text.get_text().strip() or not text.get_visible():
+                continue
+            if marked(text, "anchored"):
+                continue
+            struck = hits_data(ax, text_box(text), marks=marks)
+            if struck:
+                found.append((ax, text, struck))
+    return found
+
+
+def labels_crossing_a_rule(fig: Figure) -> list[tuple[Axes, Text]]:
+    """Every label crossing a gridline with nothing painted behind it. Artists, for the same reason.
+
+    A label ON the marks is excluded: the two want opposite fixes, and a knockout over the data
+    punches a hole in the finding rather than fixing anything.
+    """
+    fig.canvas.draw()
+    on_the_marks = {id(text) for _ax, text, _struck in labels_on_the_marks(fig)}
+    found: list[tuple[Axes, Text]] = []
+    for ax in fig.axes:
+        for text in ax.texts:
+            if not text.get_text().strip() or not text.get_visible():
+                continue
+            if marked(text, "anchored") or id(text) in on_the_marks:
+                continue
+            if hits_decoration(ax, text_box(text)) and not _knocked_out(text):
+                found.append((ax, text))
+    return found
+
+
 def text_over_data(fig: Figure) -> list[str]:
     """Labels sitting on the marks, and labels crossing a gridline with nothing behind them.
 
@@ -443,33 +524,25 @@ def text_over_data(fig: Figure) -> list[str]:
     move, because a knockout box there would punch a hole in the finding. A label merely crossing a
     GRIDLINE can stay where it is and knock the line out behind itself.
     """
-    fig.canvas.draw()
     complaints: list[str] = []
-    for ax in fig.axes:
-        for text in ax.texts:
-            content = text.get_text().strip()
-            if not content or not text.get_visible():
-                continue
-            if marked(text, "anchored"):
-                continue
-            box = text_box(text)
-            struck = hits_data(ax, box)
-            if struck:
-                # The remedy depends on WHAT it sits on, and a consumer's first move is a knockout
-                # box, which does nothing here: a box hides the artist, and this check is about a
-                # label standing on the data rather than about what shows through it. When the
-                # thing underneath spans the panel it is almost always a shaded region the label
-                # NAMES, and the fix is to say so.
-                remedy = (
-                    'tag the shaded region with `mark(span, "backdrop")` if the label names it'
-                    if _spans_the_panel(ax, box)
-                    else "it has to move"
-                )
-                complaints.append(f"{quoted(content)!r} sits on {struck} mark(s) — {remedy}")
-            elif hits_decoration(ax, box) and not _knocked_out(text):
-                complaints.append(
-                    f"{quoted(content)!r} crosses a gridline with nothing behind it — knock it out"
-                )
+    for ax, text, struck in labels_on_the_marks(fig):
+        # The remedy depends on WHAT it sits on, and a consumer's first move is a knockout box,
+        # which does nothing here: a box hides the artist, and this check is about a label standing
+        # on the data rather than about what shows through it. When the thing underneath spans the
+        # panel it is almost always a shaded region the label NAMES, and the fix is to say so.
+        remedy = (
+            'tag the shaded region with `mark(span, "backdrop")` if the label names it'
+            if _spans_the_panel(ax, text_box(text))
+            else "it has to move"
+        )
+        complaints.append(
+            f"{quoted(text.get_text().strip())!r} sits on {struck} mark(s) — {remedy}"
+        )
+    complaints += [
+        f"{quoted(text.get_text().strip())!r} crosses a gridline with nothing behind it — "
+        "knock it out"
+        for _ax, text in labels_crossing_a_rule(fig)
+    ]
     return complaints
 
 

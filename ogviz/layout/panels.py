@@ -37,6 +37,8 @@ import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 from matplotlib.textpath import TextPath
 
+from ogviz import units
+from ogviz.require import require
 from ogviz.tags import mark, marked, value_of
 from ogviz.theme import MUTED_INK
 
@@ -105,7 +107,7 @@ CELL_ASPECT = 1.32  # width : height of one cell, the shape a square-ish panel r
 def rows_that_fit(
     ncol: int,
     *,
-    width: float,
+    width: float | None = None,
     cell_aspect: float = CELL_ASPECT,
     column_width: float = DEFAULT_COLUMN_WIDTH,
     page_height: float = DEFAULT_PAGE_HEIGHT,
@@ -113,10 +115,20 @@ def rows_that_fit(
     """How many rows still fit the page once the figure is placed at `column_width`.
 
     A figure wider than the column it is dropped into is scaled down to fit, and its height goes
-    down with it — so what limits the row count is the page height AFTER that scaling:
+    down with it — so what limits the row count is the page height AFTER that scaling. Written out,
+    with `w` the figure's own width:
 
-        cell_height = width / ncol / aspect
-        rows = (page_height / column_width) * width / cell_height
+        cell_height   = w / ncol / aspect
+        figure_height = cell_height * rows
+        placed_height = figure_height * column_width / w      <- the scaling to the column
+                      = rows * column_width / (ncol * aspect)  <- and `w` is gone
+
+    **The figure's own width cancels, and that is the answer rather than a bug in it.** Any width
+    reaches the page at the same size, so the only things that decide the row count are the shape of
+    a cell, how many sit side by side, and how much page there is. `width` is therefore ignored, and
+    is kept only so the existing calls keep working — measured on 2026-08-06, `width=4.0`, `12.8`
+    and `40.0` all returned 3, which is right and reads as broken. It used to be a REQUIRED argument
+    that could not affect the result, which is the kind of thing a caller tunes for an afternoon.
 
     The number matters because of what happens when it is exceeded. A grid that runs onto a second
     page gets fixed by shrinking the cell, and the cell is shared: one grid of seven cells needing a
@@ -125,11 +137,14 @@ def rows_that_fit(
 
     So the fix for a grid that will not fit is to take a cell OUT, never to shrink the cell.
     """
-    assert ncol >= 1, f"a grid needs at least one column, got {ncol}"
-    assert width > 0 and cell_aspect > 0, "width and aspect must be positive"
-    assert column_width > 0 and page_height > 0, "the page must have a size"
-    cell_height = width / ncol / cell_aspect
-    return int((page_height / column_width) * width / cell_height)
+    del width  # documented above: it cancels out of the arithmetic entirely
+    require(ncol >= 1, f"a grid needs at least one column, got {ncol}")
+    require(cell_aspect > 0, f"a cell needs a positive aspect, got {cell_aspect}")
+    require(
+        column_width > 0 and page_height > 0,
+        f"the page must have a size, got {column_width} in wide and {page_height} in tall",
+    )
+    return int(page_height * ncol * cell_aspect / column_width)
 
 
 def panel_grid(
@@ -157,8 +172,14 @@ def panel_grid(
     see `grid_warnings`, which is also a QC check, since both of these are invisible until the
     figure is drawn.
     """
-    assert count >= 1, f"a grid needs at least one panel, got {count}"
-    assert ncol >= 1, f"a grid needs at least one column, got {ncol}"
+    require(
+        count >= 1,
+        f"a grid needs at least one panel, got {count}",
+    )
+    require(
+        ncol >= 1,
+        f"a grid needs at least one column, got {ncol}",
+    )
     columns = min(ncol, count)
     rows = -(-count // columns)  # ceiling
     cell_height = width / columns / cell_aspect
@@ -225,13 +246,16 @@ def panel_row(
     `legend=True` keeps the right margin free for a figure-level legend the caller adds at
     `bbox_to_anchor=(LEGEND_RIGHT, 0.5)`.
     """
-    assert count >= 1, "panels needs at least one panel"
+    require(
+        count >= 1,
+        "panels needs at least one panel",
+    )
     right = LEGEND_RIGHT if legend else FULL_RIGHT
 
     lines: list[str] = []
     caption_height = 0.0
     if caption:
-        panel_width_points = width * (right - LEFT_MARGIN) * 72.0
+        panel_width_points = units.inches_to_points(width * (right - LEFT_MARGIN))
         lines = wrap_to_width(caption, panel_width_points, caption_size)
         caption_height = (caption_size * CAPTION_LINE_SPACING / 72.0) * len(lines) + 0.32
 
@@ -328,11 +352,14 @@ def wrap_to_panel(ax: Axes, text: str, fontsize: float, *, fraction: float = 1.0
 
     `fraction` wraps to part of the panel, for a note meant to sit under one half of it.
     """
-    assert 0.0 < fraction <= 1.0, f"a fraction of the panel, got {fraction}"
+    require(
+        0.0 < fraction <= 1.0,
+        f"a fraction of the panel, got {fraction}",
+    )
     figure = ax.get_figure(root=True)
     assert figure is not None, "the axes must belong to a figure"
     figure.canvas.draw()
-    width_points = ax.get_window_extent().width / figure.dpi * 72.0 * fraction
+    width_points = units.to_points(ax.get_window_extent().width, fig=figure) * fraction
     return wrap_to_width(text, width_points, fontsize)
 
 
@@ -350,5 +377,8 @@ def width_for_bars(count: int, *, minimum: float = 12.0, per_bar: float = BAR_IN
     all have to clear their neighbours, and 1.9 in is what does it. A project setting smaller type
     can pass its own and still have one number to change rather than a width to re-guess.
     """
-    assert count >= 1, f"a panel needs at least one bar, got {count}"
+    require(
+        count >= 1,
+        f"a panel needs at least one bar, got {count}",
+    )
     return max(minimum, per_bar * count)

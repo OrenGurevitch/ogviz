@@ -29,6 +29,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout.raster import INK_TOLERANCE, frame_rgb, ink_of
+from ogviz.require import require
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -36,7 +39,6 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
     from numpy.typing import NDArray
 
-INK_TOLERANCE = 12  # 0-255 per channel; below this a pixel is the page, not a mark
 # Overall ink coverage is deliberately NOT a complaint. It measures the mark type, not the layout:
 # one well-fitted line covers about 3% of any canvas and a dense scatter covers 40%, and neither
 # number says whether space is being wasted. `coverage` is reported for interest; the signals that
@@ -49,22 +51,11 @@ LOOSE_MARGIN_PX = 8.0  # outer white space past this is worth reclaiming
 def ink_mask(fig: Figure, *, tolerance: int = INK_TOLERANCE) -> NDArray[np.bool_]:
     """True where the rendered figure differs from its own page colour.
 
-    The page colour is read from the corner pixel of the render rather than from rcParams, so a
-    figure that set its own facecolor, or that was saved with one, is measured against what it
-    actually is.
+    Kept as a name because it is what this module's questions are phrased in; the reading and the
+    tolerance both come from `layout.raster`, which is the one place that decides what counts as a
+    pixel of ink. They used to be decided here AND in `layout.ink`, at 12 and at 10.
     """
-    fig.canvas.draw()
-    # Only a raster canvas can be read back. Asserted rather than assumed: on a vector backend the
-    # attribute is simply absent, and the failure would otherwise be an AttributeError from inside
-    # a QC helper rather than a sentence naming the cause.
-    read_back = getattr(fig.canvas, "buffer_rgba", None)
-    assert read_back is not None, (
-        "measuring ink needs a raster canvas — run under Agg (matplotlib.use('Agg')), which is "
-        f"what the figure builders do; this figure has a {type(fig.canvas).__name__}"
-    )
-    buffer = np.asarray(read_back(), dtype=np.int16)[:, :, :3]
-    page = buffer[0, 0, :]
-    return np.any(np.abs(buffer - page) > tolerance, axis=2)
+    return ink_of(frame_rgb(fig), tolerance=tolerance)
 
 
 def _ink_bounds(mask: NDArray[np.bool_]) -> tuple[int, int, int, int] | None:
@@ -130,7 +121,10 @@ def data_ink_mask(fig: Figure, ax: Axes) -> NDArray[np.bool_]:
     try:
         without = ink_mask(fig)
     finally:
-        for artist, state in zip(was_visible and marks, was_visible, strict=True):
+        # `zip(marks, was_visible)`, plainly. It read `zip(was_visible and marks, ...)`, where the
+        # guard can only ever change the answer in the case where both lists are empty and the zip
+        # is empty anyway — an expression that looks like it is defending against something.
+        for artist, state in zip(marks, was_visible, strict=True):
             artist.set_visible(state)
     return ink_mask(fig) & ~without
 
@@ -280,7 +274,10 @@ def required_margins(figures: Iterable[Figure], *, pad: float = 0.0) -> Margins:
     the pinned rectangle never reaches disk.
     """
     measured = [margins for margins in map(figure_margins, figures) if margins is not None]
-    assert measured, "required_margins needs at least one figure with ink on it"
+    require(
+        measured,
+        "required_margins needs at least one figure with ink on it",
+    )
     widest = Margins(
         left=min(m.left for m in measured),
         right=max(m.right for m in measured),

@@ -46,6 +46,11 @@ installed. `use_house_type()` is the other half, for the reverse case.
 The halves exist because a project that could take neither hand-rolled the ink instead — in one of
 its two renderers — and shipped two different blacks in one paper for months.
 
+Either half also calls `use_reproducible_svg()`, which pins `svg.hashsalt` so re-rendering an
+unchanged figure rewrites the same bytes. It is its own function because it belongs to neither
+half — it lived inside the ink one, where the project most likely to need it, the one pinning its
+own font for byte-identical output, was the least likely to look.
+
 ## Testing
 
 `uv run just` — lint, format, typecheck, test. `uv run just strict` turns deprecations into
@@ -184,6 +189,29 @@ OOS correlation at 0, an AUC at 0.5 — on one axis where zero is chance.
 | ![](examples/out/16_comparison_table.png) | |
 | `table_panel` — highlighted column, shaded best value, `caption` | |
 
+**Both axes can be the subject.** `highlight` is a COLUMN index and `highlight_row` is the same
+claim about a row, for a table with entities down the side and attributes across. The second exists
+because the first said "column" only in its docstring: a table transposed from metrics-down to
+arms-across kept its `highlight=0`, which then outlined a METRIC and read as a claim about that
+measurement. It rendered happily, which is what made it dangerous — no assertion can catch an index
+that is still valid and now means something else.
+
+**`Cell(tone=...)` says what a value MEANS** — `"good"`, `"bad"`, `"neutral"` — which is how a
+conditions table becomes scannable. `best` shades a background and reads as "the strongest value
+here", not as "has" against "lacks". The tone is semantic rather than a hex string, so the palette
+stays this package's decision and a green tick is the same green in every repo.
+
+Pair it with `YES` and `NO`, which are exported and are **not** the ●/○ a project reduces to when it
+discovers the problem: Arial has no U+2713 ✓ and no U+2717 ✗, and matplotlib draws a missing glyph
+as a tofu box. `family_for(text)` answers which family can render a string — matplotlib's bundled
+DejaVu has them, so the answer exists on any machine — and `table_panel` asks it per cell. Colour is
+never the only signal: the two marks differ in shape, so the table survives a reader who cannot
+separate the hues.
+
+`font_scale` multiplies every size in the table, including the measured column widths. Reach for it
+after checking the ASPECT RATIO, which is the usual cause of an unreadable table and what
+`type_too_small` reports.
+
 ## Numbers
 
 From a thousand up, a number is grouped: `1,200,000`, not `1200000`. One is read at a glance and the
@@ -253,6 +281,14 @@ mark, changes a limit or alters a value. What it cannot decide it reports and le
 that merge under colour-vision deficiency need a marker, a dash or a different palette, and which
 one is yours to pick.
 
+The colour-vision check simulates in LINEAR light and reports back in sRGB, which it did not do
+until 2026-08-06 — the matrices were fed gamma-encoded values, so every distance it compared against
+its threshold was wrong, by 14% on the pair most worth catching. Corrected, matplotlib's own red and
+green sit 0.165 apart under deuteranopia and the threshold is 0.18, which reports them; the tightest
+pair in either shipped palette is 0.216, so nothing here trips it. **A project locking a newer ogviz
+may see this pair newly reported** — that is the check starting to work rather than a change of
+policy.
+
 ```
 figure_1:
   - 'alpha' and 'beta' are distinct now and 0.10 apart under deuteranopia
@@ -297,9 +333,21 @@ the moment it is imported would fail saves in code that never asked, break a not
 and make "why did my savefig raise" a puzzle whose answer is an import three files away. Choosing it
 is one line; having it chosen for you is a footgun.
 
-`advise=True` adds the dead-space notes — unused canvas, an over-generous limit. Those never fail
-anything: the shipped gallery carries 76 of them and is correct, because an airy figure is a choice
-and a panel holding room for a bracket is not wasting it.
+`advise=True` adds the dead-space notes — unused canvas, an over-generous limit — and
+`type_too_small`, which is the one gap the gate structurally cannot close: every check it runs is
+about COLLISION, and cramped type collides with nothing. A table can pass the whole gate at every
+size and be unreadable. It is measured as a share of the figure's SHORT SIDE, which makes it a
+property of the figure alone — points are not, since 12 pt is comfortable on a 5-inch panel and
+vanishes on a 20-inch canvas, and the figure cannot know how far it will be scaled when placed.
+
+Advisory rather than a gate, and the reason is a measurement: the densest figure shipped here sits
+at 1.37% of its short side, and the many-row-on-a-tall-canvas shape that gets reported as unreadable
+is only about 1.3x below it. That is not a margin to fail a build on — and the same table is
+comfortable transposed to a handful of rows with no change of type size at all, so what the number
+really tracks is the aspect ratio.
+
+None of these ever fail anything: the shipped gallery carries 76 of them and is correct, because an
+airy figure is a choice and a panel holding room for a bracket is not wasting it.
 
 ## Checks
 
@@ -320,6 +368,13 @@ and a panel holding room for a bracket is not wasting it.
 - a non-finite value, a p outside [0, 1], two groups at one position, an empty tick range
 
 `test_qc.py` runs them over the examples, with a planted defect each.
+
+**They raise rather than assert, and that is deliberate.** `python -O` deletes an `assert`
+statement, so a gate written as one is a gate an interpreter flag can switch off — under `-O` this
+package passed a figure whose two labels shared 524 px of ink, and turned a p of -5.0 into `***`.
+Every gate here, and every check on a value a CALLER passed in, raises `AssertionError` explicitly
+instead; `ogviz.require` is the one place that says so. Internal invariants are still asserts, which
+is what `assert` is for.
 
 ## Module tree
 
@@ -354,13 +409,16 @@ ogviz
 │   │   └── overflowing_text(fig: Figure) -> list[str]
 │   ├── collision
 │   │   ├── MarkCloud(*args, **kwargs)
+│   │   ├── PanelMarks(*args, **kwargs)
 │   │   ├── annotate_clear(...)
 │   │   ├── clear_position(...) -> ...
 │   │   ├── data_paths(ax: Axes) -> list[tuple[Path, bool]]
 │   │   ├── data_points(ax: Axes) -> list[MarkCloud]
 │   │   ├── decoration_ids(ax: Axes) -> set[int]
-│   │   ├── hits_data(ax: Axes, box: Bbox, *, padding: float) -> int
+│   │   ├── hits_data(ax: Axes, box: Bbox, *, padding: float, marks: PanelMarks | None) -> int
 │   │   ├── hits_decoration(ax: Axes, box: Bbox, *, padding: float) -> int
+│   │   ├── labels_crossing_a_rule(fig: Figure) -> list[tuple[Axes, Text]]
+│   │   ├── labels_on_the_marks(fig: Figure) -> list[tuple[Axes, Text, int]]
 │   │   ├── point_offsets(collection: Collection) -> NDArray[np.float64] | None
 │   │   ├── quoted(text: str) -> str
 │   │   ├── text_box(text: Text) -> Bbox
@@ -412,6 +470,9 @@ ogviz
 │   │   ├── width_for_bars(count: int, *, minimum: float, per_bar: float) -> float
 │   │   ├── wrap_to_panel(ax: Axes, text: str, fontsize: float, *, fraction: float) -> list[str]
 │   │   └── wrap_to_width(text: str, width_points: float, fontsize: float) -> list[str]
+│   ├── raster
+│   │   ├── frame_rgb(fig: Figure) -> NDArray[np.int16]
+│   │   └── ink_of(frame: NDArray[np.int16], *, tolerance: int) -> NDArray[np.bool_]
 │   ├── stacking
 │   │   ├── place_end_labels(...) -> ...
 │   │   └── stack_without_overlap(...) -> ...
@@ -430,7 +491,8 @@ ogviz
 │   ├── jitter_x(...) -> ...
 │   ├── mean_line(...) -> ...
 │   ├── points(...) -> ...
-│   └── violin(...) -> ...
+│   ├── violin(...) -> ...
+│   └── widths_of(*mark_kwargs: Mapping[str, object] | None) -> dict[str, float]
 ├── orientation
 │   ├── category_limits(ax: Axes, orientation: Orientation) -> Callable[..., object]
 │   ├── category_tick_labels(ax: Axes, orientation: Orientation) -> Callable[..., object]
@@ -495,7 +557,7 @@ ogviz
 │   │   ├── half_violin(...) -> ...
 │   │   └── split_violins(...) -> ...
 │   ├── table
-│   │   ├── Cell(value: str, sub: str | None, best: bool) -> None
+│   │   ├── Cell(value: str, sub: str | None, best: bool, tone: Tone | None) -> None
 │   │   ├── Row(label: str, cells: tuple[Cell, ...], sub: str | None, height: float) -> None
 │   │   ├── table_panel(...) -> ...
 │   │   └── tint(color: str, *, strength: float) -> tuple[float, float, float, float]
@@ -544,7 +606,10 @@ ogviz
 │   │   └── stack_spacing(fig: Figure) -> list[str]
 │   └── typography
 │       ├── one_minus_sign(fig: Figure) -> list[str]
+│       ├── type_too_small(fig: Figure) -> list[str]
 │       └── ungrouped_thousands(fig: Figure) -> list[str]
+├── require
+│   └── require(condition: object, message: str) -> None
 ├── significance
 │   ├── bracket_stack(...) -> ...
 │   ├── ink_bounds_points(text: str, fontsize: float, *, weight: str) -> tuple[float, float]
@@ -559,17 +624,22 @@ ogviz
 │   ├── marked(artist: Artist | Figure, tag: Tag) -> bool
 │   └── value_of(artist: Artist | Figure, tag: Tag, default: Any) -> Any
 ├── theme
+│   ├── family_for(text: str) -> str | None
 │   ├── glyphs_must_render() -> Iterator[None]
 │   ├── house_style(canvas: str) -> Iterator[None]
 │   ├── page_color() -> str
 │   ├── use_house_ink(canvas: str) -> None
 │   ├── use_house_style(canvas: str) -> None
-│   └── use_house_type() -> None
+│   ├── use_house_type() -> None
+│   └── use_reproducible_svg() -> None
 └── units
+    ├── inches_to_points(inches: float) -> float
     ├── midpoint(ax: Axes, low: float, high: float, *, orientation: str) -> float
     ├── panel_px(ax: Axes, *, orientation: str) -> float
+    ├── px_per_point(fig: Figure | SubFigure) -> float
     ├── px_to_value(ax: Axes, pixels: float, *, orientation: str) -> float
-    ├── to_px(value: float, unit: Unit, *, fig: Figure, em: float | None) -> float
+    ├── to_points(pixels: float, *, fig: Figure | SubFigure) -> float
+    ├── to_px(value: float, unit: Unit, *, fig: Figure | SubFigure, em: float | None) -> float
     └── value_to_px(ax: Axes, value: float, *, orientation: str) -> float
 ```
 

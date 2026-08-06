@@ -51,7 +51,7 @@ from ogviz.qc.reading import (
     orientation_of,
 )
 from ogviz.qc.significance import significance_gaps, stack_spacing
-from ogviz.qc.typography import one_minus_sign, ungrouped_thousands
+from ogviz.qc.typography import one_minus_sign, type_too_small, ungrouped_thousands
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -93,6 +93,7 @@ __all__ = [
     "text_overlaps",
     "text_wider_than_its_panel",
     "ticks_in_the_headroom",
+    "type_too_small",
     "ungrouped_thousands",
 ]
 
@@ -157,6 +158,14 @@ def audit(fig: Figure, *, thorough: bool = False, min_gap: float = DEFAULT_MIN_G
 
 
 def assert_clean(fig: Figure, *, min_gap: float = DEFAULT_MIN_GAP) -> None:
-    """The build gate. Reports every complaint at once rather than the first."""
+    """The build gate. Reports every complaint at once rather than the first.
+
+    RAISED, not asserted, and the same is true of every other gate in this package. `python -O`
+    deletes an `assert` statement outright, so writing the gate that way put the whole contract
+    behind an interpreter flag: measured, a figure whose two labels shared 524 px of ink passed this
+    function under `-O` without a word. `AssertionError` is kept as the type, since that is what
+    callers already catch and what the message reads as.
+    """
     complaints = audit(fig, min_gap=min_gap)
-    assert not complaints, "figure QC:\n  - " + "\n  - ".join(complaints)
+    if complaints:
+        raise AssertionError("figure QC:\n  - " + "\n  - ".join(complaints))

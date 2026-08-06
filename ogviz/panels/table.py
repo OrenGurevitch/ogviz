@@ -25,14 +25,15 @@ header collides with the column beside it is the failure this replaces.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from matplotlib.colors import to_rgba
 from matplotlib.patches import FancyBboxPatch, Rectangle
 
 from ogviz.layout.panels import text_width_points
+from ogviz.require import require
 from ogviz.tags import mark
-from ogviz.theme import GRID, INK, MUTED_INK, SERIES, page_color
+from ogviz.theme import BAD, GOOD, GRID, INK, MUTED_INK, SERIES, family_for, page_color
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -47,21 +48,50 @@ VALUE_SIZE = 12.0
 VALUE_SUB_SIZE = 8.5
 ROW_RULE_WIDTH = 0.8
 HIGHLIGHT_RADIUS = 0.012
+# A row label used to be drawn flush against x=0.0, which is poor typography on its own — text
+# hard against the edge of a figure — and became a defect once a row could be outlined: the frame's
+# 1.8 pt stroke ran straight through the first glyph of the name, and `colliding_ink` said so, at 23
+# px of shared ink. The label is indented instead of the frame being nudged, because the frame has
+# to enclose the row and there was no gap for it to sit in.
+LABEL_INDENT = 0.008
 TINT_STRENGTH = 0.84  # how far a highlight colour is blended toward the page for a cell fill
 LABEL_COLUMN_SHARE = 0.26  # of the table width, before measurement widens it
 CELL_PAD_PT = 18.0
 
 
+Tone = Literal["good", "bad", "neutral"]
+# Semantic name in, house colour out. A caller says what a cell MEANS and the palette stays this
+# package's decision, so a green tick reads the same green in every repo — which is the whole reason
+# `Cell` takes a tone rather than a hex string.
+TONE_INK: dict[str, str] = {"good": GOOD, "bad": BAD, "neutral": MUTED_INK}
+
+
 @dataclass(frozen=True)
 class Cell:
-    """One measurement. `sub` is the condition it was taken under, printed under the value."""
+    """One measurement. `sub` is the condition it was taken under, printed under the value.
+
+    `tone` colours the value by what it MEANS — a green `YES`, a red `NO` — which is the ordinary
+    way to make a conditions table scannable and had no route before: `best` shades a background,
+    and that reads as "the strongest value here", not as "has" against "lacks".
+
+    Colour is never the only signal. `theme.YES` and `theme.NO` differ in SHAPE as well, which is
+    what makes the table readable to the reader who cannot separate the two hues — and is why this
+    is a tone on a cell that already carries a string, rather than a colour on its own.
+    """
 
     value: str = MISSING
     sub: str | None = None
     best: bool = False  # shade it: the strongest value in this row
+    tone: Tone | None = None
 
     def is_missing(self) -> bool:
         return self.value == MISSING
+
+    def ink(self) -> str:
+        """The colour this cell's value is printed in."""
+        if self.is_missing():
+            return MUTED_INK
+        return TONE_INK[self.tone] if self.tone is not None else INK
 
 
 @dataclass(frozen=True)
@@ -74,19 +104,21 @@ class Row:
     height: float = field(default=1.0)  # rows carrying two conditions ask for more
 
 
-def _row_text_width(row: Row) -> float:
+def _row_text_width(row: Row, scale: float = 1.0) -> float:
     return max(
-        text_width_points(row.label, LABEL_SIZE),
-        text_width_points(row.sub or "", SUBLABEL_SIZE),
+        text_width_points(row.label, LABEL_SIZE * scale),
+        text_width_points(row.sub or "", SUBLABEL_SIZE * scale),
     )
 
 
-def _column_text_width(header: str, rows: Sequence[Row], index: int) -> float:
-    widths = [text_width_points(header, HEADER_SIZE)]
+def _column_text_width(header: str, rows: Sequence[Row], index: int, scale: float = 1.0) -> float:
+    # Scaled here as well as at the draw, or a table set larger keeps the column widths of the
+    # smaller one and its own headers run into the column beside them.
+    widths = [text_width_points(header, HEADER_SIZE * scale)]
     for row in rows:
         cell = row.cells[index]
-        widths.append(text_width_points(cell.value, VALUE_SIZE))
-        widths.append(text_width_points(cell.sub or "", VALUE_SUB_SIZE))
+        widths.append(text_width_points(cell.value, VALUE_SIZE * scale))
+        widths.append(text_width_points(cell.sub or "", VALUE_SUB_SIZE * scale))
     return max(widths)
 
 
@@ -112,28 +144,57 @@ def table_panel(
     rows: Sequence[Row],
     *,
     highlight: int | None = None,
+    highlight_row: int | None = None,
     highlight_color: str = SERIES[0],
     shade: str | None = None,
     rule_color: str = GRID,
+    font_scale: float = 1.0,
 ) -> None:
     """Draw the table across `ax`, sizing every column to the widest string it must hold.
 
     `highlight` is the column index the table is about; it gets a rounded outline running the full
     height. Cells marked `best` are shaded in `shade` — including ones outside the highlighted
     column, because a table that can only ever flatter its own subject is not worth drawing.
+
+    `highlight_row` is the same claim about a ROW, for a table with entities as rows and attributes
+    across. It exists because `highlight` is a COLUMN index and nothing said so loudly enough: a
+    table transposed from metrics-down to arms-across kept its `highlight=0`, which then outlined
+    the first METRIC and read as "this table is about that measurement". The call stayed valid and
+    rendered happily, which is what made it dangerous — no assertion can catch a correct index that
+    now means something else, so the fix is to have the other axis available at all.
+
+    `font_scale` multiplies every type size in the table together. A table is set in points on a
+    canvas whose height comes from its row count, so the same sizes read large on a six-row table
+    and small on a twenty-row one; that ratio is the caller's to set and the only alternative was
+    monkey-patching this module's constants. Note that the usual cause of an unreadable table is the
+    ASPECT RATIO rather than the type size — `type_too_small` in `ogviz.qc` reports which.
     """
-    assert rows, "a table needs at least one row"
+    require(rows, "a table needs at least one row")
     for row in rows:
-        assert len(row.cells) == len(headers), (
-            f"row {row.label!r} has {len(row.cells)} cells for {len(headers)} columns"
+        require(
+            len(row.cells) == len(headers),
+            f"row {row.label!r} has {len(row.cells)} cells for {len(headers)} columns",
         )
-    assert highlight is None or 0 <= highlight < len(headers), (
-        f"highlight {highlight} is not a column index"
+    require(
+        highlight is None or 0 <= highlight < len(headers),
+        f"highlight {highlight} is not a column index",
     )
+    require(
+        highlight_row is None or 0 <= highlight_row < len(rows),
+        f"highlight_row {highlight_row} is not a row index of {len(rows)} rows",
+    )
+    require(font_scale > 0.0, f"font_scale multiplies the type sizes, got {font_scale}")
+    header_size = HEADER_SIZE * font_scale
+    label_size = LABEL_SIZE * font_scale
+    sublabel_size = SUBLABEL_SIZE * font_scale
+    value_size = VALUE_SIZE * font_scale
+    value_sub_size = VALUE_SUB_SIZE * font_scale
     cell_fill = tint(highlight_color) if shade is None else shade
 
-    label_width = max(_row_text_width(row) for row in rows) + CELL_PAD_PT
-    column_widths = [_column_text_width(h, rows, i) + CELL_PAD_PT for i, h in enumerate(headers)]
+    label_width = max(_row_text_width(row, font_scale) for row in rows) + CELL_PAD_PT
+    column_widths = [
+        _column_text_width(h, rows, i, font_scale) + CELL_PAD_PT for i, h in enumerate(headers)
+    ]
     total = label_width + sum(column_widths)
     label_share = label_width / total
     shares = [width / total for width in column_widths]
@@ -153,44 +214,60 @@ def table_panel(
     ax.set_ylim(0.0, 1.0)
     ax.axis("off")
 
-    def cell_text(*args: object, **kwargs: object):
-        """Draw a string and mark it as belonging to its cell.
+    def cell_text(x: float, y: float, body: str, **kwargs: object):
+        """Draw a string, in a font that can render it, and mark it as belonging to its cell.
 
         Every string in a table sits on top of that cell's shading, which is the entire design. The
         general "is this label on the data" check would report all of them and try to move each one
         somewhere emptier, which for a table means nowhere.
+
+        The family is asked per string rather than set for the table, because it is only the
+        exceptional string that needs it: `theme.YES` and `theme.NO` are exactly the characters the
+        display stack has no glyph for, and setting the whole table in the fallback would change the
+        type of every table to accommodate two ticks. `family_for` returns None for everything else.
         """
-        drawn = ax.text(*args, **kwargs)  # type: ignore[arg-type]
+        family = family_for(body)
+        if family is not None:
+            kwargs = {**kwargs, "fontfamily": family}
+        drawn = ax.text(x, y, body, **kwargs)  # type: ignore[arg-type]
         mark(drawn, "anchored")
         return drawn
 
-    if highlight is not None:
+    def outline(x: float, y: float, width: float, height: float) -> None:
+        """The rounded frame that says which part of the table the figure is about."""
         ax.add_patch(
             FancyBboxPatch(
-                (edges[highlight], 0.0),
-                shares[highlight],
-                1.0,
+                (x, y),
+                width,
+                height,
                 boxstyle=f"round,pad=0,rounding_size={HIGHLIGHT_RADIUS}",
                 transform=ax.transAxes,
                 facecolor="none",
                 edgecolor=highlight_color,
                 linewidth=1.8,
                 zorder=5,
+                clip_on=False,  # a frame at the very edge would lose half its stroke
             )
         )
 
-    for index, (header, centre) in enumerate(zip(headers, centres, strict=True)):
+    if highlight is not None:
+        outline(edges[highlight], 0.0, shares[highlight], 1.0)
+    if highlight_row is not None:
+        # The full width, the way the column outline runs the full height — the two are the same
+        # claim about the two axes of the table, so they are drawn by the same call.
+        outline(0.0, tops[highlight_row + 1], 1.0, tops[highlight_row] - tops[highlight_row + 1])
+
+    for header, centre in zip(headers, centres, strict=True):
         cell_text(
             centre,
             1.0 - header_height * unit * 0.45,
             header,
             ha="center",
             va="center",
-            fontsize=HEADER_SIZE,
+            fontsize=header_size,
             color=INK,
             zorder=6,
         )
-        del index
 
     for row_index, row in enumerate(rows):
         top, bottom = tops[row_index], tops[row_index + 1]
@@ -199,23 +276,23 @@ def table_panel(
             [0.0, 1.0], [top, top], color=rule_color, lw=ROW_RULE_WIDTH, zorder=1, clip_on=False
         )
         cell_text(
-            0.0,
+            LABEL_INDENT,
             middle + (0.012 if row.sub else 0.0),
             row.label,
             ha="left",
             va="center",
-            fontsize=LABEL_SIZE,
+            fontsize=label_size,
             color=INK,
             zorder=6,
         )
         if row.sub:
             cell_text(
-                0.0,
+                LABEL_INDENT,
                 middle - 0.020,
                 row.sub,
                 ha="left",
                 va="center",
-                fontsize=SUBLABEL_SIZE,
+                fontsize=sublabel_size,
                 color=MUTED_INK,
                 zorder=6,
             )
@@ -239,9 +316,9 @@ def table_panel(
                 cell.value,
                 ha="center",
                 va="center",
-                fontsize=VALUE_SIZE,
+                fontsize=value_size,
                 fontweight="bold" if cell.best else "normal",
-                color=MUTED_INK if cell.is_missing() else INK,
+                color=cell.ink(),
                 zorder=6,
             )
             if cell.sub:
@@ -251,7 +328,7 @@ def table_panel(
                     cell.sub,
                     ha="center",
                     va="center",
-                    fontsize=VALUE_SUB_SIZE,
+                    fontsize=value_sub_size,
                     color=MUTED_INK,
                     zorder=6,
                 )

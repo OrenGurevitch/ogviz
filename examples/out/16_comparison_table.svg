@@ -149,7 +149,7 @@ L 360.440423 559.136598
 Q 360.440423 565.493133 369.814823 565.493133 
 L 369.814823 565.493133 
 z
-" clip-path="url(#p7ddeac1d0d)" style="fill: none; stroke: #e8552d; stroke-width: 1.8; stroke-linejoin: miter"/>
+" style="fill: none; stroke: #e8552d; stroke-width: 1.8; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="68.683619" transform="rotate(-0 409.962327 68.683619)">Goku SSJ4</text>
@@ -167,10 +167,10 @@ z
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="68.683619" transform="rotate(-0 806.821422 68.683619)">Gohan SSJ2</text>
    </g>
    <g id="text_6">
-    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="126.204464" transform="rotate(-0 77.76 126.204464)">Power level</text>
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="84.0096" y="126.204464" transform="rotate(-0 84.0096 126.204464)">Power level</text>
    </g>
    <g id="text_7">
-    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="142.637553" transform="rotate(-0 77.76 142.637553)">scouter, reads high and then explodes</text>
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="84.0096" y="142.637553" transform="rotate(-0 84.0096 142.637553)">scouter, reads high and then explodes</text>
    </g>
    <g id="text_8">
     <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="132.690394" transform="rotate(-0 409.962327 132.690394)">28,000,000</text>
@@ -188,10 +188,10 @@ z
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="132.690394" transform="rotate(-0 806.821422 132.690394)">1,400,000</text>
    </g>
    <g id="text_13">
-    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="181.382719" transform="rotate(-0 77.76 181.382719)">Cool level</text>
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="84.0096" y="181.382719" transform="rotate(-0 84.0096 181.382719)">Cool level</text>
    </g>
    <g id="text_14">
-    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="197.815807" transform="rotate(-0 77.76 197.815807)">fan poll, entirely invented</text>
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="84.0096" y="197.815807" transform="rotate(-0 84.0096 197.815807)">fan poll, entirely invented</text>
    </g>
    <g id="text_15">
     <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="187.868648" transform="rotate(-0 409.962327 187.868648)">99.4%</text>
@@ -209,10 +209,10 @@ z
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="187.868648" transform="rotate(-0 806.821422 187.868648)">64.0%</text>
    </g>
    <g id="text_20">
-    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="236.560973" transform="rotate(-0 77.76 236.560973)">Speed</text>
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="84.0096" y="236.560973" transform="rotate(-0 84.0096 236.560973)">Speed</text>
    </g>
    <g id="text_21">
-    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="252.994061" transform="rotate(-0 77.76 252.994061)">Snake Way, one lap</text>
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="84.0096" y="252.994061" transform="rotate(-0 84.0096 252.994061)">Snake Way, one lap</text>
    </g>
    <g id="text_22">
     <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="243.046902" transform="rotate(-0 409.962327 243.046902)">Mach 402</text>
@@ -230,10 +230,10 @@ z
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="243.046902" transform="rotate(-0 806.821422 243.046902)">Mach 140</text>
    </g>
    <g id="text_27">
-    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="302.774878" transform="rotate(-0 77.76 302.774878)">Ki control</text>
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="84.0096" y="302.774878" transform="rotate(-0 84.0096 302.774878)">Ki control</text>
    </g>
    <g id="text_28">
-    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="319.207966" transform="rotate(-0 77.76 319.207966)">share of ki that reaches the target</text>
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="84.0096" y="319.207966" transform="rotate(-0 84.0096 319.207966)">share of ki that reaches the target</text>
    </g>
    <g id="text_29">
     <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="302.904272" transform="rotate(-0 409.962327 302.904272)">96%</text>
@@ -266,10 +266,10 @@ z
     <text style="font-size: 8.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="806.821422" y="318.94927" transform="rotate(-0 806.821422 318.94927)">calm</text>
    </g>
    <g id="text_39">
-    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="368.988783" transform="rotate(-0 77.76 368.988783)">Hair</text>
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="84.0096" y="368.988783" transform="rotate(-0 84.0096 368.988783)">Hair</text>
    </g>
    <g id="text_40">
-    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="385.421964" transform="rotate(-0 77.76 385.421964)">a real difference, unlike the two beside it</text>
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="84.0096" y="385.421964" transform="rotate(-0 84.0096 385.421964)">a real difference, unlike the two beside it</text>
    </g>
    <g id="text_41">
     <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="375.474595" transform="rotate(-0 409.962327 375.474595)">waist length</text>
@@ -287,10 +287,10 @@ z
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="375.474712" transform="rotate(-0 806.821422 375.474712)">spiked</text>
    </g>
    <g id="text_46">
-    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="424.167037" transform="rotate(-0 77.76 424.167037)">Stamina drain</text>
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="84.0096" y="424.167037" transform="rotate(-0 84.0096 424.167037)">Stamina drain</text>
    </g>
    <g id="text_47">
-    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="440.600218" transform="rotate(-0 77.76 440.600218)">lower is better — the one row the fourth form loses</text>
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="84.0096" y="440.600218" transform="rotate(-0 84.0096 440.600218)">lower is better — the one row the fourth form loses</text>
    </g>
    <g id="text_48">
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="430.652966" transform="rotate(-0 409.962327 430.652966)">14%/min</text>
@@ -308,10 +308,10 @@ z
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="430.652966" transform="rotate(-0 806.821422 430.652966)">5%/min</text>
    </g>
    <g id="text_53">
-    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="479.345291" transform="rotate(-0 77.76 479.345291)">Transformation scream</text>
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="84.0096" y="479.345291" transform="rotate(-0 84.0096 479.345291)">Transformation scream</text>
    </g>
    <g id="text_54">
-    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="495.77838" transform="rotate(-0 77.76 495.77838)">uninterrupted, measured at the cliff edge</text>
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="84.0096" y="495.77838" transform="rotate(-0 84.0096 495.77838)">uninterrupted, measured at the cliff edge</text>
    </g>
    <g id="text_55">
     <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="485.83122" transform="rotate(-0 409.962327 485.83122)">42 s</text>
@@ -329,10 +329,10 @@ z
     <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="806.821422" y="485.83122" transform="rotate(-0 806.821422 485.83122)">11 s</text>
    </g>
    <g id="text_60">
-    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="77.76" y="534.523545" transform="rotate(-0 77.76 534.523545)">Tail</text>
+    <text style="font-size: 11.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="84.0096" y="534.523545" transform="rotate(-0 84.0096 534.523545)">Tail</text>
    </g>
    <g id="text_61">
-    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="77.76" y="550.956727" transform="rotate(-0 77.76 550.956727)">the em dash is 'measured, absent' — not zero</text>
+    <text style="font-size: 9.5px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="84.0096" y="550.956727" transform="rotate(-0 84.0096 550.956727)">the em dash is 'measured, absent' — not zero</text>
    </g>
    <g id="text_62">
     <text style="font-weight: 700; font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="409.962327" y="541.009357" transform="rotate(-0 409.962327 541.009357)">yes</text>

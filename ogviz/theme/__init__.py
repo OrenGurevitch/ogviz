@@ -59,6 +59,55 @@ SERIES: tuple[str, ...] = ("#2E7CE0", "#EFA607", "#14A97C", "#ED6B3B", "#9B3B8F"
 REFERENCE = "#D9D7CE"  # a de-emphasised comparison series
 
 
+# A conditions table wants a tick and a cross, and the display stack cannot draw them. Verified
+# against the font `findfont` actually returns on this machine: Arial has NO U+2713 ✓, U+2717 ✗,
+# U+25C6 ◆ or U+2605 ★, and matplotlib renders a missing glyph as a tofu box. Present and safe in
+# Arial: U+00D7 multiply, U+25CF/U+25CB circles, U+25A0/U+25A1 squares, U+25B2/U+25BC triangles,
+# U+2212 minus, U+2022 bullet, U+2020 dagger, U+2014 em dash.
+#
+# The answer is not "use a filled circle instead", which is what a project reduced to when it hit
+# this — ●/○ is strictly worse at saying has/lacks than ✓/✗. It is to draw those two characters in a
+# font that has them. `DejaVu Sans` is the one font this package can promise, because matplotlib
+# BUNDLES it, so it is on every machine that can run any of this.
+YES = "✓"  # ✓
+NO = "✗"  # ✗
+GLYPH_FAMILY = "DejaVu Sans"  # matplotlib bundles it; unlike the display stack it has the marks
+# Semantic, not raw colour: a caller says what a cell MEANS and the palette stays this package's
+# decision. Both are dark enough to read as ink on the page rather than as highlighting.
+GOOD = "#2E7D4F"
+BAD = "#B3261E"
+
+
+def _display_face():
+    """The font file the display stack actually resolves to, opened once."""
+    from matplotlib.font_manager import FontProperties, findfont
+    from matplotlib.ft2font import FT2Font
+
+    path = findfont(FontProperties(family=list(mpl.rcParams["font.sans-serif"])))
+    if path not in _FACES:
+        _FACES[path] = FT2Font(path)
+    return _FACES[path]
+
+
+_FACES: dict[str, object] = {}
+
+
+def family_for(text: str) -> str | None:
+    """The family `text` has to be set in, or None when the display font can draw it all.
+
+    The PROACTIVE half of `glyphs_must_render`, which only fails at save time — by then the figure
+    is built and the caller is reading an assertion instead of getting a readable mark. Asked
+    through matplotlib's own `FT2Font.get_char_index`, which returns 0 for a character the face has
+    no glyph for, so it needs no dependency this package does not already have.
+
+    Returns a family rather than a boolean because the useful answer is what to do about it.
+    """
+    face = _display_face()
+    if all(face.get_char_index(ord(character)) for character in text):  # type: ignore[attr-defined]
+        return None
+    return GLYPH_FAMILY
+
+
 def page_color() -> str:
     """The page colour in force RIGHT NOW, read from rcParams rather than the constant.
 
@@ -70,6 +119,24 @@ def page_color() -> str:
     # default could never fire, and if it ever could this would quietly return a colour that
     # disagrees with the figure instead of saying so.
     return str(mpl.rcParams["figure.facecolor"])
+
+
+def use_reproducible_svg() -> None:
+    """Make an SVG re-render the same bytes: fix the salt matplotlib randomises its ids with.
+
+    Its own call rather than a line inside one of the halves. It landed in `use_house_ink`, which is
+    a colour decision, and the project most likely to need it is the one that takes ink ALONE
+    because it must pin its own font to matplotlib's bundled DejaVu — for byte-identical SVGs across
+    machines, which is this same requirement, one layer up. A project that pins its own COLOURS and
+    takes the house type got nothing, and had no way to find out why its gallery still churned.
+
+    Both halves call it, so `use_house_style()` and either half on its own all still set it; a
+    project wanting a salt of its own sets `svg.hashsalt` after.
+    """
+    # A fixed salt makes matplotlib's clip-path ids a function of the figure instead of the run, so
+    # re-rendering an unchanged figure rewrites the same bytes and `git diff` on a committed gallery
+    # shows only what actually changed. `save` drops the date stamp, which is the other half.
+    mpl.rcParams["svg.hashsalt"] = "ogviz"
 
 
 def use_house_type() -> None:
@@ -101,6 +168,7 @@ def use_house_type() -> None:
             "svg.fonttype": "none",  # keep SVG text as text
         }
     )
+    use_reproducible_svg()
 
 
 def use_house_ink(canvas: str = CANVAS) -> None:
@@ -118,10 +186,6 @@ def use_house_ink(canvas: str = CANVAS) -> None:
     """
     mpl.rcParams.update(
         {
-            # A fixed salt makes matplotlib's clip-path ids a function of the figure instead of the
-            # run, so re-rendering an unchanged figure rewrites the same bytes and `git diff` on a
-            # committed gallery shows only what actually changed.
-            "svg.hashsalt": "ogviz",
             "figure.facecolor": canvas,
             "savefig.facecolor": canvas,
             "axes.facecolor": canvas,
@@ -141,6 +205,7 @@ def use_house_ink(canvas: str = CANVAS) -> None:
             "legend.frameon": False,
         }
     )
+    use_reproducible_svg()
 
 
 def use_house_style(canvas: str = CANVAS) -> None:
@@ -177,6 +242,8 @@ def glyphs_must_render() -> Iterator[None]:
         warnings.simplefilter("always")
         yield
     missing = sorted({str(w.message) for w in caught if "missing from font" in str(w.message)})
-    assert not missing, "figure text has no glyph in the house font: " + "; ".join(missing)
+    if missing:
+        # Raised, not asserted: `python -O` deletes an `assert` and would let the tofu through.
+        raise AssertionError("figure text has no glyph in the house font: " + "; ".join(missing))
     for other in (w for w in caught if "missing from font" not in str(w.message)):
         warnings.warn_explicit(other.message, other.category, other.filename, other.lineno)

@@ -19,6 +19,7 @@ from ogviz.orientation import (
     place_many,
     value_transform,
 )
+from ogviz.require import require
 from ogviz.tags import mark, value_of
 from ogviz.theme import MUTED_INK, VALUE_LABEL_SIZE
 
@@ -61,7 +62,10 @@ def reference_line(
         )
     else:
         low, high = span
-        assert low < high, f"a span runs low to high, got {span}"
+        require(
+            low < high,
+            f"a span runs low to high, got {span}",
+        )
         along, across = place_many(orientation, [low, high], [value, value])
         (threshold,) = ax.plot(along, across, ls="--", color=MUTED_INK, lw=1.4, zorder=Z_REFERENCE)
     mark(threshold, "reference")  # must stay readable

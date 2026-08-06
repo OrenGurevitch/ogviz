@@ -30,6 +30,7 @@ from ogviz.orientation import (
     value_span,
 )
 from ogviz.panels.grid import align_mean_rows
+from ogviz.require import require
 from ogviz.significance import bracket_stack
 from ogviz.tags import mark
 from ogviz.theme import INK, KNOCKOUT_PAD, MEAN_LABEL_SIZE, page_color
@@ -83,7 +84,10 @@ def printed_means(
     """
     from ogviz.layout.ticks import auto_decimals, format_value
 
-    assert len(positions) == len(values), f"{len(positions)} positions for {len(values)} values"
+    require(
+        len(positions) == len(values),
+        f"{len(positions)} positions for {len(values)} values",
+    )
     if decimals is None:
         decimals = auto_decimals(max((abs(value * scale) for value in values), default=1.0))
     drawn: list[Text] = []
@@ -102,7 +106,14 @@ def printed_means(
             va="center",
             fontsize=fontsize,
             fontweight="bold",
-            color="#333333",
+            # The house ink. This was `"#333333"` — a fourth black, in a package whose reason for
+            # existing opens on a project that shipped two of them in one paper. It sits between
+            # `INK` and `MUTED_INK`, 0.21 from one and 0.27 from the other, so it was not either of
+            # them by accident or on purpose. `INK` is the one that follows from the design: the
+            # printed mean IS the number the panel exists to report, which is why `MEAN_LABEL_SIZE`
+            # is larger than a label that merely annotates a mark, and a headline number does not
+            # get set in a grey.
+            color=INK,
             zorder=9,
             bbox={
                 "facecolor": page_color(),
@@ -146,9 +157,10 @@ def _finish(ax: Axes, high: float, orientation: Orientation, *, grid: bool) -> N
     _settle_mean_row(ax, orientation)
     after = value_span(ax, orientation)
     drift = max(abs(a - b) for a, b in zip(after, before, strict=True))
-    assert drift <= abs(before[1] - before[0]) * LIMIT_DRIFT, (
+    require(
+        drift <= abs(before[1] - before[0]) * LIMIT_DRIFT,
         f"the value axis moved after it was fitted: {before} -> {after}. Something below this "
-        "point changed the limits, and the panel no longer frames the data it was sized to."
+        "point changed the limits, and the panel no longer frames the data it was sized to.",
     )
 
 
@@ -266,18 +278,23 @@ def group_violins(
         show_means = orientation == "vertical"
 
     populated = [(p, np.asarray(v, dtype=float), f, e) for p, v, f, e in groups if len(v)]
-    assert populated, "group_violins needs at least one non-empty group"
+    require(
+        populated,
+        "group_violins needs at least one non-empty group",
+    )
     seats = [p for p, _v, _f, _e in populated]
-    assert len(set(seats)) == len(seats), (
+    require(
+        len(set(seats)) == len(seats),
         f"two groups share a position in {seats}. They would be drawn on top of each other — two "
-        "violins, two clouds of dots, two mean lines, and no way to read either."
+        "violins, two clouds of dots, two mean lines, and no way to read either.",
     )
     for position, values, _f, _e in populated:
         missing = int(np.count_nonzero(~np.isfinite(values)))
-        assert not missing, (
+        require(
+            not missing,
             f"group at x={position} has {missing} non-finite value(s) of {len(values)}. "
             "Drop or impute them in the project, where the choice is visible — a plot that "
-            "silently omits them shows an n nobody wrote down."
+            "silently omits them shows an n nobody wrote down.",
         )
     rng = np.random.default_rng(seed)  # a Generator passes straight through
     # Built once and given to BOTH `bracket_stack` calls. The first measures how much headroom the
@@ -352,8 +369,9 @@ def group_violins(
         # `bar_panel` has always labelled its own categories and this did not, so every caller set
         # the ticks and the labels by hand — the same four lines in three examples, and two panels
         # of the same kind with different contracts.
-        assert len(categories) == len(groups), (
-            f"{len(categories)} categories for {len(groups)} groups"
+        require(
+            len(categories) == len(groups),
+            f"{len(categories)} categories for {len(groups)} groups",
         )
         # Every group's position, not `places` — an empty group is dropped from `places`, and
         # labelling that shorter list would slide every later name onto the wrong violin.
@@ -376,10 +394,11 @@ def group_violins(
         **bracket_arguments,  # type: ignore[arg-type]
     )
     limit = value_span(ax, orientation)[1]
-    assert reached <= limit + 1e-9, (
+    require(
+        reached <= limit + 1e-9,
         f"the bracket stack reaches {reached:.4g} but the axis stops at {limit:.4g}. matplotlib "
         "clips the bracket LINES and not their stars, so this would have shipped as stars "
-        "floating over nothing. Raise `headroom`."
+        "floating over nothing. Raise `headroom`.",
     )
     _finish(ax, high, orientation, grid=grid)
     return reached

@@ -30,6 +30,7 @@ import numpy as np
 from matplotlib.ticker import FuncFormatter, NullFormatter
 
 from ogviz.layout import hairline_grid, legend_pill
+from ogviz.require import require
 from ogviz.theme import GRID, INK, MUTED_INK
 
 if TYPE_CHECKING:
@@ -158,10 +159,14 @@ def line_panel(
     competing — the reader should see the leading lines first and find the baseline when looking
     for it.
     """
-    assert lines, "line_panel needs at least one series"
+    require(
+        lines,
+        "line_panel needs at least one series",
+    )
     for line in lines:
-        assert line.x.shape == line.y.shape, (
-            f"{line.label}: {line.x.shape[0]} x values and {line.y.shape[0]} y values"
+        require(
+            line.x.shape == line.y.shape,
+            f"{line.label}: {line.x.shape[0]} x values and {line.y.shape[0]} y values",
         )
     for line in sorted(lines, key=lambda item: (not item.muted, item.order)):
         ax.plot(
@@ -179,7 +184,8 @@ def line_panel(
             zorder=2 if line.muted else 4,
         )
     if money:
-        assert x_ticks is not None, "money ticks need the positions to label"
+        if x_ticks is None:  # written out rather than `require`d: this narrows for the call below
+            raise AssertionError("money ticks need the positions to label")
         money_ticks(ax, x_ticks)
     elif x_ticks is not None:
         ax.set_xticks(list(x_ticks))
@@ -218,4 +224,7 @@ def series_colors(count: int) -> tuple[str, ...]:
     return tuple(wheel[index % len(wheel)] for index in range(count))
 
 
-MUTED_SERIES = GRID  # the baseline colour: present, and plainly not the point
+# The colour for a `Line(muted=True)`. Named rather than left as `GRID` at the call site, because
+# what a caller wants to say is "this series is the baseline", not "this series is the colour the
+# gridlines happen to be" — the two are the same value today and are not the same decision.
+MUTED_SERIES = GRID

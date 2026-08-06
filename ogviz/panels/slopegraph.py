@@ -29,6 +29,7 @@ import numpy as np
 from ogviz.layout import hairline_grid, legend_pill
 from ogviz.layout.stacking import place_end_labels
 from ogviz.orientation import stamp_orientation
+from ogviz.require import require
 from ogviz.theme import INK, MUTED_INK
 
 if TYPE_CHECKING:
@@ -58,9 +59,13 @@ class Strand:
     spread: Sequence[tuple[float, float]] | None = None
 
     def __post_init__(self) -> None:
-        assert len(self.values), f"{self.label}: a strand with no values"
-        assert self.spread is None or len(self.spread) == len(self.values), (
-            f"{self.label}: {len(self.spread or ())} spreads for {len(self.values)} values"
+        require(
+            len(self.values),
+            f"{self.label}: a strand with no values",
+        )
+        require(
+            self.spread is None or len(self.spread) == len(self.values),
+            f"{self.label}: {len(self.spread or ())} spreads for {len(self.values)} values",
         )
 
 
@@ -102,11 +107,18 @@ def slopegraph(
     caller can assert on it or switch to the legend; asking for end labels does not silently produce
     a pile of them.
     """
-    assert strands, "a slopegraph with no strands in it"
-    assert len(stages) >= 2, "a slopegraph needs at least two stages"
+    require(
+        strands,
+        "a slopegraph with no strands in it",
+    )
+    require(
+        len(stages) >= 2,
+        "a slopegraph needs at least two stages",
+    )
     for strand in strands:
-        assert len(strand.values) == len(stages), (
-            f"{strand.label}: {len(strand.values)} values across {len(stages)} stages"
+        require(
+            len(strand.values) == len(stages),
+            f"{strand.label}: {len(strand.values)} values across {len(stages)} stages",
         )
 
     stamp_orientation(ax, "vertical")
@@ -118,8 +130,9 @@ def slopegraph(
         values = np.asarray(strand.values, dtype=float)
         if strand.spread is not None:
             bounds = np.asarray(strand.spread, dtype=float)
-            assert bounds.shape == (len(values), 2), (
-                f"{strand.label}: spread must be (low, high) per stage, got {bounds.shape}"
+            require(
+                bounds.shape == (len(values), 2),
+                f"{strand.label}: spread must be (low, high) per stage, got {bounds.shape}",
             )
             ax.fill_between(
                 positions,
@@ -180,8 +193,9 @@ def null_distance(scores: Sequence[float], nulls: Sequence[float]) -> NDArray[np
     """
     measured = np.asarray(scores, dtype=float)
     chance = np.asarray(nulls, dtype=float)
-    assert measured.shape == chance.shape, (
+    require(
+        measured.shape == chance.shape,
         f"{measured.shape} scores against {chance.shape} nulls — every metric needs its own null, "
-        "and one null broadcast across a family of metrics is the mistake this refuses"
+        "and one null broadcast across a family of metrics is the mistake this refuses",
     )
     return measured - chance

@@ -11,6 +11,8 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Literal
 
+from ogviz import units
+from ogviz.require import require
 from ogviz.tags import mark, marked
 from ogviz.theme import INK, MUTED_INK, SUBTITLE_SIZE, TITLE_SIZE
 
@@ -81,7 +83,7 @@ def titled(
     consumer scripts were carrying about eight lines each of hand-placed `fig.text` for it, and
     hand-placing it is what makes it drift when the layout runs afterwards.
     """
-    figure_points = fig.get_figheight() * 72.0
+    figure_points = units.inches_to_points(fig.get_figheight())
     horizontal = "left" if align == "left" else "center"
     x = panel_left_edge(fig) if align == "left" else 0.5
     heading = fig.suptitle(
@@ -146,7 +148,15 @@ def fit_under_header(
     with warnings.catch_warnings(record=True) as raised:
         warnings.simplefilter("always", UserWarning)
         fig.tight_layout(rect=(0.0, bottom, 1.0, header_bottom))
-        applied = not any("Tight layout not applied" in str(one.message) for one in raised)
+        refused = [one for one in raised if "Tight layout not applied" in str(one.message)]
+        applied = not refused
+    # Everything else matplotlib said goes back out. Recording warnings SWALLOWS them, and this
+    # consumed the whole batch to read one message — so any other complaint raised during the
+    # layout, about a font, a deprecation, an axes it could not place, vanished silently. Only the
+    # one being handled here is kept back. `glyphs_must_render` does the same, for the same reason.
+    for other in raised:
+        if other not in refused:
+            warnings.warn_explicit(other.message, other.category, other.filename, other.lineno)
     # Recorded on the figure as well as returned, because the return value went unread for a week
     # and the whole point was that this should not pass unnoticed.
     mark(fig, "layout_refused", not applied)
@@ -178,10 +188,16 @@ def room_below(fig: Figure, bottom: float, *, keep_panels: bool = True) -> float
     The arithmetic is `height * (top - old_bottom) / (top - bottom)`, which is what a caller
     otherwise writes out by hand and re-derives every time another row appears.
     """
-    assert 0.0 <= bottom < 1.0, f"a bottom margin is a figure fraction, got {bottom}"
+    require(
+        0.0 <= bottom < 1.0,
+        f"a bottom margin is a figure fraction, got {bottom}",
+    )
     pars = fig.subplotpars
     top, old_bottom = float(pars.top), float(pars.bottom)
-    assert bottom < top, f"a bottom margin of {bottom} leaves no room under a top of {top}"
+    require(
+        bottom < top,
+        f"a bottom margin of {bottom} leaves no room under a top of {top}",
+    )
     height = float(fig.get_figheight())
     if keep_panels:
         panel_inches = height * (top - old_bottom)

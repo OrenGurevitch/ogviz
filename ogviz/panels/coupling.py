@@ -29,6 +29,7 @@ from matplotlib import patheffects
 from matplotlib.ticker import MaxNLocator
 
 from ogviz.layout import hairline_grid
+from ogviz.require import require
 from ogviz.significance import stars
 from ogviz.tags import mark
 from ogviz.theme import AXIS_LABEL_SIZE, INK, STAR_SIZE, TICK_SIZE, page_color
@@ -99,11 +100,18 @@ class Estimate:
 
     def __post_init__(self) -> None:
         low, high = self.interval
-        assert low <= high, f"{self.label}: interval {self.interval} runs backwards"
-        assert low <= self.value <= high, (
-            f"{self.label}: the estimate {self.value:g} sits outside its interval {self.interval}"
+        require(
+            low <= high,
+            f"{self.label}: interval {self.interval} runs backwards",
         )
-        assert self.p is None or 0.0 <= self.p <= 1.0, f"{self.label}: p={self.p} is not a p-value"
+        require(
+            low <= self.value <= high,
+            f"{self.label}: the estimate {self.value:g} sits outside its interval {self.interval}",
+        )
+        require(
+            self.p is None or 0.0 <= self.p <= 1.0,
+            f"{self.label}: p={self.p} is not a p-value",
+        )
 
 
 @dataclass(frozen=True)
@@ -166,10 +174,14 @@ def scatter_panel(
     `pooled_color` adds a dashed trend fitted to every cloud at once, which is the line the strip's
     pooled row corresponds to. Pass None where pooling the subsets would not mean anything.
     """
-    assert leg.clouds, f"the {leg.x_label} / {leg.y_label} leg has nothing to scatter"
+    require(
+        leg.clouds,
+        f"the {leg.x_label} / {leg.y_label} leg has nothing to scatter",
+    )
     for cloud in leg.clouds:
-        assert cloud.x.shape == cloud.y.shape, (
-            f"{cloud.label}: {cloud.x.shape[0]} x values and {cloud.y.shape[0]} y values"
+        require(
+            cloud.x.shape == cloud.y.shape,
+            f"{cloud.label}: {cloud.x.shape[0]} x values and {cloud.y.shape[0]} y values",
         )
         ax.scatter(
             cloud.x,
@@ -274,7 +286,10 @@ def estimate_strip(
     The reference line is where "no relationship" sits; pass None for a quantity that has no such
     value.
     """
-    assert estimates, "a strip with no estimates in it"
+    require(
+        estimates,
+        "a strip with no estimates in it",
+    )
     if sort_by != "given":
         key = (
             (lambda e: abs(e.value - (reference or 0.0)))
@@ -356,7 +371,10 @@ def coupling_panels(
     Row labels are printed on the leftmost strip only. Repeating them under every column costs the
     width the panels need and tells the reader nothing they did not learn from the first.
     """
-    assert legs, "coupling_panels needs at least one leg"
+    require(
+        legs,
+        "coupling_panels needs at least one leg",
+    )
     grid = fig.add_gridspec(2, len(legs), height_ratios=height_ratios)
     scale = limits if limits is not None else shared_limits(legs)
     for column, leg in enumerate(legs):

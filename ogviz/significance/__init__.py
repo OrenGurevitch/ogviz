@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 from matplotlib.font_manager import FontProperties
 from matplotlib.textpath import TextPath
 
+from ogviz import units
 from ogviz.orientation import (
     is_vertical,
     place_many,
@@ -49,8 +50,13 @@ def stars(p: float) -> str:
     A p outside [0, 1] is refused rather than mapped: everything below 0.001 becomes three stars,
     so a sign error or an uninitialised value upstream would otherwise print as the most
     significant result on the figure.
+
+    RAISED rather than asserted, because `python -O` deletes an `assert` — measured, `stars(-5.0)`
+    returned `"***"` under that flag, which is the exact outcome this refusal exists to prevent.
+    Every check in this package on a number a CALLER passed in is written this way for that reason.
     """
-    assert 0.0 <= p <= 1.0, f"p must be in [0, 1], got {p}"
+    if not 0.0 <= p <= 1.0:
+        raise AssertionError(f"p must be in [0, 1], got {p}")
     if p < 0.001:
         return "***"
     if p < 0.01:
@@ -159,9 +165,7 @@ def bracket_stack(
     figure = ax.figure
     assert figure is not None, "the axes must belong to a figure"
     figure.canvas.draw()  # realise a renderer so transforms are meaningful
-    to_data = ax.transData.inverted()
-    to_pixels = ax.transData
-    px_per_pt = figure.dpi / 72.0
+    px_per_pt = units.px_per_point(figure)
     tick = span * TICK_FRACTION
     upright = is_vertical(orientation)
     # The ink measurement is along the axis the bracket grows on. Vertical brackets stack
@@ -197,12 +201,11 @@ def bracket_stack(
             for v in ink_extents_points(label, size, axis=axis, weight=fontweight)
         )
         # Place the BASELINE so that the ink bottom lands INK_GAP_PX beyond this bracket.
-        anchor = to_pixels.transform(place_many(orientation, 0.0, y))[axis]
+        anchor = units.value_to_px(ax, y, orientation=orientation)
         baseline_px = anchor + INK_GAP_PX - ink_low
 
         def at(pixels: float) -> float:
-            point = (pixels, 0.0) if axis == 0 else (0.0, pixels)
-            return float(to_data.transform(point)[axis])
+            return units.px_to_value(ax, pixels, orientation=orientation)
 
         label_x, label_y = place_many(orientation, (x_left + x_right) / 2, at(baseline_px))
         if draw:
@@ -273,7 +276,7 @@ def settle_bracket_labels(fig: Figure) -> list[str]:
     from ogviz.orientation import read_orientation
 
     fig.canvas.draw()
-    px_per_pt = fig.dpi / 72.0
+    px_per_pt = units.px_per_point(fig)
     moved: list[str] = []
     for ax in fig.axes:
         orientation = read_orientation(ax) or "vertical"
@@ -290,10 +293,9 @@ def settle_bracket_labels(fig: Figure) -> list[str]:
                 axis=axis,
                 weight=str(text.get_fontweight()),
             )
-            anchor_px = float(ax.transData.transform(place_many(orientation, 0.0, top))[axis])
+            anchor_px = units.value_to_px(ax, top, orientation=orientation)
             baseline_px = anchor_px + INK_GAP_PX - ink_low * px_per_pt
-            point = (baseline_px, 0.0) if axis == 0 else (0.0, baseline_px)
-            settled = float(ax.transData.inverted().transform(point)[axis])
+            settled = units.px_to_value(ax, baseline_px, orientation=orientation)
             position = list(text.get_position())
             if abs(position[axis] - settled) < 1e-12:
                 continue
