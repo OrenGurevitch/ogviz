@@ -28,6 +28,8 @@ from ogviz.tags import mark
 from ogviz.theme import INK, page_color
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from matplotlib.axes import Axes
     from numpy.typing import ArrayLike, NDArray
 
@@ -221,15 +223,25 @@ def points(
     fill: float = JITTER_FILL,
     center_gap: float = CENTER_GAP,
     clear_central_marks: bool = True,
+    mark_widths: Mapping[str, float] | None = None,
     orientation: Orientation = "vertical",
 ) -> None:
     """One dot per observation, jittered inside the violin body.
 
     `width`, `fill` and `center_gap` must match the violin this scatter sits in, or the dots
     spread outside a narrow body or clump inside a wide one.
+
+    `mark_widths` is the same requirement for the CENTRAL marks, and it exists because the defaults
+    agreeing is not the same as them matching. A caller drawing `iqr_box(box_width=9.0)` and leaving
+    this alone reserves a lane for a 5.5-wide bar, and its dots sit on the box — the same class of
+    failure as the whisker lane that did nothing, one step out. `widths_of` builds it from the
+    kwargs a caller already passed to the marks themselves, so there is one place that knows which
+    of `iqr_box`'s names answers which of `central_clearance`'s.
     """
     clearance = (
-        central_clearance(ax, values, point_size=size, orientation=orientation)
+        central_clearance(
+            ax, values, point_size=size, orientation=orientation, **(mark_widths or {})
+        )
         if clear_central_marks and len(np.asarray(values)) > 1
         else None
     )
@@ -259,6 +271,34 @@ def points(
     # only trustworthy check is against the value that was used.
     mark(drawn, "lane", clearance)
     mark(drawn, "position", float(position))
+
+
+# `iqr_box` and `mean_line` name their widths for what they DRAW; `central_clearance` names them for
+# what a dot must AVOID. The two vocabularies are not the same and the translation between them is
+# exactly the kind of thing that gets written twice and drifts, so it is written here.
+_WIDTH_NAMES = {
+    "box_width": "box_linewidth",
+    "whisker_width": "whisker_linewidth",
+    "median_size": "median_size",
+    "half_width": "mean_half_width",
+    "linewidth": "mean_linewidth",
+}
+
+
+def widths_of(*mark_kwargs: Mapping[str, object] | None) -> dict[str, float]:
+    """The clearance a dot needs, read off the kwargs the marks were actually drawn with.
+
+    Takes the mappings a caller passed to `iqr_box` and `mean_line` and returns what
+    `central_clearance` calls the same quantities. Anything that is not a width — a colour, a fill —
+    is ignored, so a caller can hand over its whole kwargs mapping without filtering it first.
+    """
+    found: dict[str, float] = {}
+    for given in mark_kwargs:
+        for name, value in (given or {}).items():
+            target = _WIDTH_NAMES.get(name)
+            if target is not None and isinstance(value, (int, float)):
+                found[target] = float(value)
+    return found
 
 
 def iqr_box(

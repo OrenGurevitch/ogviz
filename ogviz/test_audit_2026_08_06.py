@@ -218,3 +218,47 @@ def test_guarded_leaves_is_guarded_telling_the_truth() -> None:
         ogviz.unguard()
     assert not ogviz.is_guarded()
 
+
+def test_the_lane_follows_the_widths_the_marks_are_actually_drawn_at() -> None:
+    """Defaults agreeing is not the same as the widths matching.
+
+    `central_clearance` reserves a lane and `iqr_box` draws the bar, and until the two were wired
+    together a caller who widened one got dots placed against the other's default — sitting on the
+    bar. Found while fixing the whisker lane, which is the same failure one step in.
+    """
+    from ogviz.tags import value_of
+
+    values = np.random.default_rng(0).normal(size=200)
+    q1, q3 = (float(v) for v in np.percentile(values, [25, 75]))
+    median, mean = float(np.median(values)), float(values.mean())
+    at_the_bar = (
+        (values >= q1)
+        & (values <= q3)
+        & (np.abs(values - median) > 0.3)
+        & (np.abs(values - mean) > 0.3)
+    )
+    in_the_tail = (values < q1) | (values > q3)
+
+    def lane_for(**box_kwargs) -> np.ndarray:
+        plt.close("all")
+        _fig, ax = plt.subplots(figsize=(7.0, 8.0))
+        ogviz.group_violins(ax, [(0.0, values, "#E8A838", "#B97C10")], box_kwargs=box_kwargs)
+        return next(value_of(c, "lane") for c in ax.collections if value_of(c, "lane") is not None)
+
+    narrow, wide = lane_for(box_width=5.5), lane_for(box_width=12.0)
+    assert wide[at_the_bar].max() > narrow[at_the_bar].max(), "a wider bar needs a wider lane"
+
+    thin, thick = lane_for(whisker_width=1.5), lane_for(whisker_width=6.0)
+    assert thick[in_the_tail].min() > thin[in_the_tail].min(), "and so does a thicker whisker"
+
+
+def test_a_caller_can_still_override_the_lane_widths() -> None:
+    """`setdefault`, so an explicit `mark_widths` beats what the box kwargs imply."""
+    from ogviz.marks import widths_of
+
+    assert widths_of({"box_width": 9.0, "color": "#000000"}) == {"box_linewidth": 9.0}
+    assert widths_of({"half_width": 0.3}, {"linewidth": 4.0}) == {
+        "mean_half_width": 0.3,
+        "mean_linewidth": 4.0,
+    }
+    assert widths_of(None, {}) == {}

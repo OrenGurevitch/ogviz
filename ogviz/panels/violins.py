@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout import hairline_grid, ticks_over_data
-from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin
+from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin, widths_of
 from ogviz.orientation import (
     category_limits,
     category_tick_labels,
@@ -305,6 +305,12 @@ def group_violins(
     point_kwargs = {"orientation": orientation, **dict(point_kwargs or {})}
     box_kwargs = {"orientation": orientation, **dict(box_kwargs or {})}
     mean_kwargs = {"orientation": orientation, **dict(mean_kwargs or {})}
+    # The lane the dots keep clear has to be the lane the OTHER marks actually occupy. This is the
+    # one place that holds all four sets of kwargs, so it is the one place that can say so: a caller
+    # widening the IQR bar through `box_kwargs` and nothing else would otherwise get dots placed
+    # against the default width, sitting on the bar. `setdefault`, so an explicit `mark_widths` in
+    # `point_kwargs` still wins.
+    point_kwargs.setdefault("mark_widths", widths_of(box_kwargs, mean_kwargs))
 
     series = [v for _p, v, _f, _e in populated]
     if anchor_value is not None:
