@@ -53,8 +53,16 @@ own font for byte-identical output, was the least likely to look.
 
 ## Testing
 
-`uv run just` — lint, format, typecheck, test. `uv run just strict` turns deprecations into
-errors. CI runs matplotlib 3.10 and 3.11.
+`uv run just` is the full local gate: lint, format, typecheck, the test run with deprecations as
+errors, then a regenerated gallery and README. It writes — `--fix`, reformatting, new images.
+
+`uv run just ci` is the read-only subset, and it is exactly what CI runs: the same four checks over
+the same paths, with nothing fixed and nothing written. A green `just ci` is a green build, and the
+workflow invokes the recipe rather than listing its own steps so the two cannot drift.
+
+CI runs it on matplotlib 3.10 and 3.11, on Linux — which has no Arial, so the house stack falls
+through to matplotlib's bundled DejaVu there. Anything asserting on rendered text geometry has to
+survive both.
 
 ## Examples
 
