@@ -81,21 +81,42 @@ def test_a_tone_colours_the_value_and_missing_stays_muted() -> None:
     assert Cell().ink() == MUTED_INK, "a missing cell stays muted whatever tone is asked for"
 
 
-def test_the_tick_and_cross_are_drawn_in_a_font_that_has_them() -> None:
-    """Arial has no U+2713 or U+2717, and matplotlib draws a missing glyph as a tofu box.
+def test_a_glyph_the_display_font_lacks_is_drawn_in_one_that_has_it() -> None:
+    """The display stack cannot always draw a tick, and matplotlib renders what it cannot as tofu.
 
-    Verified against the resolved face rather than assumed, and the fallback is matplotlib's own
-    bundled DejaVu, so this holds on a machine with no system fonts at all.
+    The FONT is pinned rather than taken from the machine, and that is the whole difficulty: which
+    answer is correct depends on what is installed. Arial has no U+2713, so on macOS the fallback is
+    required; a Linux runner has no Arial at all and falls through to DejaVu Sans, which HAS the
+    tick, so there `None` is the right answer and asserting otherwise tests the machine rather than
+    the code. DejaVu Serif is bundled with matplotlib and lacks the tick, so pinning it poses the
+    question the same way everywhere.
     """
+    import matplotlib as mpl
+
+    mpl.rcParams["font.sans-serif"] = ["DejaVu Serif"]
     assert family_for(YES) == GLYPH_FAMILY
     assert family_for(NO) == GLYPH_FAMILY
     assert family_for("0.71 Dice") is None, "ordinary text stays in the display font"
 
+
+def test_whatever_family_a_cell_ends_up_in_can_render_it() -> None:
+    """The contract, stated so it holds on any machine: no cell is drawn as a tofu box.
+
+    Where the glyph is available in the display font this passes by using it, and where it is not
+    it passes by falling back — which is why the assertion is about the RESULT rather than about
+    which of the two happened.
+    """
+    from matplotlib.font_manager import FontProperties, findfont
+    from matplotlib.ft2font import FT2Font
+
     _fig, ax = _table()
-    ticks = [t for t in ax.texts if t.get_text() in (YES, NO)]
-    assert ticks, "the table drew them"
-    assert all(t.get_fontfamily() == [GLYPH_FAMILY] for t in ticks)
-    assert all(t.get_fontfamily() != [GLYPH_FAMILY] for t in ax.texts if t.get_text() == "0.71")
+    drawn = [text for text in ax.texts if text.get_text() in (YES, NO)]
+    assert drawn, "the table drew them"
+    for text in drawn:
+        face = FT2Font(findfont(FontProperties(family=text.get_fontfamily())))
+        assert all(face.get_char_index(ord(ch)) for ch in text.get_text()), (
+            f"{text.get_text()!r} would render as tofu in {text.get_fontfamily()}"
+        )
 
 
 def test_the_glyphs_survive_the_save_gate() -> None:
