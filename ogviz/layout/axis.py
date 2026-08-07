@@ -29,12 +29,24 @@ def ticks_over_data(
     because it sees axis, not meaning. Those ticks and their gridlines say a measurement could sit
     at that height when nothing can — the space is layout, held open for the brackets.
 
-    `data_high` defaults to MEASURING what was drawn, and callers should let it. Passed the data
-    maximum instead, it drops the ticks a violin needs: a kernel density body reaches past the
-    largest observation, so the tick above that observation is inside the violin and taking it away
-    leaves the top of the shape with nothing to read it against. That is what happened — a panel
-    whose bodies reached 3.75 was left with its highest tick at 2.0. The same mistake, of using the
-    data extent where the DRAWN extent is meant, put a printed mean off the page a few days ago.
+    `data_high` defaults to MEASURING what was drawn, and callers should let it. Passed a value
+    BELOW the drawn extent, it drops ticks the marks still need, leaving the top of a shape with
+    nothing to read it against.
+
+    The mechanism this docstring used to give for that was wrong, and is corrected here rather than
+    quietly deleted: it said a kernel density body reaches past the largest observation. It does
+    not. matplotlib evaluates a violin's KDE over the data range, so the body stops exactly at the
+    data — measured on `marks.violin` with a normal, a right-skewed and a tight sample, body top
+    minus data max is +0.000 in all three. Passing one GROUP's maximum on a panel holding several,
+    or one PANEL's maximum on a shared scale, is what actually produces a value below the drawn
+    extent. The failure is real; the explanation was not, which is exactly the kind of claim this
+    package asks to be measured.
+
+    ON A SHARED SCALE, `data_high` means the reach across EVERY panel sharing it, not this panel's
+    own. Measuring per panel gives each a different bracketing tick — the disagreement this function
+    exists to prevent — and only the caller knows which axes are grouped. `align_ticks` does this
+    correctly by passing the maximum over the whole grid; a caller pairing two axes by hand has to
+    do the same.
 
     It also makes panels disagree with each other for no reason a reader can see: one whose stack
     happens to clear a round number carries an extra rule and its neighbour does not. That is the
