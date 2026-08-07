@@ -1,9 +1,11 @@
 """Whether the colours in a figure survive colour-vision deficiency.
 
-Thirteen checks in this package measure where things are and none of them looks at what colour they
-are, so a figure whose two series are a confident red and green passes every one of them and is a
-single grey line to about one man in twelve. It is the most common accessibility defect in
-scientific figures and the one an author is least able to see.
+Every other check in this package measures where things ARE, and none of them looks at what colour
+they are — so a figure whose two series are a confident red and green passes all of them and is a
+single grey line to about one man in twelve. (The count used to be written out here as "thirteen",
+and there are twenty-one now: a number that has to be maintained by hand in prose is a number that
+goes stale, which is the same reason the README's module tree is generated.) It is the most common
+accessibility defect in scientific figures and the one an author is least able to see.
 
 The simulation is Viénot, Brettel and Mollon's, the standard construction: take the colour to LMS,
 collapse the missing cone's response onto the plane spanned by the other two, come back. It is a

@@ -1,4 +1,4 @@
-"""Colour-vision checks: the defect thirteen geometric checks cannot see."""
+"""Colour-vision checks: the defect none of the geometric checks can see."""
 
 import matplotlib
 

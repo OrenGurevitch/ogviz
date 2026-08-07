@@ -35,8 +35,6 @@ def main() -> None:
     print(f"README.md written, {len(tree.splitlines())} lines of module tree")
 
 
-
-
 def _collapse(raw: str) -> str:
     """Join pypatree's wrapped signatures and shorten the long ones to `name(...)`.
 
@@ -65,7 +63,7 @@ def _collapse(raw: str) -> str:
         # Only the SIGNATURE is normalised, never the stem: the stem's runs of spaces ARE the tree
         # indentation, and squeezing them turns "│   ├──" into "│ ├──" and flattens the whole shape.
         stem = re.match(r"^([\s│├└─]*)", line).group(1)  # type: ignore[union-attr]
-        body = line[len(stem):]
+        body = line[len(stem) :]
         # pypatree wraps at its own width, so joining leaves "( a, b, )" spacing behind
         body = re.sub(r"\(\s+", "(", re.sub(r"\s+\)", ")", re.sub(r",\s*\)", ")", body)))
         line = stem + re.sub(r"(?<=\S)  +(?=\S)", " ", body)

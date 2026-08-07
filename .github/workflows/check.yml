@@ -35,7 +35,7 @@ jobs:
           cache-suffix: matplotlib-${{ matrix.matplotlib }}
       - run: uv sync --extra dev
       - run: uv pip install "matplotlib==${{ matrix.matplotlib }}"
-      - run: uv run ruff check ogviz
-      - run: uv run ruff format --check ogviz
-      - name: fail on a deprecation, so a matplotlib rename is caught before it breaks
-        run: uv run pytest ogviz -q -W error::DeprecationWarning
+      # One command, defined in the justfile, so this file cannot check less than the developer
+      # does. It listed its own steps until 2026-08-07, and had drifted to linting one directory of
+      # the two, typechecking nothing at all, and running a stricter pytest than `just` did.
+      - run: uv run just ci
