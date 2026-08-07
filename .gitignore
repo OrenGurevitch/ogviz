@@ -10,3 +10,13 @@ CLAUDE.md
 
 # Local issue tracker — kept out of the published repo, not out of the working tree.
 FIXME.md
+
+# macOS drops these into any directory Finder has opened; none is tracked today and one would be
+# the moment someone browses `examples/out`.
+.DS_Store
+
+# Build and coverage artefacts. `dist/` was already here; these are its neighbours.
+build/
+*.egg-info/
+.coverage
+htmlcov/
