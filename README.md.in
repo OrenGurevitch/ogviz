@@ -1,7 +1,7 @@
 # ogviz
 
-Shared matplotlib figure code: style, violins, significance brackets, bar panels. Colours,
-p-values and units are passed in.
+Publication figure primitives for matplotlib: one house style, violins, significance brackets, bar
+panels — and a QC gate that refuses to write a broken figure. Colours, p-values and units are yours.
 
 ```bash
 uv add "ogviz @ git+https://github.com/OrenGurevitch/ogviz"
@@ -14,382 +14,103 @@ use_house_style()
 fig, ax = plt.subplots(figsize=(7, 8))
 group_violins(ax, [(0.0, control, "#E8A838", "#B97C10"),
                    (1.0, treated, "#7C9A6E", "#4A6136")],
-              comparisons=[(0.0, 1.0, p_value)], display_scale=1e3)
-value_ticks(ax, count=4, scale=1e3)
-header_bottom = titled(fig, "Two groups")     # returns where the header ends
-fit_under_header(fig, header_bottom)          # ...and this puts the panels under it
-save(fig, out_dir, "figure")                  # writes AND runs the gate
+              comparisons=[(0.0, 1.0, p_value)])
+value_ticks(ax, count=4)
+fit_under_header(fig, titled(fig, "Two groups"))   # titled returns where the header ends
+save(fig, out_dir, "figure")                       # writes AND runs the gate
 ```
 
-Those last three lines are the shape of every figure here, whatever the panel. `titled` returning a
-float is easy to drop — a function that draws a title looks finished — and a figure without
-`fit_under_header` survives until it gains a legend, a caption or a second subtitle line, at which
-point the panels grow into the header. A caller who found `group_violins` and not these rebuilt the
-surrounding layout three times before finding them.
+Three things the names do not give away:
 
-## The style call
+- **`save` runs the gate and raises instead of writing.** It also closes the figure.
+- **`titled` returns a float** — where the header ends. `fit_under_header` needs it, or the panels
+  grow into the title.
+- **`use_house_style()` once per process.** Pass `PAPER_WHITE` for a manuscript; the default page is
+  a warm off-white that composites as a grey rectangle on a journal's white.
 
-`use_house_style()` sets the colours and the typography together, which is what a project with no
-constraint on its font wants.
+Everything else is documented where it lives: each function's docstring carries the reasoning and
+the measurement behind it. Requires matplotlib ≥ 3.10.
 
-**Exporting for a manuscript: `use_house_style(PAPER_WHITE)`.** The default page is a warm off-white,
-which cuts glare on screen; a journal typesets on white, and there the warm page composites as a
-visible grey rectangle behind the figure. It is the kind of thing noticed at proof stage.
+## Figures
 
-**Pinning your own font: `use_house_ink()`.** Take the colours and leave the typography alone. Two
-reasons a project must: significance brackets stacked by measuring rendered ink are calibrated
-against one font's metrics, so changing the family makes stars collide; and byte-identical SVGs
-across machines need matplotlib's bundled DejaVu rather than a font that may or may not be
-installed. `use_house_type()` is the other half, for the reverse case.
+`uv run just figures` renders these from invented data with fixed seeds. The source,
+`examples/__main__.py`, is the specification rather than an illustration.
 
-The halves exist because a project that could take neither hand-rolled the ink instead — in one of
-its two renderers — and shipped two different blacks in one paper for months.
+![](examples/out/01_two_group_violin.png)
 
-Either half also calls `use_reproducible_svg()`, which pins `svg.hashsalt` so re-rendering an
-unchanged figure rewrites the same bytes. It is its own function because it belongs to neither
-half — it lived inside the ink one, where the project most likely to need it, the one pinning its
-own font for byte-identical output, was the least likely to look.
+<table>
+<tr>
+<td width="50%"><img src="examples/out/02_display_units.png" width="100%"><br><sub><code>display_scale</code> — held in ppm, drawn in ppb</sub></td>
+<td width="50%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub><code>share_value_limits</code> — one scale, one row of means</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub>a condition grid, two by three</sub></td>
+<td width="50%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><code>split_violins</code> — one quantity measured two ways</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="examples/out/06_stacked_brackets.png" width="100%"><br><sub><code>bracket_stack</code> — stars anchored by their ink</sub></td>
+<td width="50%"><img src="examples/out/07_bars_with_reference.png" width="100%"><br><sub><code>bar_panel</code> — asymmetric CI, a threshold over the bars</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="examples/out/08_grouped_bars.png" width="100%"><br><sub>two series, sign-aware labels</sub></td>
+<td width="50%"><img src="examples/out/09_headline_bars.png" width="100%"><br><sub><code>rounded</code> and <code>highlight</code></sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><code>orientation="horizontal"</code>, for long names</sub></td>
+<td width="50%"><img src="examples/out/11_effort_curves.png" width="100%"><br><sub><code>line_panel</code> — log axis, <code>broken_zero</code></sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><code>coupling_panels</code> — scatters over forest plots</sub></td>
+<td width="50%"><img src="examples/out/13_multiplicity_ladder.png" width="100%"><br><sub><code>multiplicity_ladder</code> — Bonferroni and BH</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="examples/out/14_effect_heatmap.png" width="100%"><br><sub><code>effect_heatmap</code> — diverging, stars, missing cells</sub></td>
+<td width="50%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><code>slopegraph</code> — even stages, spread as a band</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="examples/out/16_comparison_table.png" width="100%"><br><sub><code>table_panel</code> — highlighted row or column, cell tone</sub></td>
+<td width="50%"><img src="examples/out/17_controlled_comparison.png" width="100%"><br><sub>one bar that is not comparable, said on the axis</sub></td>
+</tr>
+</table>
 
-## Testing
+The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, which works standalone.
 
-`uv run just` is the full local gate: lint, format, typecheck, the test run with deprecations as
-errors, then a regenerated gallery and README. It writes — `--fix`, reformatting, new images.
+## The QC gate
 
-`uv run just ci` is the read-only subset, and it is exactly what CI runs: the same four checks over
-the same paths, with nothing fixed and nothing written. A green `just ci` is a green build, and the
-workflow invokes the recipe rather than listing its own steps so the two cannot drift.
+`save` runs it. `guard()` extends it to every `fig.savefig`, whoever called it; `OGVIZ_GUARD=1` does
+the same with no code change, for CI and paper builds.
 
-CI runs it on matplotlib 3.10 and 3.11, on Linux — which has no Arial, so the house stack falls
-through to matplotlib's bundled DejaVu there. Anything asserting on rendered text geometry has to
-survive both.
+It catches colliding text, labels sitting on the marks, clipped ink, buried spines and
+thresholds, stars at uneven distances, dots on the mean line, ungrouped thousands, missing glyphs,
+mixed minus signs, and two legend series that separate now and merge under colour-vision deficiency.
+`--list-checks` prints the current set.
 
-## Examples
-
-`uv run just figures` renders `examples/out/` from made-up data with fixed seeds, PNG and SVG.
-Source: `examples/__main__.py`.
-
-### Violins
-
-Each row adds one thing to the row above it.
-
-| | |
-|---|---|
-| ![](examples/out/01_two_group_violin.png) | ![](examples/out/02_display_units.png) |
-| one panel — marks, limits, printed means, bracket | two panels — `display_scale`, stored in ppm and drawn in ppb |
-| ![](examples/out/03_violin_grid.png) | ![](examples/out/04_violin_grid_tall.png) |
-| 2x2 — `share_value_limits` puts the panels on one scale, one line of means | 2 columns by 3 rows — the same rules, six panels |
-| ![](examples/out/05_split_violins.png) | ![](examples/out/06_stacked_brackets.png) |
-| `split_violins` — one quantity measured two ways, sharing a spine | three groups — `bracket_stack`, stars anchored by their ink |
-
-**The central marks are a set.** `violin`, `points`, `iqr_box`, `mean_line` and the median dot stack
-in a defined order — `Z_VIOLIN 2 < Z_POINTS 3 < Z_IQR 4 < Z_MEAN_LINE 6 < Z_MEDIAN_DOT 8`, exported
-at the top level — and the order is the point: the mean line reads over the IQR bar and under the
-median dot. Take them together rather than cherry-picking. A project that hand-rolled the box,
-whiskers, median and mean drew the mean at 11 over the median at 10, and the mean covered the median
-it was supposed to sit under.
-
-**Grids of panels.** `panel_row(n)` for one row, `panel_grid(count, ncol=...)` for many. In both,
-`width` is the TOTAL figure width, so every figure in a set places at one width — sizing by CELL
-instead makes a one-panel figure half as wide as a four-panel one, and a document that places both
-at one column magnifies the small one. `grid_warnings` reports an empty slot and a grid too tall for
-the page, and is in the gate.
-
-### Bars
-
-The examples are the specification, not illustrations. This is the whole skeleton of a bar figure,
-and every line of it is a decision the examples already made — departing from one is a choice rather
-than a default:
-
-```python
-fig, ax = plt.subplots(figsize=(9.0, 6.0))
-bar_panel(ax, [Series(...)], labels)
-ax.set_ylabel(..., fontsize=17, fontweight="bold")
-baseline(ax)
-header_bottom = titled(fig, title, subtitle=...)   # the return value is not optional
-fit_under_header(fig, header_bottom, bottom=0.0)   # this is what puts the panels under it
-save(fig, out_dir, name)                           # writes AND runs the gate
-```
-
-`save`, `assert_clean` and `fit_under_header` are the load-bearing three, and none of them is
-obvious from a panel's own name. A caller who found `bar_panel` alone rebuilt the surrounding layout
-by hand three times, each version visibly worse than `examples/07_bars_with_reference`, which had
-already answered every one of those questions.
-
-| | |
-|---|---|
-| ![](examples/out/07_bars_with_reference.png) | ![](examples/out/08_grouped_bars.png) |
-| one series, an asymmetric CI, a threshold drawn over the bars | two series — signed bars, sign-aware labels |
-| ![](examples/out/09_headline_bars.png) | ![](examples/out/10_horizontal.png) |
-| `rounded` / `highlight` | `orientation="horizontal"`, for names too long for a tick |
-
-### Relationships over a continuous axis
-
-| | |
-|---|---|
-| ![](examples/out/11_effort_curves.png) | ![](examples/out/12_coupling_panels.png) |
-| `line_panel` — measured points, log money axis, `broken_zero` | `coupling_panels` — pairs above, their estimates and stars below |
-
-The lower half of that figure is `estimate_strip`, which is a **forest plot** and works standalone:
-dot and interval per row, a zero rule, row names, and a significance column whose wording is the
-caller's (`label_for`, so a row can read `q=0.083 n.s.` rather than only its stars). `sort_by`
-orders it — rows draw bottom-up, so sorting a list by hand puts the largest effect at the bottom.
-
-### A comparison where one bar is not comparable
-
-| | |
-|---|---|
-| ![](examples/out/17_controlled_comparison.png) | |
-| `positions`, `highlight=(first, last)`, `reference_line(span=...)`, `label_rows` | |
-
-Four things that are about what a figure MEANS rather than what its numbers are, and each was a
-reason a house project rebuilt its flagship bar figure by hand instead of using `bar_panel`:
-
-- `positions=` sets the category positions, so a bar that is not comparable with the rest can stand
-  a gap away from them;
-- `highlight=(first, last)` shades a RANGE of categories, which is how the figure says "these belong
-  together and that one does not" — a single index could not;
-- `reference_line(span=(low, high))` draws the level over part of the axis only, because a ceiling
-  the comparable arms are measured against says nothing about the reference standing beside them;
-- `label_rows` stacks the category axis: which metric, then which arm, then what each was trained
-  on. Three levels a reader takes in separately, evenly spaced by construction.
-
-### A family of tests, treated as a family
-
-| | |
-|---|---|
-| ![](examples/out/13_multiplicity_ladder.png) | |
-| `multiplicity_ladder` — sorted p against the Bonferroni line and the Benjamini-Hochberg ramp | |
-
-Eight stars in a table read as eight findings. Drawing the ramp shows where the cutoff really falls
-and why: BH declares every test at or below the largest rank that clears the line, including points
-sitting above it. `benjamini_hochberg_rank` and `bonferroni_threshold` are available on their own.
-
-### Many effects at once
-
-| | |
-|---|---|
-| ![](examples/out/14_effect_heatmap.png) | |
-| `effect_heatmap` — diverging matrix, number in every cell, stars, missing cells | |
-
-Symmetric about the neutral value, so equal effects in opposite directions colour equally; each
-number takes its colour from the cell behind it; and a missing cell is drawn as missing rather than
-shaded like a measured zero.
-
-### A sequence of stages
-
-| | |
-|---|---|
-| ![](examples/out/15_slopegraph.png) | |
-| `slopegraph` — evenly spaced stages, a point at each, spread as a band | |
-
-Stages are evenly spaced whatever they represent, since uneven spacing makes a slope mean something
-the data did not say. The end labels are placed by `stack_without_overlap`, which solves the whole
-set at once: it returns the arrangement with the least total movement that has no two labels
-overlapping and keeps their order, so five series ending within a hair of each other spread
-symmetrically instead of piling up. `null_distance` puts metrics with different chance levels — an
-OOS correlation at 0, an AUC at 0.5 — on one axis where zero is chance.
-
-### A table drawn as a figure
-
-| | |
-|---|---|
-| ![](examples/out/16_comparison_table.png) | |
-| `table_panel` — a highlighted column or row, semantic cell tone, shaded best value | |
-
-**Both axes can be the subject.** `highlight` is a COLUMN index and `highlight_row` is the same
-claim about a row, for a table with entities down the side and attributes across. The second exists
-because the first said "column" only in its docstring: a table transposed from metrics-down to
-arms-across kept its `highlight=0`, which then outlined a METRIC and read as a claim about that
-measurement. It rendered happily, which is what made it dangerous — no assertion can catch an index
-that is still valid and now means something else.
-
-**`Cell(tone=...)` says what a value MEANS** — `"good"`, `"bad"`, `"neutral"` — which is how a
-conditions table becomes scannable. `best` shades a background and reads as "the strongest value
-here", not as "has" against "lacks". The tone is semantic rather than a hex string, so the palette
-stays this package's decision and a green tick is the same green in every repo.
-
-Pair it with `YES` and `NO`, which are exported and are **not** the ●/○ a project reduces to when it
-discovers the problem: Arial has no U+2713 ✓ and no U+2717 ✗, and matplotlib draws a missing glyph
-as a tofu box. `family_for(text)` answers which family can render a string — matplotlib's bundled
-DejaVu has them, so the answer exists on any machine — and `table_panel` asks it per cell. Colour is
-never the only signal: the two marks differ in shape, so the table survives a reader who cannot
-separate the hues.
-
-`font_scale` multiplies every size in the table, including the measured column widths. Reach for it
-after checking the ASPECT RATIO, which is the usual cause of an unreadable table and what
-`type_too_small` reports.
-
-## Numbers
-
-From a thousand up, a number is grouped: `1,200,000`, not `1200000`. One is read at a glance and the
-other is counted digit by digit. Everything the library prints does this by default — value labels,
-printed means, ticks, matrix cells — and `ungrouped_thousands` catches the numbers a caller
-formatted itself.
-
-Trailing zeros go the other way: `0.55`, not `0.550`. `auto_decimals` aims at three significant
-figures, so 0.55 asks for three decimal places and the third is a zero nobody measured. Where the
-CALLER states a decimal count the padding is kept, because stating a count is stating a precision
-and a row states it once for the whole row — stripping per value would leave `1` beside `2.5`.
-
-Pass `thousands_separator=False` where grouping would be wrong: a year, an identifier, a part
-number. Those are not quantities, and nothing in a figure can tell them apart from one — which is
-also why the check leaves a four-digit number in a plausible year range alone.
-
-## Making room, and saying what a mark means
-
-`titled` returns where the header ends and `fit_under_header` puts the panels under it. `room_below`
-is the other end: a row of text under an axis has to come from somewhere, and `subplots_adjust`
-takes it from the plot — one project measured that as every bar shrinking 10% in a figure whose
-whole job was comparing bar heights. `room_below` grows the PAGE and leaves the panel alone.
-
-`width_for_bars(count)` is the width a bar panel needs to hold that many bars without its labels
-colliding. The gate will tell you when a panel is too narrow; this is how not to find out that way.
-
-`mark(artist, "anchored")` is how a caller says a label it placed is deliberate, so the "is this
-label on the data" rule leaves it alone. The vocabulary is a `Literal`, so a typo is a typecheck
-error at both the writing and the reading end — `marked` and `value_of` read it back.
-
-`wrap_to_panel(ax, text, size)` wraps to the width of an axes, which is what a caller has; the
-points conversion is the part that goes wrong by a factor.
-
-`required_margins(figures)` is for a PINNED layout — one axes rectangle across a set, so a panel is
-the same size on every page. `tight_layout` cannot do that, so the margins get pinned, and the
-pinned value has to fit the worst figure in the set. This renders them and measures the ink, which
-beats guessing in both directions: too generous leaves the tightest figures half-empty, and the
-obvious correction crops the ones whose ink reaches furthest. It takes figures rather than a
-directory on purpose — a partial regeneration leaves stale PNGs, and measuring those reads as a
-floor that is not one.
-
-## Captions
-
-Off unless asked for. `caption(fig, note, heading=...)` puts a bold claim above the figure and a
-grey source note below, both wrapped to the figure width — measured from the render and re-wrapped
-until they fit, at any figure size. A word too long to break is reported by name rather than shrunk.
-
-## Using it only to find figure problems
-
-The checks need nothing else from this package. Point them at any matplotlib figure, from any
-project, drawn any way.
+It needs nothing else from this package — point it at any matplotlib figure, from any project:
 
 ```bash
-uv run python -m ogviz.qc mypackage.figures:build_panel   # a callable that returns a figure
+uv run python -m ogviz.qc mypackage.figures:build_panel   # a callable returning a figure
 uv run python -m ogviz.qc scripts/make_figures.py         # a script; every figure it leaves open
-uv run python -m ogviz.qc scripts/make_figures.py --fix out/   # repair what it can, write to out/
-uv run python -m ogviz.qc scripts/make_figures.py --thorough  # also the slow, exact ones
+uv run python -m ogviz.qc scripts/make_figures.py --fix out/
 uv run python -m ogviz.qc --list-checks
 ```
 
-Exit 0 when nothing is outstanding, 1 otherwise, so it sits in CI beside the tests. The target is
-executed — artists have to exist before they can be measured.
+Exit 0 when clean, 1 otherwise. `--fix` changes presentation only — it moves a label, adds a
+knockout, raises a buried line. It never moves a mark or alters a value, and what it cannot decide
+it reports and leaves. From Python: `audit(fig)`, `repair(fig)`, `assert_clean(fig)`.
 
-`--fix` changes only presentation: a label moves off the marks, a knockout appears behind one
-crossing a gridline, a buried spine or threshold is raised above what covers it. Nothing moves a
-mark, changes a limit or alters a value. What it cannot decide it reports and leaves — two series
-that merge under colour-vision deficiency need a marker, a dash or a different palette, and which
-one is yours to pick.
+## Testing
 
-```
-figure_1:
-  - 'alpha' and 'beta' are distinct now and 0.10 apart under deuteranopia
-  - 'a label right on the curves' sits on 2 mark(s) — it has to move
-  fixed: moved 'a label right on the curves' clear of the marks
-  wrote out/figure_1.png
-  still needs a person: 'alpha' and 'beta' are distinct now and 0.10 apart under deuteranopia
-```
+`uv run just` is the full local gate, and it writes: reformats, regenerates the gallery, rebuilds
+this file. `uv run just ci` is the read-only subset CI runs, on matplotlib 3.10 and 3.11.
 
-The colour-vision check simulates in LINEAR light and reports back in sRGB, which it did not do
-until 2026-08-06 — the matrices were fed gamma-encoded values, so every distance it compared against
-its threshold was wrong, by 14% on the pair most worth catching. Corrected, matplotlib's own red and
-green sit 0.165 apart under deuteranopia and the threshold is 0.18, which reports them; the tightest
-pair in either shipped palette is 0.216, so nothing here trips it. **A project locking a newer ogviz
-may see this pair newly reported** — that is the check starting to work rather than a change of
-policy.
-
-From Python:
-
-```python
-from ogviz.qc import audit, assert_clean
-from ogviz.qc.repair import repair
-
-audit(fig)         # every complaint, as strings
-repair(fig)        # fix what has one obvious fix; returns what changed
-assert_clean(fig)  # raise rather than ship it
-```
-
-Checks that read an ogviz tag — where a printed mean belongs, whether a star sits against its
-bracket — say nothing about a figure that has none. The rest apply to anything.
-
-## Every figure, not just the ones you remembered
-
-`save` audits what it writes. `guard()` makes that true of `fig.savefig` as well, so the checks run
-whichever way a figure leaves — `plt.savefig`, a notebook, a helper that saves for you:
-
-```python
-import ogviz
-ogviz.guard()                     # from here on, every savefig is audited
-ogviz.guard(mode="warn")          # write it anyway and say what is wrong
-ogviz.guard(mode="repair")        # fix what has one obvious fix first
-```
-
-`OGVIZ_GUARD=1` in the environment does the same with no code change, which is the form for CI and
-for a paper build — `warn`, `repair` and `+advise` pick the mode. `guarded(...)` is the scoped
-version, for a process that renders some figures under the house rules and some under its own.
-
-It is NOT on for a bare `import ogviz`, deliberately: a library that changes matplotlib's behaviour
-the moment it is imported would fail saves in code that never asked, break a notebook mid-session,
-and make "why did my savefig raise" a puzzle whose answer is an import three files away. Choosing it
-is one line; having it chosen for you is a footgun.
-
-`advise=True` adds the dead-space notes — unused canvas, an over-generous limit — and
-`type_too_small`, which is the one gap the gate structurally cannot close: every check it runs is
-about COLLISION, and cramped type collides with nothing. A table can pass the whole gate at every
-size and be unreadable. It is measured as a share of the figure's SHORT SIDE, which makes it a
-property of the figure alone — points are not, since 12 pt is comfortable on a 5-inch panel and
-vanishes on a 20-inch canvas, and the figure cannot know how far it will be scaled when placed.
-
-Advisory rather than a gate, and the reason is a measurement: the densest figure shipped here sits
-at 1.37% of its short side, and the many-row-on-a-tall-canvas shape that gets reported as unreadable
-is only about 1.3x below it. That is not a margin to fail a build on — and the same table is
-comfortable transposed to a handful of rows with no change of type size at all, so what the number
-really tracks is the aspect ratio.
-
-None of these ever fail anything: the shipped gallery carries 76 of them and is correct, because an
-airy figure is a choice and a panel holding room for a bracket is not wasting it.
-
-## Checks
-
-`save` runs `ogviz.qc.assert_clean` and raises instead of writing. It catches:
-
-- text that collides, or sits under 5 px from its neighbour on the same row
-- text sitting on the marks, or crossing a gridline with nothing behind it
-- a caption wider than the figure it belongs to
-- two legend series that separate now and merge under colour-vision deficiency
-- a mark clipped outside the axes
-- a spine or a threshold buried under the marks it is read against
-- a value tick in the space held open for a bracket stack
-- panels on one scale carrying different value ticks
-- stars at different distances from their brackets, or an uneven stack
-- a jittered dot on the mean line, the box or the median
-- a number of a thousand or more printed without a separator
-- a glyph missing from the resolved font
-- a non-finite value, a p outside [0, 1], two groups at one position, an empty tick range
-
-`test_qc.py` runs them over the examples, with a planted defect each.
-
-**They raise rather than assert, and that is deliberate.** `python -O` deletes an `assert`
-statement, so a gate written as one is a gate an interpreter flag can switch off — under `-O` this
-package passed a figure whose two labels shared 524 px of ink, and turned a p of -5.0 into `***`.
-Every gate here, and every check on a value a CALLER passed in, raises `AssertionError` explicitly
-instead; `ogviz.require` is the one place that says so. Internal invariants are still asserts, which
-is what `assert` is for.
-
-## Module tree
-
-<sub>generated with [pypatree](https://github.com/yberreby/pypatree)</sub>
+<details>
+<summary><b>Module tree</b> — generated with <a href="https://github.com/yberreby/pypatree">pypatree</a></summary>
 
 ```text
 {{MODULE_TREE}}
 ```
+
+</details>
 
 ## License
 
