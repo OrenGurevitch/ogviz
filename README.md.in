@@ -186,7 +186,7 @@ OOS correlation at 0, an AUC at 0.5 — on one axis where zero is chance.
 | | |
 |---|---|
 | ![](examples/out/16_comparison_table.png) | |
-| `table_panel` — highlighted column, shaded best value, `caption` | |
+| `table_panel` — a highlighted column or row, semantic cell tone, shaded best value | |
 
 **Both axes can be the subject.** `highlight` is a COLUMN index and `highlight_row` is the same
 claim about a row, for a table with entities down the side and attributes across. The second exists
@@ -280,14 +280,6 @@ mark, changes a limit or alters a value. What it cannot decide it reports and le
 that merge under colour-vision deficiency need a marker, a dash or a different palette, and which
 one is yours to pick.
 
-The colour-vision check simulates in LINEAR light and reports back in sRGB, which it did not do
-until 2026-08-06 — the matrices were fed gamma-encoded values, so every distance it compared against
-its threshold was wrong, by 14% on the pair most worth catching. Corrected, matplotlib's own red and
-green sit 0.165 apart under deuteranopia and the threshold is 0.18, which reports them; the tightest
-pair in either shipped palette is 0.216, so nothing here trips it. **A project locking a newer ogviz
-may see this pair newly reported** — that is the check starting to work rather than a change of
-policy.
-
 ```
 figure_1:
   - 'alpha' and 'beta' are distinct now and 0.10 apart under deuteranopia
@@ -296,6 +288,14 @@ figure_1:
   wrote out/figure_1.png
   still needs a person: 'alpha' and 'beta' are distinct now and 0.10 apart under deuteranopia
 ```
+
+The colour-vision check simulates in LINEAR light and reports back in sRGB, which it did not do
+until 2026-08-06 — the matrices were fed gamma-encoded values, so every distance it compared against
+its threshold was wrong, by 14% on the pair most worth catching. Corrected, matplotlib's own red and
+green sit 0.165 apart under deuteranopia and the threshold is 0.18, which reports them; the tightest
+pair in either shipped palette is 0.216, so nothing here trips it. **A project locking a newer ogviz
+may see this pair newly reported** — that is the check starting to work rather than a change of
+policy.
 
 From Python:
 

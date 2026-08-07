@@ -115,9 +115,9 @@ def value_transform(ax: Axes, orientation: Orientation):
 
 
 # matplotlib renamed violinplot's `vert: bool` to `orientation: str` in 3.11 and deprecates the
-# old spelling; 3.9 and 3.10 accept only `vert`. Both are supported versions of the dependent
-# projects (one consumer runs 3.10), so pick by signature once rather than catching a
-# TypeError per call — a swallowed TypeError would also hide a genuine argument mistake.
+# old spelling; 3.10, the supported floor, accepts only `vert`. Both are versions the dependent
+# projects run, so pick by signature once rather than catching a TypeError per call — a swallowed
+# TypeError would also hide a genuine argument mistake.
 _VIOLINPLOT_TAKES_ORIENTATION = "orientation" in inspect.signature(plt.violinplot).parameters
 
 

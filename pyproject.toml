@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "Publication figure primitives — one house style, one violin, one significance bracket, shared across projects."
 requires-python = ">=3.12"
 dependencies = [
-    "matplotlib>=3.9",
+    # 3.10, not 3.9: `Axes.get_figure(root=True)` — which `wrap_to_panel` needs to resolve a
+    # SubFigure to its parent — gained that argument in 3.10, and on 3.9 the call raises TypeError
+    # from inside a layout helper. The floor said 3.9 while the code could not run there, so a
+    # consumer on 3.9 met a crash where they should have met a resolver error. CI tests 3.10 and
+    # 3.11, and the floor now matches what is actually tested.
+    "matplotlib>=3.10",
     "numpy>=1.26",
     "scipy>=1.13",
 ]
