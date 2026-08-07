@@ -7,15 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from ogviz import Series, bar_panel, group_violins, save, use_house_style
+from ogviz import Series, bar_panel, group_violins, save
 from ogviz.marks import VIOLIN_WIDTH
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def _sample(seed: int = 0) -> np.ndarray:

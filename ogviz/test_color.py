@@ -6,17 +6,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pytest
 
-from ogviz import use_house_style
 from ogviz.color import indistinguishable_series, separation, simulate
 from ogviz.panels.lines import series_colors
 from ogviz.theme import SERIES
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def test_red_and_green_converge_for_a_deuteranope() -> None:

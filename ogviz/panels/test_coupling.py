@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from ogviz import use_house_style
 from ogviz.panels.coupling import (
     Cloud,
     Estimate,
@@ -17,13 +16,6 @@ from ogviz.panels.coupling import (
     shared_limits,
     trend_line,
 )
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def _cloud(seed: int = 0, size: int = 30) -> Cloud:

@@ -39,6 +39,14 @@ def ticks_over_data(
     It also makes panels disagree with each other for no reason a reader can see: one whose stack
     happens to clear a round number carries an extra rule and its neighbour does not. That is the
     inconsistency this removes.
+
+    A CALLER THAT PASSES IT IS WARNED WHEN THE VALUE IS TOO LOW, which is the only way the fix can
+    reach the code it was written for. `data_high` was REQUIRED before it gained a default, so every
+    caller written against that signature still passes it — positionally, silently, keeping exactly
+    the behaviour the default was added to replace. A blanket deprecation on the argument would be
+    wrong (`align_ticks` passes it for a real reason: it trims against the whole GRID's marks, not
+    one panel's), so what is checked is the actual defect instead — a value BELOW what was drawn,
+    which is what passing the data maximum produces and what drops the tick a violin body needs.
     """
     upright = orientation == "vertical"
     if data_high is None:
@@ -46,6 +54,19 @@ def ticks_over_data(
         if extent is None:
             return
         data_high = extent[1]
+    else:
+        drawn = drawn_value_extent(ax)
+        if drawn is not None and data_high < drawn[1] - 1e-9:
+            import warnings
+
+            warnings.warn(
+                f"ticks_over_data was given data_high={data_high:g}, but the marks on this panel "
+                f"reach {drawn[1]:g}. Ticks between the two will be dropped, leaving the top of "
+                "the shape with nothing to read against — the case that made this argument "
+                "optional. Let it default unless you mean a reach measured across several panels.",
+                UserWarning,
+                stacklevel=2,
+            )
     ticks = ax.get_yticks() if upright else ax.get_xticks()
     # Keep every tick up to the marks AND the first one past them, so the data is BRACKETED. Only
     # dropping what sits above leaves a coarse axis unreadable at the top: a panel with ticks every

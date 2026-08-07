@@ -3,7 +3,7 @@
 # Every path the quality tools look at, named once. It was written out per recipe, and the copies
 # drifted: CI checked `ogviz` while `just` checked `ogviz examples`, so a lint error in an example
 # passed CI, and `generate_readme.py` was in neither.
-SOURCES := "ogviz examples generate_readme.py"
+SOURCES := "ogviz examples generate_readme.py conftest.py"
 
 # `figures` is IN the default gate on purpose. Checking that committed images match a
 # fresh render needs a tolerance for font differences across machines; regenerating them

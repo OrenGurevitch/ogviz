@@ -18,17 +18,9 @@ from ogviz import (
     clipped_artists,
     group_violins,
     stars,
-    use_house_style,
     value_ticks,
 )
 from ogviz.layout import round_ticks
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def _three_groups(seed: int = 9):

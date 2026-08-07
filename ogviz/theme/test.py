@@ -21,11 +21,6 @@ from ogviz.theme import (
 )
 
 
-@pytest.fixture(autouse=True)
-def _style() -> None:
-    use_house_style()
-
-
 def test_style_sets_the_canvas_and_keeps_svg_text_selectable() -> None:
     assert matplotlib.rcParams["figure.facecolor"] == CANVAS
     assert matplotlib.rcParams["svg.fonttype"] == "none"
@@ -48,24 +43,36 @@ def test_series_colours_are_distinct() -> None:
     assert len(set(SERIES)) == len(SERIES)
 
 
+# Bundled with matplotlib and WITHOUT U+207B, verified against the resolved file with `FT2Font`.
+# The font has to be pinned to something that lacks the glyph, or the test asks a question whose
+# answer depends on the machine: Arial has no U+207B, so on macOS the guard fires — and a Linux
+# runner has no Arial at all, falls through to DejaVu, which covers it, and the guard correctly does
+# nothing. This test used to SKIP in that case, which meant the half that proves the guard FIRES
+# never ran on CI: it was only ever shown not to false-positive. `STIXGeneral` ships with
+# matplotlib, so the question is posed identically everywhere.
+WITHOUT_SUPERSCRIPT_MINUS = "STIXGeneral"
+
+
 def test_glyph_guard_fails_on_a_character_the_font_cannot_draw() -> None:
-    """`font.sans-serif` is the list we ASK for, not what matplotlib resolves. On a machine with
-    no Arial it falls through to DejaVu, which does cover U+207B — so the skip has to test the
-    resolved file, not the first name in the list. CI on Linux caught the difference."""
+    """The guard has to FIRE on a missing glyph, not merely refrain from false alarms."""
     import io
-    from pathlib import Path
 
-    from matplotlib.font_manager import FontProperties, findfont
-
-    resolved = Path(findfont(FontProperties())).stem  # bare: follows rcParams font.family
-    if not resolved.lower().startswith(("arial", "verdana")):
-        pytest.skip(f"resolved to {resolved}, which covers U+207B")
-
+    mpl.rcParams["font.sans-serif"] = [WITHOUT_SUPERSCRIPT_MINUS]
     fig, ax = plt.subplots()
-    ax.set_ylabel("R2* (s⁻¹)")  # U+207B is absent from Arial
+    ax.set_ylabel("R2* (s⁻¹)")  # U+207B
     with pytest.raises(AssertionError, match="no glyph"), glyphs_must_render():
         fig.savefig(io.BytesIO(), format="png")
-    plt.close("all")
+
+
+def test_the_pinned_font_really_lacks_the_glyph() -> None:
+    """Guards the test above: if `cmr10` ever gained U+207B it would pass by proving nothing."""
+    from matplotlib.font_manager import FontProperties, findfont
+    from matplotlib.ft2font import FT2Font
+
+    face = FT2Font(findfont(FontProperties(family=WITHOUT_SUPERSCRIPT_MINUS)))
+    assert face.get_char_index(0x207B) == 0, (
+        "STIXGeneral now covers U+207B; pick another bundled font"
+    )
 
 
 def test_glyph_guard_passes_on_mathtext() -> None:

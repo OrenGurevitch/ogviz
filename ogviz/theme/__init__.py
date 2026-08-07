@@ -137,6 +137,14 @@ def use_reproducible_svg() -> None:
     # re-rendering an unchanged figure rewrites the same bytes and `git diff` on a committed gallery
     # shows only what actually changed. `save` drops the date stamp, which is the other half.
     mpl.rcParams["svg.hashsalt"] = "ogviz"
+    # And text stays TEXT rather than being traced into outlines. This sat in `use_house_type` until
+    # 2026-08-07, which was the same misfiling the salt had: it is a SERIALISATION decision, not a
+    # typographic one, and the project most likely to need it is the one that calls neither type
+    # function because it pins its own family for byte-identical output. That project got
+    # matplotlib's default instead — every glyph in every SVG traced to a `<path>`, not one `<text>`
+    # element in the figure set — and with it a whole class of verification that silently passes:
+    # diffing the text of two SVGs to see what a bump changed compares nothing against nothing.
+    mpl.rcParams["svg.fonttype"] = "none"
 
 
 def use_house_type() -> None:
@@ -153,7 +161,8 @@ def use_house_type() -> None:
     house near-black and its condition grids inherited matplotlib's pure #000000. Two blacks in one
     paper, side by side, undetected for months because each renderer was internally consistent.
 
-    `svg.fonttype` belongs here rather than with the ink: it decides whether text stays text.
+    `svg.fonttype` used to be set here, and moved to `use_reproducible_svg` on 2026-08-07 — see
+    there for why keeping it with the type was exactly backwards.
     """
     mpl.rcParams.update(
         {
@@ -165,7 +174,6 @@ def use_house_type() -> None:
             "xtick.labelsize": TICK_SIZE,
             "ytick.labelsize": TICK_SIZE,
             "legend.fontsize": TICK_SIZE,
-            "svg.fonttype": "none",  # keep SVG text as text
         }
     )
     use_reproducible_svg()

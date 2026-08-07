@@ -8,15 +8,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pytest
 
-from ogviz import use_house_style
 from ogviz.tags import mark, marked
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def test_the_mean_row_is_the_visual_midpoint_on_any_scale() -> None:

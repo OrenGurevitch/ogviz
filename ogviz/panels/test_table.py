@@ -6,17 +6,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pytest
 
-from ogviz import NO, YES, Cell, Row, audit, table_panel, use_house_style
+from ogviz import NO, YES, Cell, Row, audit, table_panel
 from ogviz.panels.table import VALUE_SIZE
 from ogviz.qc import type_too_small
 from ogviz.theme import BAD, GLYPH_FAMILY, GOOD, INK, MUTED_INK, family_for
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def _table(**kwargs):

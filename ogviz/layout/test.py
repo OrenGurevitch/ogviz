@@ -12,12 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from ogviz.layout import baseline, hairline_grid, save, titled
-from ogviz.theme import GRID, MUTED_INK, use_house_style
-
-
-@pytest.fixture(autouse=True)
-def _style() -> None:
-    use_house_style()
+from ogviz.theme import GRID, MUTED_INK
 
 
 def test_titled_reports_a_header_bottom_below_the_title() -> None:

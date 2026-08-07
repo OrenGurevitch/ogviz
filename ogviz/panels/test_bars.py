@@ -9,14 +9,7 @@ from ogviz.layout import text_overlaps
 from ogviz.layout.ticks import MINUS
 from ogviz.panels import Series, bar_panel
 from ogviz.tags import marked
-from ogviz.theme import SERIES, use_house_style
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
+from ogviz.theme import SERIES
 
 
 def _label_positions(ax) -> dict[str, float]:

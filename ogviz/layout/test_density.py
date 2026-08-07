@@ -5,17 +5,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import pytest
 
-from ogviz import use_house_style
 from ogviz.layout.density import dead_space, measure, panel_emptiness, trim_margins
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def _curve(ax):

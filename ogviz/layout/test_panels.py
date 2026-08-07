@@ -1,13 +1,11 @@
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pytest
 
 from ogviz.layout import text_overlaps
 from ogviz.layout.panels import panel_row, settle_caption, text_width_points, wrap_to_width
-from ogviz.theme import use_house_style
 
 CAPTION = (
     "Each dot is one observation, the bar the interquartile range, the line the mean and the "
@@ -16,15 +14,9 @@ CAPTION = (
 )
 
 
-@pytest.fixture(autouse=True)
-def _style():
-    """Pin the bundled font. These tests assert on RENDERED text geometry, and Arial on macOS is
-    narrower than DejaVu on a Linux runner — the same call then overlaps on one and not the
-    other. DejaVu ships with matplotlib, so pinning it makes the geometry machine-independent."""
-    use_house_style()
-    mpl.rcParams["font.sans-serif"] = ["DejaVu Sans"]
-    yield
-    plt.close("all")
+# Assertions here are about RENDERED TEXT, whose metrics differ by machine — so the
+# bundled font is pinned. See `ogviz/conftest.py` for why that is opt-in.
+pytestmark = pytest.mark.usefixtures("pinned_font")
 
 
 def test_no_caption_means_no_extra_row():

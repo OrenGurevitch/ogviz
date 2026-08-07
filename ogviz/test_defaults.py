@@ -6,8 +6,9 @@ part's default and the composite silently keeps the old one, so the same call me
 depending on which door it came through.
 
 This is the cheap half of the fix. Folding the pass-throughs into one argument would be the other
-half and is a breaking change to a package three repositories pin by commit, which is not a call to
-make from a smell — see FIXME on `group_violins`' parameter count.
+half, and it is a breaking change to a package that consumers pin by commit — so it is a decision
+rather than a cleanup, and this file does not make it. What this DOES enforce is that the defaults
+cannot silently disagree while the signatures stay as they are.
 """
 
 from __future__ import annotations

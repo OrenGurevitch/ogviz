@@ -7,14 +7,6 @@ import matplotlib.pyplot as plt
 import pytest
 
 from ogviz.layout.ticks import MINUS, format_value, round_ticks, value_ticks
-from ogviz.theme import use_house_style
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def test_exactly_the_requested_number_of_ticks():
@@ -125,3 +117,34 @@ def test_grouping_can_be_turned_off_for_a_number_that_is_not_a_quantity() -> Non
     from ogviz.layout.ticks import format_value
 
     assert format_value(2026.0, decimals=0, thousands_separator=False) == "2026"
+
+
+def test_a_reach_below_what_was_drawn_is_reported() -> None:
+    """`data_high` was REQUIRED before it gained a default, so callers written against that
+    signature still pass it and silently keep the behaviour the default was added to replace.
+
+    A deprecation on the argument would be wrong — `align_ticks` passes it to trim against a whole
+    grid's marks — so the defect itself is what is checked: a value below the drawn extent, which
+    is what passing the data maximum produces.
+    """
+    import warnings
+
+    import numpy as np
+
+    from ogviz.layout import ticks_over_data
+    from ogviz.layout.axis import drawn_value_extent
+    from ogviz.panels import group_violins
+
+    _fig, ax = plt.subplots(figsize=(7.0, 8.0))
+    group_violins(ax, [(0.0, np.random.default_rng(0).normal(size=80), "#E8A838", "#B97C10")])
+    reach = drawn_value_extent(ax)[1]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        ticks_over_data(ax, reach - 0.6)
+    assert caught and "reach" in str(caught[0].message)
+
+    with warnings.catch_warnings(record=True) as quiet:
+        warnings.simplefilter("always")
+        ticks_over_data(ax, reach)  # what `align_ticks` legitimately passes
+    assert not quiet, "a reach measured across panels must not be warned about"

@@ -6,7 +6,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pytest
 
-from ogviz import use_house_style
 from ogviz.layout.caption import caption, longest_unbreakable, overflowing_text
 
 NOTE = (
@@ -14,13 +13,6 @@ NOTE = (
     "task descriptions. Notes: shares are message-weighted, so higher-volume users contribute "
     "more observations. The chart shows users in the middle 50 percent of the distribution."
 )
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def _figure(width: float):

@@ -16,17 +16,10 @@ import pytest
 from ogviz import Series, bar_panel, group_violins, house_style
 from ogviz.layout.ticks import MINUS
 from ogviz.marks import iqr_box, mean_line, points, violin
-from ogviz.theme import CANVAS, SERIES, use_house_style
+from ogviz.theme import CANVAS, SERIES
 
 VALUES = np.random.default_rng(4).normal(2.0, 1.0, 40)
 FILL, EDGE = SERIES[0], "#1A4F94"
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def _both(draw):

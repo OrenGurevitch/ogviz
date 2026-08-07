@@ -4,17 +4,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import pytest
 
-from ogviz import use_house_style
 from ogviz.layout.ink import artist_ink, exact_overlaps
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def test_boxes_that_touch_while_no_glyph_does_are_not_a_collision() -> None:

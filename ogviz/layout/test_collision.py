@@ -5,10 +5,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import pytest
 from matplotlib.transforms import Bbox
 
-from ogviz import use_house_style
 from ogviz.layout.collision import (
     annotate_clear,
     clear_position,
@@ -17,13 +15,6 @@ from ogviz.layout.collision import (
     text_over_data,
 )
 from ogviz.tags import mark
-
-
-@pytest.fixture(autouse=True)
-def _style():
-    use_house_style()
-    yield
-    plt.close("all")
 
 
 def _filled_curve():

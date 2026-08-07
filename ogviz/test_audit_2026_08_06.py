@@ -27,13 +27,6 @@ from ogviz.qc.marks import buried_baselines
 from ogviz.qc.repair import knock_out_labels_over_rules
 
 
-@pytest.fixture(autouse=True)
-def _style():
-    ogviz.use_house_style()
-    yield
-    plt.close("all")
-
-
 def _sample(count: int = 60, shift: float = 0.0) -> np.ndarray:
     return np.random.default_rng(0).normal(size=count) + shift
 

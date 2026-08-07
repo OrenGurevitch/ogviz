@@ -6,33 +6,27 @@ Each test plants the defect it guards against and checks the gate reports it.
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from ogviz import bracket_stack, group_violins, use_house_style
+from ogviz import INK, bracket_stack, group_violins
 from ogviz.marks import iqr_box, mean_line, violin
 from ogviz.qc import audit, dots_off_the_marks, significance_gaps, stack_spacing
 from ogviz.tags import mark
 
-
-@pytest.fixture(autouse=True)
-def _style():
-    """Pin the bundled font. These assertions are about RENDERED geometry, and Arial on macOS is
-    narrower than the DejaVu a Linux runner falls back to — the same layout passes on one and
-    collides on the other. Pinning means CI checks the same geometry the author sees, in the
-    WIDER of the two, so a layout that passes here passes anywhere."""
-    use_house_style()
-    mpl.rcParams["font.sans-serif"] = ["DejaVu Sans"]
-    yield
-    plt.close("all")
+# Assertions here are about RENDERED TEXT, whose metrics differ by machine — so the
+# bundled font is pinned. See `ogviz/conftest.py` for why that is opt-in.
+pytestmark = pytest.mark.usefixtures("pinned_font")
 
 
 def _three_groups(seed: int = 9):
     rng = np.random.default_rng(seed)
     palette = ("#2E7CE0", "#EFA607", "#14A97C")
-    return [(float(i), rng.normal(i * 0.8, 0.9, 30), c, "#333333") for i, c in enumerate(palette)]
+    # INK for the edge, matching the `stacked_brackets` example this mirrors — it moved off a stray
+    # near-black on 2026-08-07 and this fixture stayed behind, so the two stopped feeding the panel
+    # the same colours. Harmless in itself; the point of a mirror is that it mirrors.
+    return [(float(i), rng.normal(i * 0.8, 0.9, 30), c, INK) for i, c in enumerate(palette)]
 
 
 def _gallery_names() -> tuple[str, ...]:
