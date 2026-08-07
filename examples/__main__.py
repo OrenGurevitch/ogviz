@@ -179,9 +179,11 @@ def stacked_brackets() -> None:
     """Three comparisons: each star sits against its own line, not midway to the next."""
     rng = np.random.default_rng(9)
     palette = ["#2E7CE0", "#EFA607", "#14A97C"]
+    # The fills are the CALLER's, which is the contract — but the shared edge is the house ink
+    # rather than the `"#333333"` that stood here: a fourth near-black in a package whose README
+    # opens on a project that shipped two of them in one paper.
     groups = [
-        (float(i), rng.normal(i * 0.8, 0.9, 30), colour, "#333333")
-        for i, colour in enumerate(palette)
+        (float(i), rng.normal(i * 0.8, 0.9, 30), colour, INK) for i, colour in enumerate(palette)
     ]
     fig, ax = plt.subplots(figsize=(8.0, 8.0))
     group_violins(
@@ -279,7 +281,7 @@ def horizontal() -> None:
     # labels are. Without the margin they touch, and the QC gate says so.
     right.set_xlim(right.get_xlim()[0] * 1.45, right.get_xlim()[1])
     right.set_xlabel("Domain score (z)", fontsize=16, fontweight="bold")
-    right.axvline(0.0, color="#141413", lw=2.0, zorder=4)
+    right.axvline(0.0, color=INK, lw=2.0, zorder=4)  # the same value, said by name
     right.legend(loc="lower right", frameon=False, bbox_to_anchor=(1.0, -0.26), ncol=2)
     titled(fig, "Laid on their side", subtitle="orientation='horizontal' on any mark or panel")
     fig.subplots_adjust(top=0.82, bottom=0.17, left=0.09, right=0.985, wspace=0.72)

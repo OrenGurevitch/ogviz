@@ -72,17 +72,6 @@ def domain_profile(seed: int = 3) -> dict[str, tuple[np.ndarray, np.ndarray]]:
     }
 
 
-ARMS = ("frozen", "probe", "partial", "full")
-
-
-def arm_scores(seed: int = 4) -> tuple[np.ndarray, np.ndarray]:
-    """A monotone series with an asymmetric CI, and a ceiling to compare against."""
-    rng = np.random.default_rng(seed)
-    means = np.array([0.30, 0.45, 0.60, 0.70]) + rng.normal(0, 0.005, 4)
-    errors = np.array([[0.05, 0.04, 0.04, 0.03], [0.06, 0.05, 0.04, 0.03]])
-    return means, errors
-
-
 def paired_sensors(seed: int = 6) -> tuple[list[np.ndarray], list[np.ndarray]]:
     """The same quantity measured two ways per category — the split-violin case.
 
@@ -106,9 +95,6 @@ def headline_arms(seed: int = 7) -> tuple[np.ndarray, np.ndarray]:
     first = np.array([0.34, 0.47, 0.58, 0.64]) + rng.normal(0, 0.004, 4)
     second = first - 0.09 + rng.normal(0, 0.004, 4)
     return first, second
-
-
-COUPLING_VARIABLES = ("Marker (ppb)", "Mass index", "Burden score (z)")
 
 
 def coupled_variables(seed: int = 8) -> dict[str, dict[str, np.ndarray]]:
@@ -154,30 +140,13 @@ def correlation_with_interval(
     low, high = (float(v) for v in np.percentile(resampled, [2.5, 97.5]))
     shuffled = np.array([_spearman(x, rng.permutation(y)) for _ in range(draws)])
     p = float((np.count_nonzero(np.abs(shuffled) >= abs(estimate)) + 1) / (draws + 1))
+    # The interval is widened to contain the estimate if it does not already, because `Estimate`
+    # refuses a dot outside its own bar. That is a real thing a percentile bootstrap can do on a
+    # skewed statistic, and widening HIDES it — so it is written down here rather than left as a
+    # `min`/`max` a reader would copy without noticing. On this file's data it never fires; checked
+    # across all six pairs the gallery draws, the reported interval is the percentile one unchanged.
+    # A project doing this for real should let the disagreement surface instead of smoothing it.
     return estimate, (min(low, estimate), max(high, estimate)), p
-
-
-REGION_NAMES = ("Region A", "Region B", "Region C", "Region D")
-
-
-def region_panels(seed: int = 11) -> dict[str, tuple[np.ndarray, np.ndarray, float]]:
-    """Four regions measured in two groups, with a p for each — the one-panel-per-region case.
-
-    The effects run from clear to absent on purpose. A grid where every panel tells the same story
-    does not test anything: the interesting question is whether four panels drawn to one scale
-    still let a reader see which region moved.
-    """
-    rng = np.random.default_rng(seed)
-    separations = (-1.10, -0.72, -0.35, 0.04)
-    p_values = (0.0004, 0.008, 0.06, 0.71)
-    out: dict[str, tuple[np.ndarray, np.ndarray, float]] = {}
-    for name, shift, p in zip(REGION_NAMES, separations, p_values, strict=True):
-        out[name] = (
-            rng.normal(0.0, 1.0, 38),
-            rng.normal(shift, 1.05, 52),
-            p,
-        )
-    return out
 
 
 EFFORT_COST = (0.25, 0.35, 0.70, 1.30, 2.00, 2.60)
@@ -334,7 +303,6 @@ def act_scores(seed: int = 17) -> tuple[np.ndarray, np.ndarray]:
 
 
 ROUNDS = ("Heats", "Quarter", "Semi", "Final")
-DISCIPLINES = ("Acrobatics", "Illusion", "Beasts")
 
 
 def scores_by_round(seed: int = 18) -> dict[str, tuple[list[float], list[tuple[float, float]]]]:
@@ -356,6 +324,10 @@ def scores_by_round(seed: int = 18) -> dict[str, tuple[list[float], list[tuple[f
     }
 
 
+# There were TWO module-level `ARMS` until 2026-08-07, and Python does not mind: the second simply
+# won, so the first one's labels were unreachable and the helper paired with them drew nothing. An
+# example added against the earlier meaning would have come out mislabelled with nothing raised —
+# the same shape as a `highlight` index that stays valid and quietly starts meaning something else.
 ARMS = ("From scratch", "Frozen probe", "Fine-tuned", "Reference")
 ARM_COLORS = ("#ED6B3B", "#2E7CE0", "#2E7CE0", "#9B3B8F")
 

@@ -172,8 +172,12 @@ def align_brackets(axes: Iterable[Axes]) -> float | None:
 
     Returns None where no panel has a bracket.
     """
+    # Materialised like its four siblings, which all take `Iterable[Axes]` and are called together
+    # — often with a single-use `axes.flat`. This one happens to walk the argument exactly once, so
+    # it is safe by accident rather than by construction, and `align_mean_rows` is the standing
+    # proof of what a second walk costs: given a generator it silently placed nothing at all.
     stacks = []
-    for ax in axes:
+    for ax in list(axes):
         lines, stars = _bracket_artists(ax)
         if lines:
             stacks.append((lines, stars, _bracket_top(lines[0])))
