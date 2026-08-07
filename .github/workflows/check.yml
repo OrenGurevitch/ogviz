@@ -26,6 +26,13 @@ jobs:
       # what the later majors added.
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
+        with:
+          # One cache per matrix leg. v7 caches by default where v5 did not, and the key is derived
+          # from the lockfile — which is identical across the legs, so both raced for the same entry
+          # and one lost it every run: "Unable to reserve cache ... another job may be creating
+          # this cache". The legs are not interchangeable anyway; each installs a different
+          # matplotlib on top of that lockfile, so they want separate caches on the merits.
+          cache-suffix: matplotlib-${{ matrix.matplotlib }}
       - run: uv sync --extra dev
       - run: uv pip install "matplotlib==${{ matrix.matplotlib }}"
       - run: uv run ruff check ogviz
