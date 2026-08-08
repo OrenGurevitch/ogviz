@@ -148,3 +148,21 @@ def test_a_reach_below_what_was_drawn_is_reported() -> None:
         warnings.simplefilter("always")
         ticks_over_data(ax, reach)  # what `align_ticks` legitimately passes
     assert not quiet, "a reach measured across panels must not be warned about"
+
+
+def test_a_signed_value_keeps_the_typographic_minus() -> None:
+    """The reason `signed=` exists at all: the obvious hand-rolled version breaks the minus rule.
+
+    A caller wanting a leading plus reaches for `f"{v:+.2f}"`, which emits an ASCII hyphen for
+    negatives — and `one_minus_sign` then reports the figure for carrying two different glyphs for
+    one sign. That had already happened in a consumer's figure.
+    """
+    from ogviz.layout.ticks import MINUS, format_value
+    from ogviz.qc.typography import CANDIDATE_MINUS
+
+    assert format_value(1.5, signed=True) == "+1.5"
+    assert format_value(-1.5, signed=True) == f"{MINUS}1.5"
+    assert format_value(0.0, signed=True) == "0", "a zero has no direction to claim"
+    assert format_value(-0.0, signed=True) == "0"
+    for value in (2.5, -2.5, 0.0):
+        assert not CANDIDATE_MINUS.search(format_value(value, signed=True))

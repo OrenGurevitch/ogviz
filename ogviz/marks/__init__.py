@@ -237,6 +237,16 @@ def points(
     failure as the whisker lane that did nothing, one step out. `widths_of` builds it from the
     kwargs a caller already passed to the marks themselves, so there is one place that knows which
     of `iqr_box`'s names answers which of `central_clearance`'s.
+
+    HAND-ASSEMBLING A PANEL: `group_violins` passes this for you. Calling `violin` + `points` +
+    `mean_line` yourself does not, and the lane then reserves room for the full mark set including
+    an IQR box that was never drawn — dots pushed away from a bar that is not there. Pass what you
+    actually drew:
+
+        points(ax, v, x, fill, edge, rng, mark_widths=widths_of(box_kwargs, mean_kwargs))
+
+    and for a panel with NO box, `mark_widths={"box_linewidth": 0.0, "whisker_linewidth": 0.0}`.
+    Two consumers hand-assemble exactly that trio; both would be better served by `group_violins`.
     """
     clearance = (
         central_clearance(

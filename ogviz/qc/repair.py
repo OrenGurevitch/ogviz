@@ -36,7 +36,9 @@ from ogviz.tags import marked
 from ogviz.theme import KNOCKOUT_PAD
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+    from matplotlib.text import Text
 
 
 def _page_color(fig: Figure) -> str:
@@ -53,7 +55,9 @@ def _page_color(fig: Figure) -> str:
     return to_hex(fig.get_facecolor())
 
 
-def move_labels_off_the_marks(fig: Figure) -> list[str]:
+def move_labels_off_the_marks(
+    fig: Figure, *, on_the_marks: list[tuple[Axes, Text, int]] | None = None
+) -> list[str]:
     """Shift every free-standing label that sits on the data to the nearest clear spot.
 
     Only labels the figure has not pinned to something: a value printed against its own bar and a
@@ -63,7 +67,7 @@ def move_labels_off_the_marks(fig: Figure) -> list[str]:
     be where they are.
     """
     moved: list[str] = []
-    for ax, text, _struck in labels_on_the_marks(fig):
+    for ax, text, _struck in on_the_marks if on_the_marks is not None else labels_on_the_marks(fig):
         content = text.get_text().strip()
         offset = clear_position(ax, text_box(text))
         if offset is None or offset == (0.0, 0.0):
@@ -76,7 +80,7 @@ def move_labels_off_the_marks(fig: Figure) -> list[str]:
     return moved
 
 
-def knock_out_labels_over_rules(fig: Figure) -> list[str]:
+def knock_out_labels_over_rules(fig: Figure, *, on_the_marks: set[int] | None = None) -> list[str]:
     """Put an opaque box behind any label crossing a gridline, so the rule stops running through it.
 
     The right fix for a gridline and the wrong one for data: a knockout over the marks punches a
@@ -89,7 +93,7 @@ def knock_out_labels_over_rules(fig: Figure) -> list[str]:
     on the figure. A repair that declines without saying so is worse than one that refuses out loud.
     """
     changed: list[str] = []
-    for _ax, text in labels_crossing_a_rule(fig):
+    for _ax, text in labels_crossing_a_rule(fig, on_the_marks=on_the_marks):
         if text.get_bbox_patch() is not None:
             continue
         text.set_bbox(
@@ -144,5 +148,17 @@ def repair(fig: Figure) -> list[str]:
 
     Run `audit` afterwards: what remains is what needs a person. That pairing is the point — this
     is not meant to make a figure pass, it is meant to leave only the decisions on the desk.
+
+    The "which labels sit on the marks" sweep is done ONCE and handed to both halves. It is the
+    expensive one — a `hits_data` probe per label per panel — and the two repairs that need it ran
+    it independently, so every call paid for it twice.
     """
-    return [change for fix in REPAIRS for change in fix(fig)]
+    from ogviz.layout.collision import labels_on_the_marks
+
+    struck = labels_on_the_marks(fig)
+    ids = {id(text) for _ax, text, _n in struck}
+    return [
+        *move_labels_off_the_marks(fig, on_the_marks=struck),
+        *knock_out_labels_over_rules(fig, on_the_marks=ids),
+        *raise_buried_lines(fig),
+    ]

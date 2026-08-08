@@ -92,6 +92,40 @@ def figure_text(
                 yield text, ax
 
 
+def _panel_name(fig: Figure, ax: Axes, text: Text) -> str:
+    """Which panel, said in the way a reader can act on.
+
+    "wider than the panel it belongs to" leaves someone with a six-panel mosaic grepping for the
+    string, and a label repeated across panels is ambiguous outright. A title identifies a panel to
+    a person; an index identifies it to anyone counting in reading order.
+
+    The title is NOT used when the offending label is that title, which is the commonest case of
+    this complaint: naming the panel by the string already being quoted produces "X is wider than
+    its panel ('X')", which tells a reader nothing they did not have.
+    """
+    title = ax.get_title().strip()
+    if title and text is not ax.title:
+        return f"its panel ({quoted(title)!r})"
+    try:
+        return f"panel {fig.axes.index(ax)} of {len(fig.axes)} (in reading order)"
+    except ValueError:  # an axes not on this figure; nothing useful to say
+        return "the panel it belongs to"
+
+
+def _rotation_hint(text: Text) -> str:
+    """Which way to edit, for a label whose width is its line COUNT.
+
+    A rotated label — `set_label` on a vertical colourbar is the usual source — is reported as too
+    wide, correctly. The natural remedy is to reflow it onto more lines, and for rotated text that
+    makes the overflow LARGER, because line count runs along the width. The complaint is true and
+    reads as advice to do the wrong thing, so it says which direction helps.
+    """
+    rotation = float(text.get_rotation()) % 180.0
+    if 45.0 < rotation < 135.0:
+        return " — it is ROTATED, so adding lines widens it further; shorten it instead"
+    return ""
+
+
 def text_off_canvas(fig: Figure) -> list[str]:
     """Any label whose ink leaves the page.
 
@@ -137,7 +171,8 @@ def text_wider_than_its_panel(fig: Figure) -> list[str]:
             width = float(text.get_window_extent().width)
             if width > panel.width + EDGE_TOLERANCE_PX:
                 complaints.append(
-                    f"{quoted(text.get_text())!r} is {width - panel.width:.0f} px wider than the "
-                    "panel it belongs to, so it reaches across the one beside it"
+                    f"{quoted(text.get_text())!r} is {width - panel.width:.0f} px wider than "
+                    f"{_panel_name(fig, ax, text)}, so it reaches across the one beside it"
+                    + _rotation_hint(text)
                 )
     return complaints

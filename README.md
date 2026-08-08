@@ -144,7 +144,7 @@ ogviz
 │   │   ├── decoration_ids(ax: Axes) -> set[int]
 │   │   ├── hits_data(ax: Axes, box: Bbox, *, padding: float, marks: PanelMarks | None) -> int
 │   │   ├── hits_decoration(ax: Axes, box: Bbox, *, padding: float) -> int
-│   │   ├── labels_crossing_a_rule(fig: Figure) -> list[tuple[Axes, Text]]
+│   │   ├── labels_crossing_a_rule(...) -> ...
 │   │   ├── labels_on_the_marks(fig: Figure) -> list[tuple[Axes, Text, int]]
 │   │   ├── point_offsets(collection: Collection) -> NDArray[np.float64] | None
 │   │   ├── quoted(text: str) -> str
@@ -321,8 +321,8 @@ ogviz
 │   │   ├── knocked_out_over(label, other) -> bool
 │   │   └── orientation_of(ax: Axes) -> str
 │   ├── repair
-│   │   ├── knock_out_labels_over_rules(fig: Figure) -> list[str]
-│   │   ├── move_labels_off_the_marks(fig: Figure) -> list[str]
+│   │   ├── knock_out_labels_over_rules(...) -> ...
+│   │   ├── move_labels_off_the_marks(...) -> ...
 │   │   ├── raise_buried_lines(fig: Figure) -> list[str]
 │   │   └── repair(fig: Figure) -> list[str]
 │   ├── report

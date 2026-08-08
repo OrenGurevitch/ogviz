@@ -75,6 +75,7 @@ def format_value(
     decimals: int | None = None,
     thousands_separator: bool = True,
     strip_trailing_zeros: bool | None = None,
+    signed: bool = False,
 ) -> str:
     """A value in its DISPLAY unit. `scale` converts the stored unit; the data is untouched.
 
@@ -84,6 +85,12 @@ def format_value(
 
     Pass `thousands_separator=False` for the cases where grouping is wrong: a year, an identifier, a
     part number. Those are not quantities, and nothing here can tell them apart from one.
+
+    `signed=True` puts an explicit plus on a positive, which effect sizes and deltas want
+    constantly. It is here rather than left to the caller because the obvious way to write it —
+    `f"{v:+.2f}"` — silently reintroduces the ASCII hyphen this function exists to replace, and
+    `one_minus_sign` then reports the figure for carrying two minus glyphs. That had already
+    happened in a consumer's figure. A zero takes no sign: "+0" claims a direction it does not have.
     """
     scaled = value * scale
     chosen_here = decimals is None
@@ -112,6 +119,8 @@ def format_value(
         # `format_value(-0.0014, decimals=2, strip_trailing_zeros=True)` returned "0".
         if scaled == 0.0 or stripped not in ("-0", "0"):
             text = stripped
+    if signed and scaled > 0.0:
+        text = f"+{text}"
     return typeset(text)
 
 

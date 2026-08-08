@@ -38,7 +38,10 @@ def test_a_label_wider_than_its_own_panel_is_caught() -> None:
     axes[0].set_title("a sub-line long enough to reach across the panel beside it, easily")
     fig.canvas.draw()
     complaints = text_wider_than_its_panel(fig)
-    assert any("wider than the panel" in complaint for complaint in complaints), complaints
+    assert any("wider than" in complaint for complaint in complaints), complaints
+    # The panel is named so the reader does not have to grep for the string. Here the offender IS
+    # the title, so naming the panel by its title would just repeat it — the index is used instead.
+    assert any("panel 0 of 2" in complaint for complaint in complaints), complaints
 
 
 def test_a_label_that_fits_its_panel_is_left_alone() -> None:

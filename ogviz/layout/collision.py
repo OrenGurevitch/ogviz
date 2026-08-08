@@ -72,8 +72,20 @@ QUOTED_LENGTH = 40
 
 
 def quoted(text: str) -> str:
-    """A label as a complaint should name it — trimmed, and trimmed the same way everywhere."""
-    return text.strip()[:QUOTED_LENGTH]
+    """A label as a complaint should name it — trimmed, and trimmed the same way everywhere.
+
+    A truncated label carries its SHAPE, because otherwise two versions of one label read as the
+    same string. Reflowing a long caption from two lines to three leaves the first forty characters
+    untouched, so the complaint before and after the edit was identical and only the pixel count
+    moved — a reader reasonably took that as evidence the edit had not applied when it had, and had
+    made things worse. The shape is what changed, so the shape is what is shown.
+    """
+    stripped = text.strip()
+    if len(stripped) <= QUOTED_LENGTH and "\n" not in stripped:
+        return stripped
+    lines = stripped.count("\n") + 1
+    shape = f"{lines} lines, {len(stripped)} chars" if lines > 1 else f"{len(stripped)} chars"
+    return f"{stripped[:QUOTED_LENGTH]}… ({shape})"
 
 
 def decoration_ids(ax: Axes) -> set[int]:
@@ -496,14 +508,21 @@ def labels_on_the_marks(fig: Figure) -> list[tuple[Axes, Text, int]]:
     return found
 
 
-def labels_crossing_a_rule(fig: Figure) -> list[tuple[Axes, Text]]:
+def labels_crossing_a_rule(
+    fig: Figure, *, on_the_marks: set[int] | None = None
+) -> list[tuple[Axes, Text]]:
     """Every label crossing a gridline with nothing painted behind it. Artists, for the same reason.
 
     A label ON the marks is excluded: the two want opposite fixes, and a knockout over the data
     punches a hole in the finding rather than fixing anything.
+
+    `on_the_marks` lets a caller that has ALREADY done that sweep hand the answer over. `repair`
+    runs both halves back to back, and without this it paid for `labels_on_the_marks` twice — a
+    per-label `hits_data` probe across every panel, which is the measured expensive path.
     """
     fig.canvas.draw()
-    on_the_marks = {id(text) for _ax, text, _struck in labels_on_the_marks(fig)}
+    if on_the_marks is None:
+        on_the_marks = {id(text) for _ax, text, _struck in labels_on_the_marks(fig)}
     found: list[tuple[Axes, Text]] = []
     for ax in fig.axes:
         for text in ax.texts:
