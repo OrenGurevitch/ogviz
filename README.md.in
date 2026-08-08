@@ -98,6 +98,17 @@ Exit 0 when clean, 1 otherwise. `--fix` changes presentation only — it moves a
 knockout, raises a buried line. It never moves a mark or alters a value, and what it cannot decide
 it reports and leaves. From Python: `audit(fig)`, `repair(fig)`, `assert_clean(fig)`.
 
+`type_too_small(fig, column_width=...)` asks the one question a figure cannot answer about itself:
+given the width it will be PLACED at, does its smallest type still clear the 5 pt that Nature,
+Science and ACS set as a floor at final published size (IEEE, 6 pt)? A figure authored 18 inches
+wide and dropped into a 6.5-inch column is scaled by a third, and its type with it.
+
+This is a **visualization linter**, a thing with a literature: McNutt and Kindlmann named the idea,
+Hopkins et al.'s VisuaLint surfaces suspected errors in the visualization itself, and Chen et al.
+pair a linter with a fixer — which is `audit` and `repair` here, arrived at independently. What this
+package adds is that the checks run on the RENDERED figure rather than on a chart specification, so
+they apply to any matplotlib figure whoever drew it.
+
 ## Testing
 
 `uv run just` is the full local gate, and it writes: reformats, regenerates the gallery, rebuilds

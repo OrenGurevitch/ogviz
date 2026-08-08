@@ -202,3 +202,43 @@ def test_scaling_the_type_widens_every_column() -> None:
     plain = _measure(["a wide header"], rows, 1.0)
     bigger = _measure(["a wide header"], rows, 1.6)
     assert bigger.edges[0] > plain.edges[0], "the label column widened with the type"
+
+
+def test_the_journal_point_size_question_is_opt_in_and_sharper() -> None:
+    """The ratio is a proxy; told the placement width, the check asks what a journal asks.
+
+    Nature, Science and ACS set 5 pt at final published size as the floor, IEEE 6 pt. A figure
+    authored wide and dropped into a narrow column is scaled down, and its type with it — which the
+    figure alone cannot know, so the width is an argument.
+    """
+    from ogviz.qc.typography import JOURNAL_MINIMUM_PT, type_too_small
+
+    # 16 in wide, 8 pt type: at a 6.5 in column that reads as 3.25 pt.
+    fig, ax = plt.subplots(figsize=(16.0, 5.0))
+    ax.set_xlabel("a label", fontsize=8.0)
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontsize(8.0)
+
+    narrow = type_too_small(fig, column_width=6.5)
+    assert narrow and "3.2 pt" in narrow[0], narrow
+    assert f"{JOURNAL_MINIMUM_PT:g} pt" in narrow[0]
+
+    # The same figure placed at its authored width is fine — which is the whole reason it is a
+    # caller's argument rather than a property of the figure.
+    assert type_too_small(fig, column_width=16.0) == []
+
+
+def test_the_no_argument_behaviour_is_unchanged() -> None:
+    """The ratio question is the default, so no existing caller sees anything new."""
+    from ogviz.qc.typography import type_too_small
+
+    fig, _ax = _table()
+    assert type_too_small(fig) == []
+
+
+def test_a_column_width_must_be_a_width() -> None:
+    from ogviz.qc.typography import type_too_small
+
+    fig, _ax = _table()
+    with pytest.raises(AssertionError, match="inches on the page"):
+        type_too_small(fig, column_width=0.0)
