@@ -25,7 +25,7 @@ header collides with the column beside it is the failure this replaces.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from matplotlib.colors import to_rgba
 from matplotlib.patches import FancyBboxPatch, Rectangle
@@ -138,6 +138,47 @@ def tint(color: str, *, strength: float = TINT_STRENGTH) -> tuple[float, float, 
     return (blend[0], blend[1], blend[2], 1.0)
 
 
+HEADER_HEIGHT = 1.2  # in row units: the header band is a fifth taller than an ordinary row
+
+
+class Layout(NamedTuple):
+    """Where every column and row edge lands, in axes fractions.
+
+    Split out of `table_panel`, which was 168 statements — by a wide margin the longest function in
+    the package, and it had grown by three arguments in a week. This half is a pure function of the
+    inputs: no axes, no artists, nothing drawn. That is what makes it separable, and it is also the
+    half worth testing directly, since every collision in a table is a consequence of these numbers.
+    """
+
+    shares: list[float]  # width of each value column
+    edges: list[float]  # left edge of each value column, plus the right edge of the last
+    centres: list[float]  # centre of each value column
+    tops: list[float]  # top of the header band, then the top of each row
+    unit: float  # one row height, in axes fractions
+
+
+def _measure(headers: Sequence[str], rows: Sequence[Row], font_scale: float) -> Layout:
+    """Column widths from the widest string each must hold, and row tops from the row heights."""
+    label_width = max(_row_text_width(row, font_scale) for row in rows) + CELL_PAD_PT
+    column_widths = [
+        _column_text_width(h, rows, i, font_scale) + CELL_PAD_PT for i, h in enumerate(headers)
+    ]
+    total = label_width + sum(column_widths)
+    shares = [width / total for width in column_widths]
+
+    edges = [label_width / total]
+    for share in shares:
+        edges.append(edges[-1] + share)
+    centres = [(edges[i] + edges[i + 1]) / 2 for i in range(len(headers))]
+
+    heights = [row.height for row in rows]
+    unit = 1.0 / (HEADER_HEIGHT + sum(heights))
+    tops = [1.0 - HEADER_HEIGHT * unit]
+    for height in heights:
+        tops.append(tops[-1] - height * unit)
+    return Layout(shares, edges, centres, tops, unit)
+
+
 def table_panel(
     ax: Axes,
     headers: Sequence[str],
@@ -191,24 +232,9 @@ def table_panel(
     value_sub_size = VALUE_SUB_SIZE * font_scale
     cell_fill = tint(highlight_color) if shade is None else shade
 
-    label_width = max(_row_text_width(row, font_scale) for row in rows) + CELL_PAD_PT
-    column_widths = [
-        _column_text_width(h, rows, i, font_scale) + CELL_PAD_PT for i, h in enumerate(headers)
-    ]
-    total = label_width + sum(column_widths)
-    label_share = label_width / total
-    shares = [width / total for width in column_widths]
-    edges = [label_share]
-    for share in shares:
-        edges.append(edges[-1] + share)
-    centres = [(edges[i] + edges[i + 1]) / 2 for i in range(len(headers))]
-
-    heights = [row.height for row in rows]
-    header_height = 1.2
-    unit = 1.0 / (header_height + sum(heights))
-    tops = [1.0 - header_height * unit]
-    for height in heights:
-        tops.append(tops[-1] - height * unit)
+    grid = _measure(headers, rows, font_scale)
+    shares, edges, centres, tops, unit = grid.shares, grid.edges, grid.centres, grid.tops, grid.unit
+    header_height = HEADER_HEIGHT
 
     ax.set_xlim(0.0, 1.0)
     ax.set_ylim(0.0, 1.0)

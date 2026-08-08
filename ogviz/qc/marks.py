@@ -93,6 +93,17 @@ def buried_baselines(fig: Figure) -> list[str]:
     and 0.85 over a 1.6-point rule is exactly the washed-out segment this check exists to catch.
     Marks a panel puts UNDER the axis on purpose — a highlight column, a reference band — sit below
     the spine's z-order and never reach this test.
+
+    ONLY `ax.patches`, AND THAT IS DELIBERATE — do not widen it to `ax.collections`. This is a BOX
+    test, and a box means different things for the two. A bar patch whose box overlaps the spine is
+    a solid rectangle standing on it, so the overlap IS the covering. A scatter's box spans its
+    whole cloud and overlaps the spine while the dots are nowhere near it. Measured: adding
+    collections here fails 17 tests, four of them shipped examples, all false positives.
+
+    The cost is a real gap — a `fill_between` band CAN cover a spine and is invisible here. Closing
+    it needs the ink test (`layout.ink.visible_contribution`), which is the expensive per-artist
+    render already reserved for `--thorough`, or a narrow pre-filter for a filled collection
+    spanning the axis width. Not a one-line change, which is why it is not one.
     """
     fig.canvas.draw()
     complaints: list[str] = []

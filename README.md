@@ -285,6 +285,7 @@ ogviz
 │   │   └── split_violins(...) -> ...
 │   ├── table
 │   │   ├── Cell(value: str, sub: str | None, best: bool, tone: Tone | None) -> None
+│   │   ├── Layout(*args, **kwargs)
 │   │   ├── Row(label: str, cells: tuple[Cell, ...], sub: str | None, height: float) -> None
 │   │   ├── table_panel(...) -> ...
 │   │   └── tint(color: str, *, strength: float) -> tuple[float, float, float, float]

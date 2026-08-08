@@ -165,3 +165,40 @@ def test_cramped_type_is_reported_and_a_comfortable_table_is_not() -> None:
 
     roomy, _ax = _table()
     assert type_too_small(roomy) == []
+
+
+def test_the_measurement_is_a_pure_function_of_the_inputs() -> None:
+    """`_measure` is the half of `table_panel` that draws nothing, and every collision in a table
+    is a consequence of these numbers — so they are worth asserting directly rather than only
+    through a rendered figure."""
+    from ogviz.panels.table import HEADER_HEIGHT, _measure
+
+    rows = [
+        Row("first", (Cell("1.00"), Cell("2.00"))),
+        Row("second", (Cell("3.00"), Cell("4.00")), height=2.0),
+    ]
+    grid = _measure(["A", "B"], rows, 1.0)
+
+    assert len(grid.shares) == 2 and len(grid.centres) == 2
+    assert len(grid.edges) == 3, "one left edge per column, plus the right edge of the last"
+    assert grid.edges == sorted(grid.edges), "columns run left to right"
+    assert all(grid.edges[i] < grid.centres[i] < grid.edges[i + 1] for i in range(2))
+    assert grid.edges[-1] == pytest.approx(1.0), "the columns fill the width"
+
+    assert len(grid.tops) == len(rows) + 1, "the header band, then one top per row"
+    assert grid.tops == sorted(grid.tops, reverse=True), "rows run top to bottom"
+    assert grid.tops[0] == pytest.approx(1.0 - HEADER_HEIGHT * grid.unit)
+    # The second row asked for twice the height, so its band is twice as deep.
+    first, second = grid.tops[0] - grid.tops[1], grid.tops[1] - grid.tops[2]
+    assert second == pytest.approx(2.0 * first)
+
+
+def test_scaling_the_type_widens_every_column() -> None:
+    """The measurement takes `font_scale` too — scaling the type without the columns runs a header
+    into its neighbour."""
+    from ogviz.panels.table import _measure
+
+    rows = [Row("a long row label", (Cell("1.00"),))]
+    plain = _measure(["a wide header"], rows, 1.0)
+    bigger = _measure(["a wide header"], rows, 1.6)
+    assert bigger.edges[0] > plain.edges[0], "the label column widened with the type"
