@@ -90,3 +90,28 @@ def test_no_module_writes_a_points_conversion_out_by_hand() -> None:
     assert not offenders, (
         "points conversions written out instead of using ogviz.units:\n" + "\n".join(offenders)
     )
+
+
+def test_panel_px_measures_the_axis_the_orientation_names() -> None:
+    """The one member of this module with no caller anywhere, and until now no test either.
+
+    Kept rather than deleted: `ogviz.units` is importable and listed in the published module tree,
+    so a consumer may already use it, and removing a name to tidy a list is how a package breaks
+    someone quietly. Specified instead — an unused helper that is pinned is a helper; an unused
+    helper that is unpinned is a liability, and the difference is this test.
+
+    What the entry in FIXME says about it stands: naming the long side "vertical" reads as the
+    panel's orientation and means the VALUE axis, which is why the nearest candidate caller wanted
+    the width regardless of orientation and did not use this. That is an API opinion; the behaviour
+    below is what it does today.
+    """
+    fig, ax = plt.subplots(figsize=(8.0, 2.0), dpi=100.0)
+    fig.canvas.draw()
+    box = ax.get_window_extent()
+
+    assert units.panel_px(ax) == pytest.approx(box.height)
+    assert units.panel_px(ax, orientation="vertical") == pytest.approx(box.height)
+    assert units.panel_px(ax, orientation="horizontal") == pytest.approx(box.width)
+    assert units.panel_px(ax, orientation="horizontal") > units.panel_px(ax), (
+        "this panel is four times wider than it is tall, so the two answers must differ"
+    )

@@ -56,6 +56,39 @@ def _load_figures(target: str) -> list[Figure]:
     return [plt.figure(number) for number in plt.get_fignums()]
 
 
+def _report_one(figure: Figure, index: int, *, thorough: bool, destination: Path | None) -> int:
+    """Audit one figure, say what is wrong with it, and return how much is left outstanding.
+
+    Split out of `main`, which did argument parsing, loading, auditing, repair, writing and
+    reporting in one body. This is the half that runs per figure, and having it apart is what lets
+    the caller be a `sum(...)` over the figures rather than a loop carrying a running total.
+
+    THE AUDIT RUNS ONCE PER OUTCOME and both uses share it: printed, and counted for the exit
+    status. It was called twice, once per use, which on `--thorough` is a second full
+    render-per-artist pass over every figure for an answer already in hand.
+    """
+    label = figure.get_label() or f"figure_{index + 1}"
+    print(f"{label}:")
+    found = audit(figure, thorough=thorough)
+    for line in group_by_subject(found):
+        print(f"  - {line}")
+
+    if destination is None:
+        return len(found)
+
+    for change in repair(figure):
+        print(f"  fixed: {change}")
+    written = destination / f"{label}.png"
+    figure.savefig(written, dpi=200, bbox_inches="tight")
+    print(f"  wrote {written}")
+    # Re-audited because `repair` has just changed the figure — this is the "what still needs a
+    # person" number, and it is a different question from the one printed above.
+    remaining = audit(figure, thorough=thorough)
+    for line in group_by_subject(remaining):
+        print(f"  still needs a person: {line}")
+    return len(remaining)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the checks over figures built by another project. `python -m ogviz.qc TARGET`.
 
@@ -114,31 +147,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if destination is not None:
         destination.mkdir(parents=True, exist_ok=True)
 
-    outstanding = 0
-    for index, figure in enumerate(figures):
-        label = figure.get_label() or f"figure_{index + 1}"
-        print(f"{label}:")
-        # Audited ONCE and both used: printed, and counted for the exit status. It was called twice
-        # here, once per use, which on `--thorough` is a second full render-per-artist pass over
-        # every figure for an answer already in hand.
-        found = audit(figure, thorough=args.thorough)
-        for line in group_by_subject(found):
-            print(f"  - {line}")
-
-        if destination is None:
-            outstanding += len(found)
-            continue
-
-        for change in repair(figure):
-            print(f"  fixed: {change}")
-        written = destination / f"{label}.png"
-        figure.savefig(written, dpi=200, bbox_inches="tight")
-        print(f"  wrote {written}")
-        remaining = audit(figure, thorough=args.thorough)
-        outstanding += len(remaining)
-        for line in group_by_subject(remaining):
-            print(f"  still needs a person: {line}")
-
+    outstanding = sum(
+        _report_one(figure, index, thorough=args.thorough, destination=destination)
+        for index, figure in enumerate(figures)
+    )
     tail = "outstanding" if destination is not None else ""
     print(f"\n{len(figures)} figure(s), {outstanding} complaint(s) {tail}".rstrip())
     return 1 if outstanding else 0
