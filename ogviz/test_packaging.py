@@ -3,8 +3,8 @@
 The tests live INSIDE the package, so for as long as the wheel was built from `packages = ["ogviz"]`
 alone it carried them: 37 of its 90 files, 41% of what a consumer installs, and none of them
 importable there — `pytest` is a dev extra, and the autouse `house_style` fixture lives in a root
-`conftest.py` that was never in the wheel. `import ogviz.qc.test` in a clean consumer environment
-raised `ModuleNotFoundError: No module named 'pytest'`.
+`conftest.py` that was never in the wheel. `import ogviz.qc.test_qc` in a clean consumer
+environment raised `ModuleNotFoundError: No module named 'pytest'`.
 
 The regression this guards is not "someone deletes the exclude". It is the SPLIT: `python_files`
 defines what a test module is named, the wheel `exclude` repeats those patterns, and a session that
