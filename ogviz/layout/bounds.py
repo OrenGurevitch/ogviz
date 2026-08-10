@@ -28,6 +28,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ogviz.layout.collision import quoted
+from ogviz.layout.frame import is_color_scale
 from ogviz.layout.render import ensure_rendered
 
 if TYPE_CHECKING:
@@ -181,7 +182,9 @@ def text_wider_than_its_panel(fig: Figure) -> list[str]:
     ensure_rendered(fig)
     complaints: list[str] = []
     for ax in fig.axes:
-        if not ax.get_visible():
+        # A colour scale is a key, not a panel: an 18 px strip whose label is drawn beside it on
+        # purpose. Measuring that label against the strip reports every colourbar ever drawn.
+        if not ax.get_visible() or is_color_scale(ax):
             continue
         panel = ax.get_window_extent()
         for text in panel_text(ax):

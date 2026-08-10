@@ -74,6 +74,10 @@ the measurement behind it. Requires matplotlib ≥ 3.10.
 </tr>
 </table>
 
+![](examples/out/18_stft_spectrogram.png)
+
+<sub><code>spectrogram</code> — a Short-Time Fourier Transform, with the scale that makes it a measurement</sub>
+
 The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, which works standalone.
 
 ## The QC gate
@@ -177,7 +181,9 @@ ogviz
 │   │   └── trim_margins(fig: Figure, *, pad_px: float) -> bool
 │   ├── frame
 │   │   ├── baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
+│   │   ├── color_scale(...) -> ...
 │   │   ├── hairline_grid(ax: Axes, *, axis: "Literal[x, y]") -> None
+│   │   ├── is_color_scale(ax: Axes) -> bool
 │   │   ├── label_rows(...) -> ...
 │   │   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
 │   │   ├── pill_frame(legend: Legend) -> Legend
@@ -296,6 +302,9 @@ ogviz
 │   │   ├── crowded_ends(strands: Sequence[Strand], ax: Axes, *, gap_px: float) -> list[str]
 │   │   ├── null_distance(...) -> ...
 │   │   └── slopegraph(...) -> ...
+│   ├── spectrogram
+│   │   ├── spectrogram(...) -> ...
+│   │   └── to_decibels(...) -> ...
 │   ├── split
 │   │   ├── half_marks(...) -> ...
 │   │   ├── half_violin(...) -> ...

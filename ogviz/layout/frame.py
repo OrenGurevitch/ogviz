@@ -9,15 +9,24 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from ogviz.require import require
-from ogviz.theme import GRID, MUTED_INK, PANEL_FILL
+from ogviz.theme import GRID, MUTED_INK, PANEL_FILL, TICK_SIZE
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from matplotlib.axes import Axes
+    from matplotlib.cm import ScalarMappable
+    from matplotlib.colorbar import Colorbar
     from matplotlib.figure import Figure
     from matplotlib.legend import Legend
     from matplotlib.text import Text
+
+
+# A scale is a key, not a panel: its numbers are set below the axis ticks so it reads as
+# subordinate to the marks it describes. MEASURED against the tick size rather than fixed,
+# so `font_scale`-style changes to the house type carry through instead of leaving the bar
+# at whatever looked right once.
+SCALE_TYPE = 0.85
 
 
 def hairline_grid(ax: Axes, *, axis: Literal["x", "y"] = "y") -> None:
@@ -128,3 +137,70 @@ def _row_color(row_color, column: int) -> str | None:
     if row_color is None or isinstance(row_color, str):
         return row_color
     return row_color[column]
+
+
+def color_scale(
+    ax: Axes,
+    mappable: ScalarMappable,
+    *,
+    label: str | None = None,
+    ticks: Sequence[float] | None = None,
+    tick_labels: Sequence[str] | None = None,
+    width: float = 0.030,
+    pad: float = 0.02,
+) -> Colorbar:
+    """The key that says what the colours MEAN, set in the house style.
+
+    A colour scale is furniture, like the legend pill: it carries no value of its own and decides
+    how hard the marks have to work. matplotlib's default bar is a boxed, black-outlined slab about
+    twice this wide with tick marks on it, which on a warm page reads as a second panel competing
+    with the one it describes. This is a thin strip with no outline and no tick marks — the numbers
+    alone — in the muted ink the axes already use.
+
+    `ticks` names the values worth reading rather than letting matplotlib choose: on a diverging
+    scale the three that matter are the two ends and the neutral point, and an automatic locator
+    puts five evenly spaced numbers there instead, none of which is the neutral value.
+
+    Returns the `Colorbar` so a caller can do more to it. Its axes is a real axes on the figure, so
+    every QC check sees it — which is the point, and was checked: a scale added this way leaves the
+    gate clean rather than being excused from it.
+    """
+    from ogviz.layout.ticks import typeset
+
+    figure = ax.get_figure(root=True)
+    require(figure is not None, "the axes must belong to a figure")
+    bar = figure.colorbar(mappable, ax=ax, fraction=width, pad=pad, ticks=ticks)  # type: ignore[union-attr]
+    bar.outline.set_visible(False)
+    bar.ax.tick_params(length=0.0, colors=MUTED_INK, labelsize=TICK_SIZE * SCALE_TYPE)
+    if tick_labels is not None:
+        # Passed through `typeset`, so a negative bound on the scale carries the same minus sign as
+        # every other number in the figure. A bar labelled with an ASCII hyphen beside axis ticks
+        # using U+2212 is exactly what `one_minus_sign` exists to catch, and it would be catching
+        # this package rather than a caller. The caller supplies the WORDING; this owns the glyph.
+        bar.set_ticklabels([typeset(text) for text in tick_labels])
+    if label:
+        bar.set_label(label, color=MUTED_INK, size=TICK_SIZE * SCALE_TYPE)
+    return bar
+
+
+# matplotlib's own name for the axes a colourbar lives on. Public in the sense that matters — it is
+# what `Colorbar` sets and what every backend reads — where `cax._colorbar` is the private half of
+# the same fact. Both are checked, because a figure this package did not draw has only the first.
+COLOR_SCALE_LABEL = "<colorbar>"
+
+
+def is_color_scale(ax: Axes) -> bool:
+    """Whether this axes is a colour scale rather than a panel.
+
+    A scale is a KEY. It is a strip a few pixels wide with its label drawn BESIDE it, and the checks
+    that reason about panels have to know the difference: `text_wider_than_its_panel` measured a
+    colourbar's own label against the strip it labels and reported it as 3 px too wide — true, and
+    true of every colourbar ever drawn, because the label cannot fit inside a 18 px strip and is not
+    meant to. That is the gate crying wolf, and it appeared the moment `effect_heatmap` and
+    `spectrogram` started drawing scales by default.
+
+    Read from the artist rather than tracked in this module, so it is right for a figure this
+    package never touched — a project running `python -m ogviz.qc` over its own work gets the same
+    answer as one built with `color_scale`.
+    """
+    return ax.get_label() == COLOR_SCALE_LABEL or hasattr(ax, "_colorbar")

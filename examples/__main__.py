@@ -80,6 +80,7 @@ from ogviz import (
     series_colors,
     share_value_limits,
     slopegraph,
+    spectrogram,
     split_violins,
     table_panel,
     ticks_over_data,
@@ -455,6 +456,34 @@ def effect_matrix() -> None:
     render(fig, "14_effect_heatmap")
 
 
+def stft_spectrogram() -> None:
+    """Time against frequency, coloured by power — and the key that makes the colour readable.
+
+    The template for a Short-Time Fourier Transform figure. Three readings the panel exists to
+    support are all present: the horizontal band is a constant tone that STOPS partway through, the
+    diagonal is a sweep crossing it, and the vertical line is one broadband instant.
+
+    The colour scale is not decoration here the way it can be argued to be on `effect_heatmap`,
+    which prints its number in every cell. A spectrogram prints no numbers at all, so without the
+    bar a reader cannot tell 70 dB of dynamic range from 20, and the figure stops being a
+    measurement. That is why it is drawn by default and why the floor is stated in the caption:
+    everything below 70 dB down is one colour, and saying so is the difference between a noise floor
+    and an empty one.
+    """
+    from examples.data import short_time_spectrum
+
+    power_db, times, frequencies = short_time_spectrum()
+    fig, ax = plt.subplots(figsize=(11.0, 5.4))
+    spectrogram(ax, power_db, times=times, frequencies=frequencies)
+    header_bottom = titled(
+        fig,
+        "What is present, and when",
+        subtitle="an invented signal; a 32 ms Hann window, floored 70 dB below the peak",
+    )
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, header_bottom))
+    render(fig, "18_stft_spectrogram")
+
+
 def rounds_slopegraph() -> None:
     """Three disciplines across four rounds: the SHAPE of each line is the comparison.
 
@@ -791,6 +820,8 @@ EXAMPLES = (
     rounds_slopegraph,
     comparison_table,
     controlled_comparison,
+    # Time against frequency: the one panel whose whole quantity is in the colour.
+    stft_spectrogram,
 )
 
 

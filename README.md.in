@@ -73,6 +73,10 @@ the measurement behind it. Requires matplotlib ≥ 3.10.
 </tr>
 </table>
 
+![](examples/out/18_stft_spectrogram.png)
+
+<sub><code>spectrogram</code> — a Short-Time Fourier Transform, with the scale that makes it a measurement</sub>
+
 The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, which works standalone.
 
 ## The QC gate

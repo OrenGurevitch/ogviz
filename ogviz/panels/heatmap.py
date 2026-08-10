@@ -15,8 +15,16 @@ matrix, any signed quantity where zero is the neutral value. Three things make i
   A missing cell is drawn as missing rather than as neutral. `nan` shaded like zero is a cell that
   reads as a measured null, which is the one thing it is not.
 
-A colourbar is deliberately absent. The number is in the cell, so the bar would be a second, less
-precise encoding of what the reader can already read exactly.
+THE SCALE IS DRAWN BY DEFAULT, and this module argued the opposite until 2026-08-10: "the number is
+in the cell, so the bar would be a second, less precise encoding of what the reader can already read
+exactly." That is true of the number and false of the COLOUR. Without a key, a reader has no way to
+learn which direction is which without reading cells and inferring it, no way to tell whether the
+scale is symmetric, and — because `reach` defaults to the largest departure present — no way to know
+that two matrices side by side are on different scales. The bar is what makes `reach` visible, and
+`reach` is the argument most likely to be wrong.
+
+`colorbar=False` is there for a panel that genuinely does not want one: a small matrix in a grid
+where a shared scale is labelled once elsewhere.
 """
 
 from __future__ import annotations
@@ -85,6 +93,8 @@ def effect_heatmap(
     column_dividers: Sequence[int] = (),
     colors: Sequence[str | None] = DIVERGING,
     text_size: float = CELL_TEXT_SIZE,
+    colorbar: bool = True,
+    colorbar_label: str | None = None,
 ) -> None:
     """Draw `values` as a diverging matrix with the number, and optionally its stars, in each cell.
 
@@ -95,6 +105,13 @@ def effect_heatmap(
 
     `row_dividers` and `column_dividers` are indices to rule a line BEFORE, for a matrix whose rows
     fall into groups.
+
+    THE COLOUR SCALE is drawn unless `colorbar=False`, and it is labelled at three values: the two
+    ends and the neutral point. Those are the three a reader of a diverging matrix needs — which
+    direction is which, and where nothing-is-happening sits — and an automatic locator names none
+    of them. It is also the only place `reach` becomes visible, and `reach` defaults to the largest
+    departure in THIS matrix, so two panels drawn side by side are on different scales unless a
+    caller says otherwise.
     """
     grid = np.asarray(values, dtype=float)
     require(
@@ -190,6 +207,23 @@ def effect_heatmap(
     for spine in ax.spines.values():
         spine.set_visible(False)
 
+    if colorbar:
+        from matplotlib.cm import ScalarMappable
+
+        from ogviz.layout.frame import color_scale
+
+        # The ends and the neutral point, in that order along the bar. `value_format` is reused so
+        # the bar and the cells print a number the same way — two formats for one quantity is how a
+        # reader ends up believing they are two quantities.
+        bounds = [neutral - reach, neutral, neutral + reach]
+        color_scale(
+            ax,
+            ScalarMappable(norm=scale, cmap=colormap),
+            label=colorbar_label,
+            ticks=bounds,
+            tick_labels=[_scale_label(value, neutral, value_format) for value in bounds],
+        )
+
 
 def _cell(column: int, row: int, *, facecolor) -> Rectangle:
     return Rectangle(
@@ -217,3 +251,18 @@ def _stars_for(p: float, label_for: Callable[[float], str] | None) -> str:
         return label_for(p)
     glyphs = stars(p)
     return "" if glyphs == NOT_SIGNIFICANT else glyphs
+
+
+def _scale_label(value: float, neutral: float, value_format: str) -> str:
+    """A bound on the colour scale, printed the way the cells print a number — except the middle.
+
+    The cells use a signed format, which is right for a departure: plus 0.30 and minus 0.30 are
+    opposite findings and the sign IS the finding. Applied to the NEUTRAL point that same format
+    writes `+0.00`, which asserts a positive zero: the midpoint of a diverging scale is the one
+    value on it with no direction. `format_value(signed=True)` already draws this distinction for
+    every other number this package prints; the sign is dropped here for the same reason.
+    """
+    printed = value_format.format(value)
+    if value != neutral:
+        return printed
+    return printed.lstrip("+") or printed

@@ -349,3 +349,60 @@ def arm_comparison(seed: int = 19) -> dict[str, tuple[list[float], list[tuple[fl
             [(0.26, 0.34), (0.48, 0.56), (0.54, 0.62), (0.59, 0.67)],
         ),
     }
+
+
+# A sample rate round enough to read off the axis, and low enough that the example renders quickly.
+SAMPLE_RATE = 8000
+
+
+def chirped_tone(seed: int = 14) -> tuple[np.ndarray, int]:
+    """An invented signal with three things a spectrogram is supposed to show, and one it is not.
+
+    A steady tone that STOPS partway through, a rising sweep that crosses it, and a broadband click.
+    Between them they exercise the three readings a time-frequency figure is for: a horizontal line
+    is a constant frequency, a diagonal is a changing one, a vertical is an instant containing every
+    frequency at once. The noise floor is there so the decibel floor has something to do — with a
+    silent background, any floor looks like the right floor.
+
+    Returned with its sample rate, because a spectrogram's axes are meaningless without one and
+    handing back a bare array is how the two get separated.
+    """
+    rng = np.random.default_rng(seed)
+    duration = 2.0
+    t = np.arange(0.0, duration, 1.0 / SAMPLE_RATE)
+
+    tone = np.sin(2.0 * np.pi * 600.0 * t) * (t < 1.25)  # stops at 1.25 s
+
+    # A linear chirp, from its PHASE. Written the obvious way — `sin(2*pi * linspace(f0, f1) * t)` —
+    # the instantaneous frequency is the derivative of `f(t) * t`, which is `f0 + 2*(f1-f0)*t/T`:
+    # it ends at 2*f1 - f0, not at f1. With f1 = 2600 that reaches 5000 Hz on an 8 kHz signal, past
+    # the 4 kHz Nyquist limit, and the sweep FOLDS BACK down the spectrogram as a mirrored line.
+    # It renders as a clean bright diagonal and is an artefact of the sampling, not the signal.
+    # Caught by looking at the rendered figure, which is the only place it is visible.
+    start, end = 200.0, 2600.0
+    phase = 2.0 * np.pi * (start * t + 0.5 * (end - start) / duration * t**2)
+    sweep = 0.6 * np.sin(phase)
+    click = np.zeros_like(t)
+    click[int(1.6 * SAMPLE_RATE) : int(1.6 * SAMPLE_RATE) + 12] = 3.0  # one broadband instant
+    noise = 0.02 * rng.standard_normal(t.size)
+    return tone + sweep + click + noise, SAMPLE_RATE
+
+
+def short_time_spectrum(seed: int = 14) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The signal above as (power in dB, times, frequencies) — a plain Hann-window STFT.
+
+    The window and hop are stated here rather than defaulted anywhere in the package, because they
+    decide what the picture means: a 256-sample window at 8 kHz is 32 ms, which resolves the sweep
+    in time at the cost of frequency resolution, and the opposite choice would draw a different
+    figure from the same signal. That trade is the caller's, always.
+    """
+    from scipy.signal import ShortTimeFFT
+    from scipy.signal.windows import hann
+
+    from ogviz import to_decibels
+
+    signal, rate = chirped_tone(seed)
+    window = hann(256, sym=False)
+    transform = ShortTimeFFT(window, hop=64, fs=rate, scale_to="magnitude")
+    power = np.abs(transform.stft(signal)) ** 2
+    return to_decibels(power, floor_db=-70.0), transform.t(signal.size), transform.f

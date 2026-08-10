@@ -9,6 +9,7 @@ import pytest
 from matplotlib.colors import to_rgb
 
 from ogviz.panels.heatmap import MISSING_MARK, effect_heatmap
+from ogviz.qc import audit
 from ogviz.tags import marked
 from ogviz.theme import page_color
 
@@ -120,3 +121,45 @@ def test_a_matrix_and_its_labels_must_agree() -> None:
     _fig, ax = plt.subplots()
     with pytest.raises(AssertionError, match="against 1 rows and 3 columns"):
         effect_heatmap(ax, np.zeros((1, 2)), row_labels=["r"], column_labels=list("abc"))
+
+
+def test_the_colour_scale_is_drawn_by_default_and_names_the_three_values_that_matter() -> None:
+    """This module argued against a colourbar until 2026-08-10: "the number is in the cell".
+
+    True of the NUMBER and false of the COLOUR. Without a key a reader cannot learn which direction
+    is which, cannot tell whether the scale is symmetric, and — since `reach` defaults to the
+    largest departure in THIS matrix — cannot see that two panels side by side are on different
+    scales. The bar is the only place `reach` becomes visible.
+    """
+    values = np.array([[0.8, -0.3], [0.2, 0.9]])
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    effect_heatmap(ax, values, row_labels=["a", "b"], column_labels=["x", "y"])
+    fig.canvas.draw()
+
+    assert len(fig.axes) == 2, "the matrix, and the scale beside it"
+    drawn = [t.get_text() for t in fig.axes[-1].get_yticklabels() if t.get_text()]
+    assert len(drawn) == 3, f"the two ends and the neutral point, got {drawn}"
+    assert audit(fig) == []
+    plt.close(fig)
+
+
+def test_the_neutral_tick_carries_no_sign() -> None:
+    """The cells use a signed format, which is right for a departure. Applied to the midpoint it
+    writes "+0.00", and the middle of a diverging scale is the one value on it with no direction."""
+    values = np.array([[0.5, -0.5]])
+    fig, ax = plt.subplots(figsize=(8.0, 4.0))
+    effect_heatmap(ax, values, row_labels=["a"], column_labels=["x", "y"])
+    fig.canvas.draw()
+
+    low, middle, high = (t.get_text() for t in fig.axes[-1].get_yticklabels() if t.get_text())
+    assert middle == "0.00", middle
+    assert high.startswith("+") and low.startswith("\u2212"), (low, high)
+    plt.close(fig)
+
+
+def test_the_scale_can_be_turned_off_for_a_grid_that_labels_it_once() -> None:
+    values = np.array([[0.8, -0.3], [0.2, 0.9]])
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    effect_heatmap(ax, values, row_labels=["a", "b"], column_labels=["x", "y"], colorbar=False)
+    assert len(fig.axes) == 1
+    plt.close(fig)
