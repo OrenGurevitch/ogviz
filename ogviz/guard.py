@@ -33,6 +33,7 @@ from __future__ import annotations
 import os
 import warnings
 from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Literal
 
 from matplotlib.figure import Figure
@@ -43,7 +44,18 @@ if TYPE_CHECKING:
 Mode = Literal["raise", "warn", "repair"]
 ENV_VAR = "OGVIZ_GUARD"
 _ORIGINAL = Figure.savefig
-_AUDITING = False  # set while the guard is working, so a nested save does not re-enter
+
+# Set while the guard is working, so the save it performs at the end does not re-enter the wrapper
+# and audit the same figure again.
+#
+# A `ContextVar` rather than a module-level bool, and the difference is the whole point: a plain
+# global is shared by every thread, so two threads saving at once meant one set the flag and the
+# other saw it set and skipped its audit ENTIRELY — writing a figure the gate never looked at, which
+# is the one outcome this module exists to prevent. Each thread gets its own context, so each gets
+# its own flag. `layout.render` uses the same construction for the same reason.
+# NOT `ogviz_`-prefixed: that prefix is the tag vocabulary, for what a MARK means, and this is a
+# scope flag. `test_tags.py` enforces it.
+_AUDITING: ContextVar[bool] = ContextVar("guard_auditing", default=False)
 _INSTALLED = None  # the wrapper this module put on `Figure.savefig`, if any
 
 
@@ -95,10 +107,9 @@ def guard(
     floor = DEFAULT_MIN_GAP if min_gap is None else min_gap
 
     def savefig(self: Figure, *args: object, **kwargs: object) -> object:
-        global _AUDITING
-        if _AUDITING:
+        if _AUDITING.get():
             return _ORIGINAL(self, *args, **kwargs)  # type: ignore[arg-type]
-        _AUDITING = True
+        token = _AUDITING.set(True)
         try:
             from ogviz.layout.render import ensure_rendered
 
@@ -114,7 +125,7 @@ def guard(
                 warnings.warn("ogviz.guard: " + "; ".join(found), FigureQuality, stacklevel=2)
             return _ORIGINAL(self, *args, **kwargs)  # type: ignore[arg-type]
         finally:
-            _AUDITING = False
+            _AUDITING.reset(token)
 
     global _INSTALLED
     savefig.__doc__ = _ORIGINAL.__doc__

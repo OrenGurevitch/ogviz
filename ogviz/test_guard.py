@@ -118,3 +118,46 @@ def test_a_bare_import_changes_nothing() -> None:
     unguard()
     importlib.reload(ogviz)
     assert not is_guarded()
+
+
+def test_two_threads_saving_at_once_are_both_audited(tmp_path) -> None:
+    """The re-entry flag was a module global, so one thread's audit silenced the other's.
+
+    The flag exists so the guard's own `savefig` at the end does not re-enter the wrapper. Shared
+    across threads it meant something else: thread A set it, thread B saw it set, and B skipped its
+    audit ENTIRELY and wrote a figure the gate never looked at — the one outcome this module exists
+    to prevent. MEASURED with the two saves forced to overlap: 40 of 80 got through, exactly one per
+    overlapping pair, which is the mechanism rather than a rare race. A `ContextVar` gives each
+    thread its own flag.
+    """
+    import threading
+
+    with guarded(mode="raise"):
+        # The premise, asserted rather than assumed: this figure really is refused on its own. A
+        # figure hand-built here was clean under the autouse house style, so the threaded assertion
+        # would have passed while measuring nothing.
+        alone = _runs_off_the_page()
+        with pytest.raises(FigureRejectedError):
+            alone.savefig(tmp_path / "probe.png")
+        plt.close(alone)
+
+        verdicts: list[str] = []
+        barrier = threading.Barrier(2)
+
+        def save(index: int) -> None:
+            fig = _runs_off_the_page()
+            barrier.wait()  # force the two audits to overlap
+            try:
+                fig.savefig(tmp_path / f"{index}.png")
+                verdicts.append("written past the gate")
+            except FigureRejectedError:
+                verdicts.append("refused")
+            plt.close(fig)
+
+        threads = [threading.Thread(target=save, args=(index,)) for index in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+    assert verdicts == ["refused", "refused"], verdicts
