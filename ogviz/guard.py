@@ -100,7 +100,7 @@ def guard(
             return _ORIGINAL(self, *args, **kwargs)  # type: ignore[arg-type]
         _AUDITING = True
         try:
-            from ogviz.qc.reading import ensure_rendered
+            from ogviz.layout.render import ensure_rendered
 
             ensure_rendered(self)
             found = _complaints(self, mode=mode, min_gap=floor, advise=advise)

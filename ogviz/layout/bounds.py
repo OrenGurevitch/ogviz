@@ -28,6 +28,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ogviz.layout.collision import quoted
+from ogviz.layout.render import ensure_rendered
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -132,7 +133,7 @@ def text_off_canvas(fig: Figure) -> list[str]:
     The defect `clipped_artists` structurally cannot see, since it tests lines against their
     axes and matplotlib never clips text at all.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     page = fig.bbox
     complaints: list[str] = []
     for text, _owner in figure_text(fig):
@@ -159,7 +160,7 @@ def text_wider_than_its_panel(fig: Figure) -> list[str]:
     position-based check passed.
 
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     complaints: list[str] = []
     for ax in fig.axes:
         if not ax.get_visible():

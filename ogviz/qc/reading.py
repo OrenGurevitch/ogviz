@@ -22,7 +22,6 @@ from ogviz.tags import marked, value_of
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
-    from matplotlib.figure import Figure
 
 
 def orientation_of(ax: Axes) -> str:
@@ -146,24 +145,6 @@ def knocked_out_over(label, other) -> bool:
 
 
 GAP_TOLERANCE_PX = 1.5  # rendering rounds to the pixel grid; past this it is a real drift
-
-
-def ensure_rendered(fig: Figure) -> None:
-    """Give the figure a canvas that can measure, if it does not have one.
-
-    Every check reads rendered geometry — extents, ink, pixels — and a `Figure` built without pyplot
-    carries a `FigureCanvasBase`, which cannot produce a renderer. The failure was
-    `AttributeError: 'FigureCanvasBase' object has no attribute 'get_renderer'`, raised from inside
-    a helper, naming an internal and saying nothing about what to do.
-
-    Attaching Agg is the answer rather than a better error message: the caller wanted the figure
-    audited, this is what auditing needs, and it is what `save` does for them anyway.
-    """
-    from matplotlib.backends.backend_agg import FigureCanvasAgg
-
-    if not hasattr(fig.canvas, "get_renderer"):
-        FigureCanvasAgg(fig)
-    fig.canvas.draw()
 
 
 def bracket_spans_px(ax: Axes) -> list[tuple[float, float, float]]:

@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz import units
+from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
     GAP_TOLERANCE_PX,
     bracket_spans_px,
@@ -68,7 +69,7 @@ def significance_gaps(fig: Figure) -> list[str]:
 
     Measured from the glyph's INK, never its layout box.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     px_per_point = units.px_per_point(fig)
     complaints: list[str] = []
     for ax in fig.axes:
@@ -130,7 +131,7 @@ def stack_spacing(fig: Figure) -> list[str]:
     comparisons drawn side by side — one over the first pair of groups, one over the last — share no
     x and cannot collide however close their heights come, and were reported as a crowded stack.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     complaints: list[str] = []
     for ax in fig.axes:
         for column in _overlapping_columns(bracket_spans_px(ax)):

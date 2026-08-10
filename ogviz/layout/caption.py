@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 from ogviz import units
 from ogviz.layout.bounds import figure_text
 from ogviz.layout.panels import text_width_points, wrap_to_width
+from ogviz.layout.render import ensure_rendered
 from ogviz.theme import INK, MUTED_INK
 
 if TYPE_CHECKING:
@@ -44,7 +45,7 @@ OVERFLOW_TOLERANCE_PX = 1.0
 
 
 def _rendered_width_px(fig: Figure, text: Text) -> float:
-    fig.canvas.draw()
+    ensure_rendered(fig)
     return float(text.get_window_extent().width)
 
 
@@ -146,7 +147,7 @@ def overflowing_text(fig: Figure) -> list[str]:
     set with `ax.set_title` is an AXES-level artist and never appears in `fig.texts`, so the name
     promised a check the function did not perform, and a consumer wrote its own `titles_fit`.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     width_px = fig.get_figwidth() * fig.dpi
     complaints: list[str] = []
     for text, _owner in figure_text(fig):

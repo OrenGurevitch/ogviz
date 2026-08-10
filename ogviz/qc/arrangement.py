@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
     bracket_tops_px,
     orientation_of,
@@ -167,7 +168,7 @@ def ticks_in_the_headroom(fig: Figure) -> list[str]:
     panels disagree for no reason a reader can see — one whose stack happens to clear a round
     number carries an extra rule, its neighbour does not, and the two are meant to be compared.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     complaints: list[str] = []
     for ax in fig.axes:
         if not bracket_tops_px(ax):

@@ -29,6 +29,7 @@ from ogviz.layout.overlap import (
     text_overlaps,
 )
 from ogviz.layout.panels import grid_warnings
+from ogviz.layout.render import ensure_rendered, one_render
 from ogviz.qc.arrangement import (
     layout_not_applied,
     mean_rows_unaligned,
@@ -44,7 +45,6 @@ from ogviz.qc.reading import (
     artist_name,
     bracket_tops_px,
     drawn_artists,
-    ensure_rendered,
     is_backdrop,
     is_excused,
     knocked_out_over,
@@ -80,6 +80,7 @@ __all__ = [
     "layout_not_applied",
     "mean_rows_unaligned",
     "one_minus_sign",
+    "one_render",
     "orientation_of",
     "overflowing_text",
     "panels_disagree_about_ticks",
@@ -151,10 +152,16 @@ def audit(fig: Figure, *, thorough: bool = False, min_gap: float = DEFAULT_MIN_G
     its own comfortable figures against. It is a caller's number rather than a default because the
     same figures run 59 complaints at 32 px and none at 5, and one project's comfortable is another
     project's dense.
+
+    ONE RENDER for the whole set. Every check renders first, because every check has to work when
+    called on its own; run as a set that meant the canvas was drawn once per check — measured at 22
+    full renders and 690 ms on a 2x3 bar grid, against 25 ms for the same answer. `one_render` holds
+    the draw for the sweep. It is sound only because the checks READ, and it is the reason a check
+    must not start writing to the figure without moving out of `CHECKS`.
     """
-    ensure_rendered(fig)
-    checks = CHECKS + THOROUGH_CHECKS if thorough else CHECKS
-    return [complaint for check in checks for complaint in _run(check, fig, min_gap=min_gap)]
+    with one_render(fig):
+        checks = CHECKS + THOROUGH_CHECKS if thorough else CHECKS
+        return [complaint for check in checks for complaint in _run(check, fig, min_gap=min_gap)]
 
 
 def assert_clean(fig: Figure, *, min_gap: float = DEFAULT_MIN_GAP) -> None:

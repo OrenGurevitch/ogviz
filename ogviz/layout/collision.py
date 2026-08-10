@@ -42,6 +42,7 @@ from matplotlib.text import Text as _Text
 from matplotlib.transforms import Bbox
 
 from ogviz import units
+from ogviz.layout.render import ensure_rendered
 from ogviz.tags import marked
 
 if TYPE_CHECKING:
@@ -493,7 +494,7 @@ def labels_on_the_marks(fig: Figure) -> list[tuple[Axes, Text, int]]:
     nothing, and the repair silently declines — no fix and no word about it. Measured with the label
     `won't fit`, which the gate reported and `repair` returned nothing for.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     found: list[tuple[Axes, Text, int]] = []
     for ax in fig.axes:
         marks = PanelMarks.of(ax)  # once per panel, not once per label
@@ -520,7 +521,7 @@ def labels_crossing_a_rule(
     runs both halves back to back, and without this it paid for `labels_on_the_marks` twice — a
     per-label `hits_data` probe across every panel, which is the measured expensive path.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     if on_the_marks is None:
         on_the_marks = {id(text) for _ax, text, _struck in labels_on_the_marks(fig)}
     found: list[tuple[Axes, Text]] = []

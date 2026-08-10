@@ -30,6 +30,14 @@ def frame_rgb(fig: Figure) -> NDArray[np.int16]:
 
     Refuses a canvas it cannot read rather than letting the failure surface as an `AttributeError`
     from inside a QC helper, naming a matplotlib internal and saying nothing about what to do.
+
+    DRAWN FRESH IS THE CONTRACT, and this is the one reader in the package that must not go through
+    `layout.render.ensure_rendered`. Its caller in `layout.ink` measures a single artist's ink by
+    hiding the others and rendering AGAIN, so a frame reused from a previous render is a frame of
+    the wrong figure. Routed through the shared scope while the rest of the readers were, it made
+    `colliding_ink` return every per-artist render identical — one complaint where there were two,
+    which the QC suite caught immediately. Attaching a canvas here would also swallow the refusal
+    below, which is the whole of this function's other job.
     """
     fig.canvas.draw()
     read_back = getattr(fig.canvas, "buffer_rgba", None)

@@ -23,6 +23,15 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["ogviz"]
+# The tests live INSIDE the package, so they shipped with it: 37 of the wheel's 90 files, 41% of
+# what a consumer installs, and not one of them importable there — `pytest` is a dev extra, and the
+# autouse `house_style` fixture is in a root `conftest.py` that was never in the wheel to begin
+# with. `import ogviz.qc.test` raised ModuleNotFoundError in a clean consumer environment.
+#
+# The same reasoning that put `conftest.py` at the root ("the package is what the wheel ships")
+# is the reason these do not belong in it. `pyproject.toml`'s `testpaths` still collects them from
+# the source tree, which is where they are meant to run.
+exclude = ["**/test.py", "**/test_*.py"]
 
 [tool.ruff]
 line-length = 100

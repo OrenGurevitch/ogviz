@@ -118,11 +118,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     for index, figure in enumerate(figures):
         label = figure.get_label() or f"figure_{index + 1}"
         print(f"{label}:")
-        for line in group_by_subject(audit(figure, thorough=args.thorough)):
+        # Audited ONCE and both used: printed, and counted for the exit status. It was called twice
+        # here, once per use, which on `--thorough` is a second full render-per-artist pass over
+        # every figure for an answer already in hand.
+        found = audit(figure, thorough=args.thorough)
+        for line in group_by_subject(found):
             print(f"  - {line}")
 
         if destination is None:
-            outstanding += len(audit(figure, thorough=args.thorough))
+            outstanding += len(found)
             continue
 
         for change in repair(figure):

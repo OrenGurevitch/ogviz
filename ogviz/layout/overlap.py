@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from matplotlib.transforms import Bbox
 
+from ogviz.layout.render import ensure_rendered
+
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
@@ -89,7 +91,7 @@ def text_overlaps(fig: Figure, *, min_gap: float = DEFAULT_MIN_GAP) -> list[str]
     the smaller box's AREA, it stayed silent on a real collision where descenders met ascenders
     across a 3% overlap. Measured, not argued: that case is in `test_overlap.py`.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     renderer = fig.canvas.get_renderer()  # type: ignore[attr-defined]
     boxes = []
     for text in _visible_texts(fig):
@@ -138,7 +140,7 @@ def clipped_artists(fig: Figure) -> list[str]:
     and this asks where the ink WOULD be. A consumer tried both before shortening the data, and the
     second especially looks like it must have worked.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     renderer = fig.canvas.get_renderer()  # type: ignore[attr-defined]
     escaped = []
     for ax in fig.axes:
@@ -199,7 +201,7 @@ def text_hidden_behind_knockouts(fig: Figure) -> list[str]:
     Ordered by what matplotlib actually paints: zorder first, and for equal zorder the later artist,
     which is the order the axes stores them in.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     texts = [text for text in _visible_texts(fig) if text.get_text().strip()]
     order = {id(text): index for index, text in enumerate(texts)}
     complaints: list[str] = []

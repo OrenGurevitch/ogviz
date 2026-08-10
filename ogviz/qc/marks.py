@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
     orientation_of,
 )
@@ -58,7 +59,7 @@ def dots_off_the_marks(fig: Figure) -> list[str]:
     `tight_layout` can put a dot in a different band than the one it was placed against — which
     reported perfectly placed dots as violations, twice, while I tuned thresholds at it.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     complaints: list[str] = []
     for ax in fig.axes:
         upright = orientation_of(ax) == "vertical"
@@ -105,7 +106,7 @@ def buried_baselines(fig: Figure) -> list[str]:
     render already reserved for `--thorough`, or a narrow pre-filter for a filled collection
     spanning the axis width. Not a one-line change, which is why it is not one.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     complaints: list[str] = []
     for ax in fig.axes:
         if not ax.axison:

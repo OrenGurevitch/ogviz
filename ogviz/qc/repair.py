@@ -32,6 +32,7 @@ from ogviz.layout.collision import (
     quoted,
     text_box,
 )
+from ogviz.layout.render import ensure_rendered
 from ogviz.tags import marked
 from ogviz.theme import KNOCKOUT_PAD
 
@@ -115,7 +116,7 @@ def raise_buried_lines(fig: Figure) -> list[str]:
     bars are compared to — survives only in the gaps when it is behind them, and reads as broken.
     Raising it is the whole fix; nothing moves.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     changed: list[str] = []
     for ax in fig.axes:
         if not ax.axison:

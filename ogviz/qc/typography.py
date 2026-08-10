@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from ogviz.layout.bounds import figure_text
 from ogviz.layout.collision import quoted
+from ogviz.layout.render import ensure_rendered
 from ogviz.require import require
 
 if TYPE_CHECKING:
@@ -77,7 +78,7 @@ JOURNAL_MINIMUM_PT = 5.0
 
 def _smallest_text(fig: Figure) -> tuple[float, float, str] | None:
     """(height px, point size, content) of the smallest visible label, or None if there is none."""
-    fig.canvas.draw()
+    ensure_rendered(fig)
     smallest: tuple[float, float, str] | None = None
     for text, _owner in figure_text(fig, ticks=True, legend=True):
         height = float(text.get_window_extent().height)
@@ -157,7 +158,7 @@ def ungrouped_thousands(fig: Figure) -> list[str]:
     A four-digit number that could be a year is left alone. A year is an identifier, not a quantity,
     and no figure carries the fact of which it is.
     """
-    fig.canvas.draw()
+    ensure_rendered(fig)
     complaints: list[str] = []
     for text, _owner in figure_text(fig, ticks=True):
         for run in UNGROUPED.findall(text.get_text()):
