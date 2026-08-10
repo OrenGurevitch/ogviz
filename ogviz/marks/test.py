@@ -156,3 +156,60 @@ def test_the_lane_is_widest_where_the_mean_line_is() -> None:
     assert at_mean >= MEAN_HALF_WIDTH
     assert far < at_mean / 3, "a dot out in the tail should not be pushed as far as one at the mean"
     plt.close("all")
+
+
+def test_a_lane_is_not_reserved_for_a_mark_that_was_never_drawn() -> None:
+    """`central_clearance` sized the lane for the FULL mark set, whatever the panel actually drew.
+
+    A panel hand-assembling `violin` + `points` + `mean_line` and deliberately drawing no IQR box
+    still held room for the box, the whisker and the median dot — dots pushed wide of a bar that is
+    not on the figure. Two consumers assemble exactly that trio. The failure is invisible in the
+    sense that matters: the figure looks fine, and the jitter stops following the shape it exists
+    to describe.
+    """
+    from ogviz.marks import central_clearance
+
+    rng = np.random.default_rng(0)
+    values = rng.normal(5.0, 1.0, 200)
+    fig, ax = plt.subplots(figsize=(5.0, 6.0))
+    ax.set_ylim(1.0, 9.0)
+    ax.set_xlim(-0.5, 0.5)
+
+    everything = central_clearance(ax, values)
+    mean_only = central_clearance(ax, values, drawn={"mean"})
+    nothing = central_clearance(ax, values, drawn=())
+
+    assert (mean_only <= everything).all(), "dropping a mark can only free room, never claim it"
+    assert mean_only.mean() < everything.mean(), "and it frees some"
+    assert mean_only.max() == pytest.approx(everything.max()), (
+        "the mean line still reserves its own"
+    )
+    assert (nothing > 0.0).all(), (
+        "a dot still reserves its own radius, so it never straddles centre"
+    )
+    plt.close(fig)
+
+
+def test_the_default_is_every_mark_so_no_existing_caller_moves() -> None:
+    from ogviz.marks import MARK_NAMES, central_clearance
+
+    rng = np.random.default_rng(1)
+    values = rng.normal(5.0, 1.0, 120)
+    fig, ax = plt.subplots(figsize=(5.0, 6.0))
+    ax.set_ylim(1.0, 9.0)
+
+    assert np.array_equal(
+        central_clearance(ax, values), central_clearance(ax, values, drawn=MARK_NAMES)
+    )
+    plt.close(fig)
+
+
+def test_a_mark_name_it_does_not_know_is_refused() -> None:
+    """A typo must not silently reserve nothing — that is a lane quietly set to zero."""
+    from ogviz.marks import central_clearance
+
+    fig, ax = plt.subplots(figsize=(5.0, 6.0))
+    ax.set_ylim(1.0, 9.0)
+    with pytest.raises(AssertionError, match="does not know the mark"):
+        central_clearance(ax, np.array([1.0, 2.0, 3.0]), drawn={"whisker"})
+    plt.close(fig)

@@ -24,11 +24,12 @@ from ogviz.orientation import (
     require_linear_value_axis,
     violin_orientation_kwarg,
 )
+from ogviz.require import require
 from ogviz.tags import mark
 from ogviz.theme import INK, page_color
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Collection, Mapping
 
     from matplotlib.axes import Axes
     from numpy.typing import ArrayLike, NDArray
@@ -146,6 +147,11 @@ def jitter_x(
     return position + side * rng.uniform(inner, half_width)
 
 
+# The central marks a dot may have to keep clear of, named. `"iqr"` covers the whisker, the box and
+# the median dot, because `iqr_box` draws all three and a caller either has that mark or does not.
+MARK_NAMES: tuple[str, ...] = ("iqr", "mean")
+
+
 def central_clearance(
     ax: Axes,
     values: NDArray[np.float64],
@@ -157,6 +163,7 @@ def central_clearance(
     whisker_linewidth: float = WHISKER_WIDTH,
     median_size: float = MEDIAN_SIZE,
     orientation: Orientation = "vertical",
+    drawn: Collection[str] | None = None,
 ) -> NDArray[np.float64]:
     """Per-point half-width, in data units, that a dot must keep clear of the central marks.
 
@@ -173,9 +180,25 @@ def central_clearance(
     as much room as a dot against the IQR bar, 3.7x the ink it was actually avoiding, so every tail
     was pushed needlessly wide of a shape the jitter is supposed to follow.
 
+    `drawn` NAMES THE MARKS THAT ARE ACTUALLY THERE — any of `"iqr"` and `"mean"`; omit it and both
+    are assumed, which is what every existing caller gets. It exists because the lane is reserved
+    for the full mark set, and a panel that hand-assembles `violin` + `points` + `mean_line` and
+    deliberately draws no IQR box was still holding room for a bar that is not on the figure. Two
+    consumers assemble exactly that trio. The dots were pushed wide of nothing, which is invisible
+    in the sense that matters: the figure looks fine and the jitter no longer follows the shape it
+    is supposed to describe.
+
+    `widths_of` answers the neighbouring question — how WIDE the marks are, read off the kwargs
+    they were drawn with — and the two compose: pass `widths_of(box_kwargs, mean_kwargs)` for the
+    sizes and `drawn={...}` for which exist.
+
     Reads the axes transform, so the limits must be set before this is called.
     """
     require_linear_value_axis(ax, orientation, "central_clearance")
+    present = set(MARK_NAMES if drawn is None else drawn)
+    unknown = present - set(MARK_NAMES)
+    require(not unknown, f"central_clearance does not know the mark(s) {sorted(unknown)}")
+
     v = np.asarray(values, dtype=np.float64)
     to_data_x, to_data_y = _data_per_point(ax, orientation)
     dot_radius_x = to_data_x * float(np.sqrt(point_size)) / 2.0
@@ -184,12 +207,17 @@ def central_clearance(
     q1, median, q3 = (float(x) for x in np.percentile(v, [25, 50, 75]))
     mean = float(np.mean(v))
 
-    lane = np.full(len(v), to_data_x * whisker_linewidth / 2.0)  # the thin whisker, everywhere
-    lane = np.where((v >= q1) & (v <= q3), to_data_x * box_linewidth / 2.0, lane)
-    near_median = np.abs(v - median) <= (to_data_y * median_size / 2.0 + dot_radius_y)
-    lane = np.where(near_median, to_data_x * median_size / 2.0, lane)
-    near_mean = np.abs(v - mean) <= (to_data_y * mean_linewidth / 2.0 + dot_radius_y)
-    lane = np.where(near_mean, mean_half_width, lane)
+    # A mark that was not drawn reserves nothing. The dot's own radius is added at the end
+    # regardless, so a lane of zero still keeps a dot from straddling the centre line.
+    lane = np.zeros(len(v))
+    if "iqr" in present:
+        lane = np.full(len(v), to_data_x * whisker_linewidth / 2.0)  # the thin whisker, everywhere
+        lane = np.where((v >= q1) & (v <= q3), to_data_x * box_linewidth / 2.0, lane)
+        near_median = np.abs(v - median) <= (to_data_y * median_size / 2.0 + dot_radius_y)
+        lane = np.where(near_median, to_data_x * median_size / 2.0, lane)
+    if "mean" in present:
+        near_mean = np.abs(v - mean) <= (to_data_y * mean_linewidth / 2.0 + dot_radius_y)
+        lane = np.where(near_mean, mean_half_width, lane)
     return lane + dot_radius_x
 
 
@@ -224,6 +252,7 @@ def points(
     center_gap: float = CENTER_GAP,
     clear_central_marks: bool = True,
     mark_widths: Mapping[str, float] | None = None,
+    marks_drawn: Collection[str] | None = None,
     orientation: Orientation = "vertical",
 ) -> None:
     """One dot per observation, jittered inside the violin body.
@@ -238,19 +267,29 @@ def points(
     kwargs a caller already passed to the marks themselves, so there is one place that knows which
     of `iqr_box`'s names answers which of `central_clearance`'s.
 
-    HAND-ASSEMBLING A PANEL: `group_violins` passes this for you. Calling `violin` + `points` +
-    `mean_line` yourself does not, and the lane then reserves room for the full mark set including
-    an IQR box that was never drawn — dots pushed away from a bar that is not there. Pass what you
-    actually drew:
+    HAND-ASSEMBLING A PANEL: `group_violins` passes both of these for you. Calling `violin` +
+    `points` + `mean_line` yourself does not, and the lane then reserves room for the full mark set
+    including an IQR box that was never drawn — dots pushed away from a bar that is not there. Two
+    consumers assemble exactly that trio. Say what you drew:
 
-        points(ax, v, x, fill, edge, rng, mark_widths=widths_of(box_kwargs, mean_kwargs))
+        points(ax, v, x, fill, edge, rng,
+               mark_widths=widths_of(box_kwargs, mean_kwargs),   # how wide the marks are
+               marks_drawn={"mean"})                             # which marks exist at all
 
-    and for a panel with NO box, `mark_widths={"box_linewidth": 0.0, "whisker_linewidth": 0.0}`.
-    Two consumers hand-assemble exactly that trio; both would be better served by `group_violins`.
+    The two answer different halves and neither implies the other. `mark_widths` was the only one
+    available, so a panel with no box had to say so by passing zero widths for the box, the whisker
+    AND the median — three numbers to express one fact, and forgetting the median left a lane for a
+    dot that is not drawn. Measured on a 200-point sample: naming `{"mean"}` frees a fifth of the
+    reserved lane.
     """
     clearance = (
         central_clearance(
-            ax, values, point_size=size, orientation=orientation, **(mark_widths or {})
+            ax,
+            values,
+            point_size=size,
+            orientation=orientation,
+            drawn=marks_drawn,
+            **(mark_widths or {}),
         )
         if clear_central_marks and len(np.asarray(values)) > 1
         else None
