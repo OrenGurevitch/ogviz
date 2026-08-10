@@ -1,7 +1,7 @@
 [project]
 name = "ogviz"
 version = "0.1.0"
-description = "Publication figure primitives — one house style, one violin, one significance bracket, shared across projects."
+description = "My matplotlib house style, and a gate that refuses to save a broken figure."
 requires-python = ">=3.12"
 dependencies = [
     # 3.10, not 3.9: `Axes.get_figure(root=True)` — which `wrap_to_panel` needs to resolve a

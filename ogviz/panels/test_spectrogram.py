@@ -155,3 +155,44 @@ def test_the_default_floor_is_where_it_says_it_is() -> None:
     """A constant that decides how much of the quiet part is visible at all."""
     assert FLOOR_DB == -80.0
     assert to_decibels(np.array([[0.0, 1.0]])).min() == pytest.approx(FLOOR_DB)
+
+
+def test_the_two_zeros_at_the_corner_do_not_sit_on_each_other() -> None:
+    """A mesh fills its axes, so the axis starts at its first tick and that label is centred on the
+    corner — half of it in the y labels' column. Measured before the fix: the y axis's "0" and the
+    x axis's "0.00" overlapped by 7 px.
+
+    NEITHER GATE SEES IT, and both are right not to: `text_overlaps` is a same-row rule and these
+    sit diagonally, `colliding_ink` asks about shared pixels and the glyphs miss inside boxes that
+    do overlap. So the assertion is here, against the boxes, where the defect actually lives.
+    """
+    power, times, frequencies = _grid()
+    fig, ax = plt.subplots(figsize=(11.0, 5.0))
+    spectrogram(ax, to_decibels(power), times=times, frequencies=frequencies)
+    fig.tight_layout()
+    fig.canvas.draw()
+
+    def first_drawn(labels):
+        return next(
+            label for label in labels if label.get_text() and label.get_window_extent().width > 0
+        )
+
+    corner_y = first_drawn(ax.get_yticklabels()).get_window_extent()
+    corner_x = first_drawn(ax.get_xticklabels()).get_window_extent()
+    assert not corner_y.overlaps(corner_x), "the two zeros land on top of each other"
+    assert corner_x.x0 > corner_y.x1, "and the x label starts clear of the y label's column"
+    plt.close(fig)
+
+
+def test_no_tick_is_labelled_outside_the_axis() -> None:
+    """Fixing the ticks to those inside the limits also drops the phantom ends matplotlib offers —
+    an STFT reports window centres including padding, so the locator was labelling a NEGATIVE
+    time."""
+    power, times, frequencies = _grid()
+    fig, ax = plt.subplots(figsize=(11.0, 5.0))
+    spectrogram(ax, to_decibels(power), times=times, frequencies=frequencies)
+    fig.canvas.draw()
+
+    low, high = ax.get_xlim()
+    assert all(low <= float(tick) <= high for tick in ax.get_xticks())
+    plt.close(fig)

@@ -174,3 +174,37 @@ def value_ticks(
         ax.set_xticks(positions)
         ax.set_xticklabels(labels)
     return positions
+
+
+def settle_corner_tick(ax) -> bool:
+    """Stop the first x tick label reaching left of the panel and into the y axis's own labels.
+
+    THE CORNER IS A COLLISION NOBODY OWNS. A tick label is centred on its tick, so the one at the
+    left end of the axis puts half its width to the LEFT of the panel — straight into the column
+    where the y tick labels sit. On a panel whose axis starts exactly at its first tick, which is
+    any image or mesh drawn to fill its axes, the two zeros end up on top of each other: measured on
+    a spectrogram, the y axis's "0" and the x axis's "0.00" overlapped by 7 px.
+
+    NEITHER GATE CATCHES IT, and both are right not to. `text_overlaps` is a same-ROW rule and these
+    two sit diagonally — `_horizontal_gap` excludes exactly this pair on purpose, because the usual
+    corner pair is diagonally apart and fine. `colliding_ink` asks about shared PIXELS, and the
+    glyphs miss each other inside boxes that do overlap. So the figure is cramped, legibly wrong,
+    and passes: a defect that belongs to whoever draws the panel.
+
+    Left-aligning that one label moves it fully inside the panel and costs nothing — the tick still
+    marks the same value. The ticks are FIXED first, because a label's alignment is a property of a
+    `Text` that a later re-tick would replace; pinning the locations means a `tight_layout` after
+    this cannot undo it.
+
+    Returns whether anything moved, so a caller can tell the no-op case from the fixed one.
+    """
+    low, high = sorted(ax.get_xlim())
+    inside = [float(tick) for tick in ax.get_xticks() if low <= float(tick) <= high]
+    if not inside:
+        return False
+    ax.set_xticks(inside)
+    labels = [label for label in ax.get_xticklabels() if label.get_text()]
+    if not labels:
+        return False
+    labels[0].set_horizontalalignment("left")
+    return True

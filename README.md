@@ -1,8 +1,14 @@
 <!-- generated from README.md.in by generate_readme.py — do not edit -->
 # ogviz
 
-Publication figure primitives for matplotlib: one house style, violins, significance brackets, bar
-panels — and a QC gate that refuses to write a broken figure. Colours, p-values and units are yours.
+My favourite way to draw a figure, packaged so I stop rebuilding it: one house style, violins,
+significance brackets, bar panels, spectrograms, and the small tricks that keep them working when
+the data changes shape.
+
+The part I actually rely on is that it refuses to save a bad figure. Labels sitting on each other,
+an axis buried behind the bars, a star closer to one bracket than the next, two series that are the
+same colour to a reader with colour-vision deficiency — it checks the rendered pixels and raises
+instead of writing. Colours, p-values and units stay yours.
 
 ```bash
 uv add "ogviz @ git+https://github.com/OrenGurevitch/ogviz"
@@ -230,6 +236,7 @@ ogviz
 │   │   ├── auto_decimals(value: float) -> int
 │   │   ├── format_value(...) -> ...
 │   │   ├── round_ticks(low: float, high: float, count: int) -> list[float]
+│   │   ├── settle_corner_tick(ax) -> bool
 │   │   ├── typeset(text: str) -> str
 │   │   └── value_ticks(...) -> ...
 │   └── write

@@ -40,7 +40,7 @@ import numpy as np
 from matplotlib.ticker import FuncFormatter
 
 from ogviz.layout.frame import color_scale
-from ogviz.layout.ticks import format_value
+from ogviz.layout.ticks import format_value, settle_corner_tick
 from ogviz.require import require
 from ogviz.theme import MUTED_INK
 
@@ -206,6 +206,12 @@ def spectrogram(
     ax.tick_params(colors=MUTED_INK)
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
+
+    # The mesh fills its axes, so the axis starts exactly at its first tick and that tick's label
+    # is centred on the corner, half of it in the column where the y tick labels sit. Measured here
+    # before the fix: the y axis's "0" and the x axis's "0.00" overlapped by 7 px, and neither gate
+    # catches it — see `layout.ticks.settle_corner_tick` for why both are right not to.
+    settle_corner_tick(ax)
 
     if colorbar:
         color_scale(ax, mesh, label=scale_label)
