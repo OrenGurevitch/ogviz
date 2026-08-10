@@ -20,6 +20,22 @@ libraries when the answer needs to be exact.
 
 `indistinguishable_series` reports pairs, never a verdict on a palette. A figure may legitimately
 use two colours that converge if a marker or a dash tells them apart, and this cannot see that.
+
+HOW MANY SERIES A PALETTE CAN CARRY AT ALL — measured 2026-08-10, while extending the line palette
+from five colours to eight. Of 4320 candidates spanning the hue circle at five saturations and six
+values, the 1019 that stay clear of all five originals under normal vision AND all three simulated
+deficiencies contain **no new hue family**. Twelve hand-picked roses, indigos and moss greens were
+tried first and all twelve failed: the roses collapse onto the teal under tritanopia, the greens
+onto the orange-red under deuteranopia. What survives is darker, duller versions of hues already in
+use — the paired-palette pattern, and the only thing the constraint permits.
+
+So **about five is the ceiling for colour alone**, and eight is the honest maximum with paired
+tones. That is a fact about categorical palettes under CVD constraints rather than about this
+palette, and it is the reason a ten-condition figure cannot be fixed by choosing better colours:
+past that many categories the second channel is not optional. A dash, a marker, a facet, or direct
+labelling is what carries the distinction, and colour becomes redundant encoding rather than the
+encoding. Every complaint this module raises already ends by saying so for the pair it names; this
+is the same advice at the level of the whole figure, where no per-pair check can reach it.
 """
 
 from __future__ import annotations

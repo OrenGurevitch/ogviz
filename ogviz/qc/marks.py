@@ -14,6 +14,7 @@ import numpy as np
 
 from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
+    filled_marks_over,
     orientation_of,
 )
 from ogviz.tags import marked, value_of
@@ -95,16 +96,18 @@ def buried_baselines(fig: Figure) -> list[str]:
     Marks a panel puts UNDER the axis on purpose — a highlight column, a reference band — sit below
     the spine's z-order and never reach this test.
 
-    ONLY `ax.patches`, AND THAT IS DELIBERATE — do not widen it to `ax.collections`. This is a BOX
-    test, and a box means different things for the two. A bar patch whose box overlaps the spine is
-    a solid rectangle standing on it, so the overlap IS the covering. A scatter's box spans its
-    whole cloud and overlaps the spine while the dots are nowhere near it. Measured: adding
-    collections here fails 17 tests, four of them shipped examples, all false positives.
+    TWO TESTS, one per artist type, and mixing them is the mistake. A PATCH is judged by its BOX:
+    a bar whose box overlaps the spine is a solid rectangle standing on it, so the overlap IS the
+    covering. A COLLECTION cannot be judged that way — a scatter's box spans its whole cloud and
+    overlaps the spine while every dot is somewhere else. Measured: adding `ax.collections` to the
+    box test fails 17 tests, four of them shipped examples, all false positives.
 
-    The cost is a real gap — a `fill_between` band CAN cover a spine and is invisible here. Closing
-    it needs the ink test (`layout.ink.visible_contribution`), which is the expensive per-artist
-    render already reserved for `--thorough`, or a narrow pre-filter for a filled collection
-    spanning the axis width. Not a one-line change, which is why it is not one.
+    So collections go through `filled_marks_over`, which excludes point clouds outright and tests
+    the rest as PATHS rather than boxes. That closes the gap this had for a `fill_between` band
+    covering a spine — invisible here until 2026-08-10 — without the ink test, which is the
+    expensive per-artist render reserved for `--thorough`. The z-order condition does most of the
+    work: matplotlib gives a collection zorder 1 against a spine's 2.5, so a default band is under
+    the frame and never arrives; what arrives is one deliberately raised over it.
     """
     ensure_rendered(fig)
     complaints: list[str] = []
@@ -121,7 +124,7 @@ def buried_baselines(fig: Figure) -> list[str]:
                 patch
                 for patch in ax.patches
                 if patch.get_zorder() > spine_z and patch.get_window_extent().overlaps(spine_box)
-            ]
+            ] + filled_marks_over(ax, spine_box, spine_z)
             if buried:
                 # NAMED, because the cause is invisible from a count. A single
                 # `axhspan(..., color=PAGE)` masking a cropped band does this: it spans the full
@@ -144,7 +147,7 @@ def buried_baselines(fig: Figure) -> list[str]:
                 for patch in ax.patches
                 if patch.get_zorder() > line.get_zorder()
                 and patch.get_window_extent().overlaps(line_box)
-            ]
+            ] + filled_marks_over(ax, line_box, line.get_zorder())
             if over:
                 # Along the VALUE axis, which is x on a horizontal panel. Read from y regardless,
                 # the complaint named the category coordinate: measured, a threshold at 2.5 under

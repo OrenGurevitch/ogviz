@@ -140,3 +140,60 @@ def test_a_repaired_label_is_not_set_down_on_another_label() -> None:
     assert not text_box(first).overlaps(text_box(second))
     assert audit(fig) == [], "and the figure comes out clean"
     plt.close(fig)
+
+
+def _band_over_the_spine():
+    """A filled collection raised above the frame — the case a BOX test cannot judge."""
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    x = np.linspace(0.0, 10.0, 100)
+    ax.fill_between(x, -1.0, 3.0, color="#88aacc", zorder=5)
+    ax.set_ylim(0.0, 10.0)
+    fig.canvas.draw()
+    return fig, ax
+
+
+def test_a_filled_band_over_the_spine_is_seen_and_lifted() -> None:
+    """`buried_baselines` walked `ax.patches` only, so a `fill_between` band covering the category
+    axis was invisible to the check AND to the repair.
+
+    Widening the box test to every collection is the wrong fix and was measured as such — 17 tests
+    fail, because a scatter's box spans its cloud and overlaps a spine its dots never reach.
+    `filled_marks_over` excludes point clouds and tests the rest as paths.
+    """
+    from ogviz.qc.marks import buried_baselines
+    from ogviz.qc.repair import raise_buried_lines
+
+    fig, ax = _band_over_the_spine()
+    assert buried_baselines(fig), "the band really does cover the bottom spine"
+
+    assert raise_buried_lines(fig), "and the repair lifts it"
+    assert ax.spines["bottom"].get_zorder() > 5.0, "above the band, not merely above the patches"
+    assert buried_baselines(fig) == [], "check and repair agree once it is lifted"
+    plt.close(fig)
+
+
+def test_a_band_left_under_the_frame_is_not_reported() -> None:
+    """matplotlib gives a collection zorder 1 and a spine 2.5, so a default band is UNDER the
+    frame — which is where a band belongs, and must stay silent."""
+    from ogviz.qc.marks import buried_baselines
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    x = np.linspace(0.0, 10.0, 100)
+    ax.fill_between(x, -1.0, 3.0, color="#88aacc")
+    ax.set_ylim(0.0, 10.0)
+    fig.canvas.draw()
+    assert buried_baselines(fig) == []
+    plt.close(fig)
+
+
+def test_a_point_cloud_over_the_spine_is_not_reported() -> None:
+    """The false positive that makes the box test unusable for collections: a scatter's bounding
+    box spans the whole cloud and overlaps a spine none of its dots come near."""
+    from ogviz.qc.marks import buried_baselines
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    ax.scatter(np.linspace(1, 9, 40), np.linspace(4, 8, 40), zorder=5)
+    ax.set_ylim(0.0, 10.0)
+    fig.canvas.draw()
+    assert buried_baselines(fig) == []
+    plt.close(fig)

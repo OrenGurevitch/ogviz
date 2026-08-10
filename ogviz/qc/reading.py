@@ -178,3 +178,44 @@ def bracket_spans_px(ax: Axes) -> list[tuple[float, float, float]]:
             )
         )
     return sorted(spans)
+
+
+def filled_marks_over(ax: Axes, box, zorder: float) -> list:
+    """Collections above `zorder` whose FILLED OUTLINE actually enters `box`.
+
+    HERE rather than beside either caller, because `buried_baselines` and `raise_buried_lines`
+    both need it and a check and its repair disagreeing about what buries a line is exactly the
+    failure this module exists to prevent — the gate would report a covered spine the repair then
+    declined to lift.
+
+    The narrow pre-filter that closes the collection gap without the box test's false positives.
+    Two conditions, and each rules out one half of the problem:
+
+    A POINT CLOUD IS EXCLUDED OUTRIGHT. `point_offsets` identifies it — one marker path repeated at
+    many offsets. Its bounding box spans the whole cloud and overlaps the spine while every dot is
+    somewhere else, which is exactly what made adding `ax.collections` to the box test fail 17
+    tests. A cloud cannot cover a line the way a filled body can.
+
+    THE REST ARE TESTED AS PATHS, not as boxes. `Path.intersects_bbox(..., filled=True)` asks
+    whether the shape itself enters the rectangle, which for a `fill_between` band is the question
+    — and for a violin body correctly answers no when the body does not reach the axis.
+
+    The z-order condition does most of the work in practice: matplotlib gives a collection zorder 1
+    and a spine 2.5, so a default `fill_between` is UNDER the frame and never arrives here. What
+    does arrive is a collection someone deliberately raised over the spine, which is the defect.
+    """
+    from ogviz.layout.collision import point_offsets
+
+    found = []
+    for collection in ax.collections:
+        if not collection.get_visible() or collection.get_zorder() <= zorder:
+            continue
+        if point_offsets(collection) is not None:
+            continue
+        transform = collection.get_transform()
+        if any(
+            path.transformed(transform).intersects_bbox(box, filled=True)
+            for path in collection.get_paths()
+        ):
+            found.append(collection)
+    return found

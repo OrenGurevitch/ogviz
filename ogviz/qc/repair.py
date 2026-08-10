@@ -33,6 +33,7 @@ from ogviz.layout.collision import (
     text_box,
 )
 from ogviz.layout.render import ensure_rendered
+from ogviz.qc.reading import filled_marks_over
 from ogviz.tags import marked
 from ogviz.theme import KNOCKOUT_PAD
 
@@ -132,32 +133,51 @@ def raise_buried_lines(fig: Figure) -> list[str]:
     reference line above the marks it is read against" for a line no mark touched. The z-order
     change was harmless, presentation being all this module moves; the REPORT was not. What
     `repair` returns is a caller's list of what was wrong with their figure.
+
+    A FILLED COLLECTION COUNTS AS A MARK HERE, through the same pre-filter `buried_baselines` uses.
+    The two have to agree about what buries a line, or the gate reports a covered spine that the
+    repair then declines to lift — the check/repair disagreement fixed just above, one artist type
+    along.
     """
     ensure_rendered(fig)
     changed: list[str] = []
     for ax in fig.axes:
         if not ax.axison:
             continue
-        highest = max((patch.get_zorder() for patch in ax.patches), default=0.0)
 
-        def buried_under_a_patch(artist, axes=ax) -> bool:
-            """Whether any patch is BOTH drawn over this artist and standing on it."""
+        def marks_over(artist, axes=ax) -> list:
+            """Everything drawn over this artist that is genuinely standing on it."""
             box = artist.get_window_extent()
-            return any(
-                patch.get_zorder() > artist.get_zorder() and patch.get_window_extent().overlaps(box)
+            patches = [
+                patch
                 for patch in axes.patches
-            )
+                if patch.get_zorder() > artist.get_zorder()
+                and patch.get_window_extent().overlaps(box)
+            ]
+            return patches + filled_marks_over(axes, box, artist.get_zorder())
+
+        # The ceiling to lift to, taken from the same two artist types the burial test looks at.
+        # Read from patches alone, a spine buried under a raised band was lifted to just above the
+        # bars and left under the band that was covering it.
+        highest = max(
+            (
+                artist.get_zorder()
+                for artist in (*ax.patches, *ax.collections)
+                if artist.get_visible()
+            ),
+            default=0.0,
+        )
 
         for side, spine in ax.spines.items():
             if not spine.get_visible() or spine.get_zorder() > highest:
                 continue
-            if buried_under_a_patch(spine):
+            if marks_over(spine):
                 spine.set_zorder(highest + 0.5)
                 changed.append(f"raised the {side} spine above the marks standing on it")
         for line in ax.lines:
             if not marked(line, "reference") or line.get_zorder() > highest:
                 continue
-            if buried_under_a_patch(line):
+            if marks_over(line):
                 line.set_zorder(highest + 0.75)
                 changed.append("raised a reference line above the marks it is read against")
     return changed
