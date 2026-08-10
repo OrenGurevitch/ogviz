@@ -16,7 +16,7 @@ display fact, so it lives here; the DATA is never touched.
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from ogviz.orientation import is_vertical, require_linear_value_axis, value_span
 from ogviz.require import require
@@ -176,8 +176,22 @@ def value_ticks(
     return positions
 
 
+def _lowest_tick_is_zero(ax, axis: Literal["x", "y"]) -> bool:
+    """Whether the lowest tick this axis actually draws is zero.
+
+    The lowest tick of each axis is the one at the bottom-left corner, so asking this of BOTH axes
+    asks whether the corner prints zero twice. It deliberately does not also require the tick to sit
+    exactly at the axis limit: a panel with any margin at all — the spectrogram's is 0.4% of the
+    span — puts the tick a hair inside, and the two zeros still land in the same corner.
+    """
+    low, high = sorted(ax.get_xlim() if axis == "x" else ax.get_ylim())
+    ticks = ax.get_xticks() if axis == "x" else ax.get_yticks()
+    inside = [float(tick) for tick in ticks if low <= float(tick) <= high]
+    return bool(inside) and abs(inside[0]) < (high - low) * 1e-9
+
+
 def settle_corner_tick(ax) -> bool:
-    """Stop the first x tick label reaching left of the panel and into the y axis's own labels.
+    """Stop the two axes printing zero twice, in two spellings, in the same corner.
 
     THE CORNER IS A COLLISION NOBODY OWNS. A tick label is centred on its tick, so the one at the
     left end of the axis puts half its width to the LEFT of the panel — straight into the column
@@ -191,17 +205,32 @@ def settle_corner_tick(ax) -> bool:
     glyphs miss each other inside boxes that do overlap. So the figure is cramped, legibly wrong,
     and passes: a defect that belongs to whoever draws the panel.
 
-    Left-aligning that one label moves it fully inside the panel and costs nothing — the tick still
-    marks the same value. The ticks are FIXED first, because a label's alignment is a property of a
-    `Text` that a later re-tick would replace; pinning the locations means a `tight_layout` after
-    this cannot undo it.
+    Separating them is not enough, because THE DUPLICATE IS THE DEFECT. When both axes begin at
+    zero, the corner states the same origin twice and disagrees with itself about how to spell it —
+    "0" against "0.00", the difference being only that the two axes carry different decimals. So the
+    x axis's copy is dropped: its origin is already given by the panel's left edge, whereas 0 on the
+    frequency axis is a reading (the transform includes DC) and has to stay. Every other x tick is
+    untouched, so the scale is still stated.
 
-    Returns whether anything moved, so a caller can tell the no-op case from the fixed one.
+    When the corner is NOT a doubled zero there is nothing redundant to drop, and the first label is
+    merely off the panel — left-aligning it moves it fully inside and costs nothing, since the tick
+    still marks the same value. Either way the ticks are FIXED first, because both the text and the
+    alignment are properties of a `Text` that a later re-tick would replace; pinning the locations
+    means a `tight_layout` after this cannot undo it.
+
+    Returns whether anything changed, so a caller can tell the no-op case from the fixed one.
     """
     low, high = sorted(ax.get_xlim())
     inside = [float(tick) for tick in ax.get_xticks() if low <= float(tick) <= high]
     if not inside:
         return False
+
+    if _lowest_tick_is_zero(ax, "x") and _lowest_tick_is_zero(ax, "y"):
+        texts = list(ax.xaxis.get_major_formatter().format_ticks(inside))
+        texts[0] = ""
+        ax.set_xticks(inside, labels=texts)
+        return True
+
     ax.set_xticks(inside)
     labels = [label for label in ax.get_xticklabels() if label.get_text()]
     if not labels:

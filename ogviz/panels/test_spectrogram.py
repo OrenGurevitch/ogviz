@@ -157,14 +157,14 @@ def test_the_default_floor_is_where_it_says_it_is() -> None:
     assert to_decibels(np.array([[0.0, 1.0]])).min() == pytest.approx(FLOOR_DB)
 
 
-def test_the_two_zeros_at_the_corner_do_not_sit_on_each_other() -> None:
-    """A mesh fills its axes, so the axis starts at its first tick and that label is centred on the
-    corner — half of it in the y labels' column. Measured before the fix: the y axis's "0" and the
-    x axis's "0.00" overlapped by 7 px.
+def test_the_corner_states_its_zero_once() -> None:
+    """Both axes begin at zero, so the corner would print that origin twice and spell it two ways.
 
-    NEITHER GATE SEES IT, and both are right not to: `text_overlaps` is a same-row rule and these
-    sit diagonally, `colliding_ink` asks about shared pixels and the glyphs miss inside boxes that
-    do overlap. So the assertion is here, against the boxes, where the defect actually lives.
+    Measured before the fix, the y axis's "0" and the x axis's "0.00" also overlapped by 7 px, and
+    NEITHER GATE SEES IT — `text_overlaps` is a same-row rule and these sit diagonally,
+    `colliding_ink` asks about shared pixels and the glyphs miss inside boxes that do overlap. So
+    the assertion is here, where the defect lives. The frequency zero is the copy that stays: it is
+    a reading, since the transform includes DC, whereas the time origin is the panel's left edge.
     """
     power, times, frequencies = _grid()
     fig, ax = plt.subplots(figsize=(11.0, 5.0))
@@ -172,15 +172,15 @@ def test_the_two_zeros_at_the_corner_do_not_sit_on_each_other() -> None:
     fig.tight_layout()
     fig.canvas.draw()
 
-    def first_drawn(labels):
-        return next(
-            label for label in labels if label.get_text() and label.get_window_extent().width > 0
-        )
+    # The premise: without it the assertions below hold for a panel that never had two zeros.
+    assert ax.get_xticks()[0] == 0.0, "the time axis really does carry a zero tick"
+    assert ax.get_yticks()[0] == 0.0, "and so does the frequency axis"
 
-    corner_y = first_drawn(ax.get_yticklabels()).get_window_extent()
-    corner_x = first_drawn(ax.get_xticklabels()).get_window_extent()
-    assert not corner_y.overlaps(corner_x), "the two zeros land on top of each other"
-    assert corner_x.x0 > corner_y.x1, "and the x label starts clear of the y label's column"
+    x_labels = [label.get_text() for label in ax.get_xticklabels()]
+    y_labels = [label.get_text() for label in ax.get_yticklabels()]
+    assert x_labels[0] == "", "the time axis drops its copy of the zero"
+    assert any(label.strip() for label in x_labels[1:]), "but keeps the rest of its scale"
+    assert y_labels[0] == "0", "and the frequency zero, which is a reading, stays"
     plt.close(fig)
 
 

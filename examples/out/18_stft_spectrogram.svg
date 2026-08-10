@@ -41,59 +41,56 @@ iVBORw0KGgoAAAANSUhEUgAABtQAAAJgCAYAAAAar4cRAAEAAElEQVR4nOz9d5Am13neDZ/uJ6fJMzuz
    <g id="matplotlib.axis_1">
     <g id="xtick_1">
      <g id="line2d_1"/>
-     <g id="text_1">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="78.124894" y="353.164234" transform="rotate(-0 78.124894 353.164234)">0.00</text>
-     </g>
     </g>
     <g id="xtick_2">
      <g id="line2d_2"/>
-     <g id="text_2">
+     <g id="text_1">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="156.155027" y="353.164234" transform="rotate(-0 156.155027 353.164234)">0.25</text>
      </g>
     </g>
     <g id="xtick_3">
      <g id="line2d_3"/>
-     <g id="text_3">
+     <g id="text_2">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="234.18516" y="353.164234" transform="rotate(-0 234.18516 353.164234)">0.50</text>
      </g>
     </g>
     <g id="xtick_4">
      <g id="line2d_4"/>
-     <g id="text_4">
+     <g id="text_3">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="312.215292" y="353.164234" transform="rotate(-0 312.215292 353.164234)">0.75</text>
      </g>
     </g>
     <g id="xtick_5">
      <g id="line2d_5"/>
-     <g id="text_5">
+     <g id="text_4">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="390.245425" y="353.164234" transform="rotate(-0 390.245425 353.164234)">1.00</text>
      </g>
     </g>
     <g id="xtick_6">
      <g id="line2d_6"/>
-     <g id="text_6">
+     <g id="text_5">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="468.275558" y="353.164234" transform="rotate(-0 468.275558 353.164234)">1.25</text>
      </g>
     </g>
     <g id="xtick_7">
      <g id="line2d_7"/>
-     <g id="text_7">
+     <g id="text_6">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="546.305691" y="353.164234" transform="rotate(-0 546.305691 353.164234)">1.50</text>
      </g>
     </g>
     <g id="xtick_8">
      <g id="line2d_8"/>
-     <g id="text_8">
+     <g id="text_7">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="624.335823" y="353.164234" transform="rotate(-0 624.335823 353.164234)">1.75</text>
      </g>
     </g>
     <g id="xtick_9">
      <g id="line2d_9"/>
-     <g id="text_9">
+     <g id="text_8">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="702.365956" y="353.164234" transform="rotate(-0 702.365956 353.164234)">2.00</text>
      </g>
     </g>
-    <g id="text_10">
+    <g id="text_9">
      <text style="font-weight: 700; font-size: 18px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="390.245425" y="373.635914" transform="rotate(-0 390.245425 373.635914)">Time (s)</text>
     </g>
    </g>
@@ -109,7 +106,7 @@ L -4 0
        <use xlink:href="#me28321ab2f" x="75.62793" y="338.015797" style="fill: #5c5b57; stroke: #5c5b57; stroke-width: 1.2"/>
       </g>
      </g>
-     <g id="text_11">
+     <g id="text_10">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #5c5b57" x="68.12793" y="343.840016" transform="rotate(-0 68.12793 343.840016)">0</text>
      </g>
     </g>
@@ -119,7 +116,7 @@ L -4 0
        <use xlink:href="#me28321ab2f" x="75.62793" y="283.372087" style="fill: #5c5b57; stroke: #5c5b57; stroke-width: 1.2"/>
       </g>
      </g>
-     <g id="text_12">
+     <g id="text_11">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #5c5b57" x="68.12793" y="289.196306" transform="rotate(-0 68.12793 289.196306)">1,000</text>
      </g>
     </g>
@@ -129,7 +126,7 @@ L -4 0
        <use xlink:href="#me28321ab2f" x="75.62793" y="228.728377" style="fill: #5c5b57; stroke: #5c5b57; stroke-width: 1.2"/>
       </g>
      </g>
-     <g id="text_13">
+     <g id="text_12">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #5c5b57" x="68.12793" y="234.552596" transform="rotate(-0 68.12793 234.552596)">2,000</text>
      </g>
     </g>
@@ -139,7 +136,7 @@ L -4 0
        <use xlink:href="#me28321ab2f" x="75.62793" y="174.084667" style="fill: #5c5b57; stroke: #5c5b57; stroke-width: 1.2"/>
       </g>
      </g>
-     <g id="text_14">
+     <g id="text_13">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #5c5b57" x="68.12793" y="179.908886" transform="rotate(-0 68.12793 179.908886)">3,000</text>
      </g>
     </g>
@@ -149,11 +146,11 @@ L -4 0
        <use xlink:href="#me28321ab2f" x="75.62793" y="119.440957" style="fill: #5c5b57; stroke: #5c5b57; stroke-width: 1.2"/>
       </g>
      </g>
-     <g id="text_15">
+     <g id="text_14">
       <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #5c5b57" x="68.12793" y="125.265176" transform="rotate(-0 68.12793 125.265176)">4,000</text>
      </g>
     </g>
-    <g id="text_16">
+    <g id="text_15">
      <text style="font-weight: 700; font-size: 18px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="20.304492" y="228.728377" transform="rotate(-90 20.304492 228.728377)">Frequency (Hz)</text>
     </g>
    </g>
@@ -183,62 +180,62 @@ iVBORw0KGgoAAAANSUhEUgAAAB4AAAJgCAYAAACdh9M6AAAD1UlEQVR4nO2d0ZUbMQzEqAn6b9n53wI4
    <g id="matplotlib.axis_4">
     <g id="ytick_6">
      <g id="line2d_15"/>
-     <g id="text_17">
+     <g id="text_16">
       <text style="font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="732.538715" y="342.966383" transform="rotate(-0 732.538715 342.966383)">−70</text>
      </g>
     </g>
     <g id="ytick_7">
      <g id="line2d_16"/>
-     <g id="text_18">
+     <g id="text_17">
       <text style="font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="732.538715" y="311.741406" transform="rotate(-0 732.538715 311.741406)">−60</text>
      </g>
     </g>
     <g id="ytick_8">
      <g id="line2d_17"/>
-     <g id="text_19">
+     <g id="text_18">
       <text style="font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="732.538715" y="280.516429" transform="rotate(-0 732.538715 280.516429)">−50</text>
      </g>
     </g>
     <g id="ytick_9">
      <g id="line2d_18"/>
-     <g id="text_20">
+     <g id="text_19">
       <text style="font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="732.538715" y="249.291451" transform="rotate(-0 732.538715 249.291451)">−40</text>
      </g>
     </g>
     <g id="ytick_10">
      <g id="line2d_19"/>
-     <g id="text_21">
+     <g id="text_20">
       <text style="font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="732.538715" y="218.066474" transform="rotate(-0 732.538715 218.066474)">−30</text>
      </g>
     </g>
     <g id="ytick_11">
      <g id="line2d_20"/>
-     <g id="text_22">
+     <g id="text_21">
       <text style="font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="732.538715" y="186.841497" transform="rotate(-0 732.538715 186.841497)">−20</text>
      </g>
     </g>
     <g id="ytick_12">
      <g id="line2d_21"/>
-     <g id="text_23">
+     <g id="text_22">
       <text style="font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="732.538715" y="155.61652" transform="rotate(-0 732.538715 155.61652)">−10</text>
      </g>
     </g>
     <g id="ytick_13">
      <g id="line2d_22"/>
-     <g id="text_24">
+     <g id="text_23">
       <text style="font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5c5b57" x="732.538715" y="124.391543" transform="rotate(-0 732.538715 124.391543)">0</text>
      </g>
     </g>
-    <g id="text_25">
+    <g id="text_24">
      <text style="font-weight: 700; font-size: 13.6px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #5c5b57" x="769.508887" y="228.728377" transform="rotate(-90 769.508887 228.728377)">Power (dB)</text>
     </g>
    </g>
    <g id="LineCollection_1"/>
   </g>
-  <g id="text_26">
+  <g id="text_25">
    <text style="font-weight: 700; font-size: 27px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="393.555352" y="26.856738" transform="rotate(-0 393.555352 26.856738)">What is present, and when</text>
   </g>
-  <g id="text_27">
+  <g id="text_26">
    <text style="font-size: 19px; font-family: 'Georgia', 'DejaVu Serif', serif; text-anchor: middle; fill: #5c5b57" x="393.555352" y="55.321719" transform="rotate(-0 393.555352 55.321719)">an invented signal; a 32 ms Hann window, floored 70 dB below the peak</text>
   </g>
  </g>

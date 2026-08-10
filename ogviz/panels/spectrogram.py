@@ -207,10 +207,10 @@ def spectrogram(
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
 
-    # The mesh fills its axes, so the axis starts exactly at its first tick and that tick's label
-    # is centred on the corner, half of it in the column where the y tick labels sit. Measured here
-    # before the fix: the y axis's "0" and the x axis's "0.00" overlapped by 7 px, and neither gate
-    # catches it — see `layout.ticks.settle_corner_tick` for why both are right not to.
+    # Both axes of a spectrogram begin at zero — time at the start of the recording, frequency at
+    # DC — so the corner states that origin twice and spells it two ways, "0" against "0.00".
+    # Measured here before the fix, the two labels also overlapped by 7 px, and no gate catches it;
+    # see `layout.ticks.settle_corner_tick` for why they are right not to and which copy goes.
     settle_corner_tick(ax)
 
     if colorbar:

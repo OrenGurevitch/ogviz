@@ -166,3 +166,27 @@ def test_a_signed_value_keeps_the_typographic_minus() -> None:
     assert format_value(-0.0, signed=True) == "0"
     for value in (2.5, -2.5, 0.0):
         assert not CANDIDATE_MINUS.search(format_value(value, signed=True))
+
+
+def test_a_corner_that_is_not_a_doubled_zero_keeps_its_label() -> None:
+    """The other branch of `settle_corner_tick`, and the reason it is not simply "drop the first".
+
+    Only a corner where BOTH axes read zero is redundant. When one of them does not — here the
+    frequency-like axis starts at 100 — the first x label is still information, so it is moved
+    rather than removed: left-aligning it puts it fully inside the panel, where a centred label
+    would have hung half-way into the y labels' column.
+    """
+    import matplotlib.pyplot as plt
+
+    from ogviz.layout.ticks import settle_corner_tick
+
+    fig, ax = plt.subplots()
+    ax.set_xlim(0.0, 2.0)
+    ax.set_ylim(100.0, 400.0)
+    fig.canvas.draw()
+
+    assert settle_corner_tick(ax), "the corner was settled"
+    labels = [label.get_text() for label in ax.get_xticklabels()]
+    assert labels[0].strip(), "the first x label survives, having nothing to duplicate"
+    assert ax.get_xticklabels()[0].get_horizontalalignment() == "left"
+    plt.close(fig)
