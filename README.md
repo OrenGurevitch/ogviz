@@ -82,9 +82,12 @@ The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, whic
 the same with no code change, for CI and paper builds.
 
 It catches colliding text, labels sitting on the marks, clipped ink, buried spines and
-thresholds, stars at uneven distances, dots on the mean line, ungrouped thousands, missing glyphs,
-mixed minus signs, and two legend series that separate now and merge under colour-vision deficiency.
+thresholds, stars at uneven distances, dots on the mean line, ungrouped thousands, mixed minus
+signs, and two legend series that separate now and merge under colour-vision deficiency.
 `--list-checks` prints the current set.
+
+`save` alone also refuses a figure whose text has no glyph in the resolved font — the tofu box.
+That one is not a check and `guard()` does not carry it.
 
 It needs nothing else from this package — point it at any matplotlib figure, from any project:
 
