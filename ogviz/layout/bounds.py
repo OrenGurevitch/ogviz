@@ -103,14 +103,32 @@ def _panel_name(fig: Figure, ax: Axes, text: Text) -> str:
     The title is NOT used when the offending label is that title, which is the commonest case of
     this complaint: naming the panel by the string already being quoted produces "X is wider than
     its panel ('X')", which tells a reader nothing they did not have.
+
+    Neither is an INDEX used on a single-panel figure. "panel 0 of 1 (in reading order)" is three
+    facts a reader already has and one — "of 1" — that says the identification was never in doubt.
     """
     title = ax.get_title().strip()
     if title and text is not ax.title:
         return f"its panel ({quoted(title)!r})"
+    if len(fig.axes) == 1:
+        return "its panel"
     try:
         return f"panel {fig.axes.index(ax)} of {len(fig.axes)} (in reading order)"
     except ValueError:  # an axes not on this figure; nothing useful to say
         return "the panel it belongs to"
+
+
+def _overflow_consequence(fig: Figure) -> str:
+    """What a too-wide label actually collides with, which depends on having a neighbour.
+
+    "so it reaches across the one beside it" was said unconditionally, and on a single-panel figure
+    there is nothing beside it — the complaint asserted a collision that could not happen and sent
+    a reader looking for it. What happens there instead is that the label runs into the margin, and
+    off the page if it runs far enough, which is a different edit.
+    """
+    if len(fig.axes) == 1:
+        return ", so it runs into the margin"
+    return ", so it reaches across the one beside it"
 
 
 def _rotation_hint(text: Text) -> str:
@@ -173,7 +191,8 @@ def text_wider_than_its_panel(fig: Figure) -> list[str]:
             if width > panel.width + EDGE_TOLERANCE_PX:
                 complaints.append(
                     f"{quoted(text.get_text())!r} is {width - panel.width:.0f} px wider than "
-                    f"{_panel_name(fig, ax, text)}, so it reaches across the one beside it"
+                    f"{_panel_name(fig, ax, text)}"
+                    + _overflow_consequence(fig)
                     + _rotation_hint(text)
                 )
     return complaints

@@ -51,3 +51,36 @@ def test_a_label_that_fits_its_panel_is_left_alone() -> None:
         ax.set_title("short")
     fig.canvas.draw()
     assert not text_wider_than_its_panel(fig)
+
+
+def test_a_single_panel_figure_is_not_told_about_a_neighbour_it_has_not_got() -> None:
+    """Two things were said unconditionally, and both are false when there is only one panel.
+
+    The complaint named "panel 0 of 1 (in reading order)" — an identification that was never in
+    doubt — and ended "so it reaches across the one beside it", asserting a collision that cannot
+    happen and sending a reader to look for it. What actually happens is that the label runs into
+    the margin, which is a different edit.
+    """
+    fig, ax = plt.subplots(figsize=(4.0, 2.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.set_title("a horizontal title far too long for this narrow panel indeed")
+    fig.canvas.draw()
+
+    (complaint,) = text_wider_than_its_panel(fig)
+    assert "of 1" not in complaint, complaint
+    assert "beside it" not in complaint, complaint
+    assert "margin" in complaint, complaint
+
+
+def test_a_rotated_label_is_told_which_way_to_edit() -> None:
+    """For rotated text the line COUNT is the width, so reflowing is exactly the wrong remedy."""
+    from ogviz.layout.bounds import _rotation_hint
+
+    fig, ax = plt.subplots(figsize=(4.0, 2.0))
+    upright = ax.set_title("a title")
+    rotated = ax.set_ylabel("a label", rotation=90)
+    fig.canvas.draw()
+
+    assert "ROTATED" in _rotation_hint(rotated)
+    assert "shorten it" in _rotation_hint(rotated)
+    assert _rotation_hint(upright) == "", "a horizontal label gets the opposite advice, correctly"

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import warnings
 from contextlib import contextmanager
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import matplotlib as mpl
@@ -120,18 +121,31 @@ GOOD = "#2E7D4F"
 BAD = "#B3261E"
 
 
-def _display_face():
-    """The font file the display stack actually resolves to, opened once."""
-    from matplotlib.font_manager import FontProperties, findfont
+@lru_cache(maxsize=8)
+def _face_at(path: str):
+    """An opened font face, cached by path.
+
+    BOUNDED, where this was a bare module-level dict that only ever grew. A process resolves a
+    handful of font paths, so the growth was never the real problem — the problem was that nothing
+    said what the ceiling was, and an unbounded cache keyed by a string is the shape that becomes
+    one. Eight is well past what any run needs and is a number rather than a hope.
+    """
     from matplotlib.ft2font import FT2Font
 
-    path = findfont(FontProperties(family=list(mpl.rcParams["font.sans-serif"])))
-    if path not in _FACES:
-        _FACES[path] = FT2Font(path)
-    return _FACES[path]
+    return FT2Font(path)
 
 
-_FACES: dict[str, object] = {}
+def _display_face():
+    """The font file the display stack actually resolves to, opened once.
+
+    The PATH is re-resolved every call and only the opened face is cached, which is deliberate:
+    `font.sans-serif` is an rcParam and `use_house_style(...)` or a test's `pinned_font` can change
+    it mid-process. Caching the resolution would answer for the style that was in force at the
+    first call.
+    """
+    from matplotlib.font_manager import FontProperties, findfont
+
+    return _face_at(findfont(FontProperties(family=list(mpl.rcParams["font.sans-serif"]))))
 
 
 def family_for(text: str) -> str | None:
