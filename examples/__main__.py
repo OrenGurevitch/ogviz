@@ -28,7 +28,10 @@ from matplotlib.ticker import MaxNLocator
 
 from examples.data import (
     ARM_LABELS,
+    BENDING_LEVELS,
     BLOCKS,
+    COHORT,
+    CONDITION_TINTS,
     CONTROL,
     CONTROL_EDGE,
     DOMAINS,
@@ -39,7 +42,6 @@ from examples.data import (
     TREATED,
     TREATED_EDGE,
     bending_by_nation,
-    burden_by_stage,
     concentration_ppm,
     correlation_with_interval,
     coupled_variables,
@@ -47,6 +49,7 @@ from examples.data import (
     effort_ladders,
     expected_goals,
     headline_arms,
+    journey_measures,
     large_magnitudes,
     paired_sensors,
     skewed_groups,
@@ -71,10 +74,12 @@ from ogviz import (
     error_bars,
     fit_under_header,
     group_violins,
+    identity_colors,
     label_rows,
     legend_pill,
     line_panel,
     multiplicity_ladder,
+    page_color,
     reference_line,
     save,
     series_colors,
@@ -593,23 +598,46 @@ def violin_grid() -> None:
     range across all of them and the group labels stated once rather than under every panel.
     """
     regions = bending_by_nation()
+    subject = identity_colors(COHORT)  # one colour per bender, the same in all four panels
 
     # NOT sharey: with a shared axis every panel's own fit writes to the same limits, so the last
     # one drawn wins and a panel whose bracket stack is taller gets clipped by a neighbour. Each
     # panel fits itself, then `share_value_limits` puts them on the union of those answers.
-    fig, axes = plt.subplots(2, 2, figsize=(11.5, 11.0))
+    fig, axes = plt.subplots(2, 2, figsize=(13.0, 12.0))
     # Stacked panels share a boundary, so the bottom tick of one row sits a few pixels from the top
     # tick of the row below and the two read as one number. Pruning the end ticks is the same fix
     # the estimate strips use, and costs nothing here: both extremes fall in the padding.
     axes[0, 0].yaxis.set_major_locator(MaxNLocator(nbins=6, prune="both"))
     for ax, name in zip(axes.flat, NATIONS, strict=True):
-        control, treated, p = regions[name]
+        levels, tests = regions[name]
+        seat = {level: float(index) for index, level in enumerate(BENDING_LEVELS)}
         group_violins(
             ax,
-            [(0.0, control, CONTROL, CONTROL_EDGE), (1.0, treated, TREATED, TREATED_EDGE)],
-            comparisons=[(0.0, 1.0, p)],
-            categories=["Novice", "Master"],
+            [
+                (seat[level], levels[level], fill, page_color())
+                for level, fill in zip(BENDING_LEVELS, CONDITION_TINTS, strict=True)
+            ],
+            comparisons=[(seat[a], seat[b], p) for a, b, p in tests],
+            # Every violin holds the same cohort in the same order, so one list of colours serves
+            # all three and a reader can follow one bender from novice to master.
+            point_colors=[subject] * len(BENDING_LEVELS),
+            outline_violins=True,
+            violin_kwargs={"alpha": 0.28},
+            # The rim is the page rather than a darker tint: at this dot size a dark rim is under a
+            # pixel wide, so it antialiases into a grey halo and the cloud reads as smudged instead
+            # of as separate dots. A page-coloured rim separates them without darkening them.
+            point_kwargs={"edge_width": 0.5, "size": 26.0},
+            categories=list(BENDING_LEVELS),
             category_fontsize=15,
+            # Turned down from the house default: this row appears in all four panels, and at full
+            # weight the twelve numbers become the loudest ink on a figure about twelve shapes.
+            mean_fontsize=15,
+            mean_weight="normal",
+            # PINNED, on a shared scale. `printed_means` picks its decimals from the largest value
+            # in ITS OWN row, which is right for one panel and wrong for a grid: the four rows came
+            # out as 0.32 / 0.133 / 0.011 / 0.0120, four spellings of one quantity, and the Fire
+            # Nation's noise-level row read as the most precise measurement on the figure.
+            mean_decimals=2,
         )
         ax.set_title(name, fontsize=17, fontweight="bold", pad=14)
     # Each panel measured the headroom its own bracket needs; the shared scale is the union of
@@ -619,8 +647,8 @@ def violin_grid() -> None:
         ax.set_ylabel("Bending strength (arbitrary)", fontsize=16, fontweight="bold", labelpad=8)
     header_bottom = titled(
         fig,
-        "Novice against master benders",
-        subtitle="four nations on one scale, so the panels read against each other",
+        "Three levels of training, four nations",
+        subtitle="one cohort at each level, on one scale, so the panels read against each other",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "03_violin_grid")
@@ -765,31 +793,50 @@ def comparison_table() -> None:
 # was written asks the reader to hold twelve unrelated things in mind; ordered by kind, the violin
 # panels are one idea with five variations.
 def violin_grid_tall() -> None:
-    """Six panels, two columns by three rows — the shape a condition grid takes.
+    """THE CONDITION GRID: six measures of one company at the same three stages of the road.
 
-    Same rules as the square grid and a different arrangement: every panel fits its own bracket,
-    then one shared scale and one line of printed means across all six. Two columns rather than
-    three because the panel has to stay wide enough for its two violins and their labels.
+    The other grid holds one quantity and varies the panel's subject; this one varies the QUANTITY
+    and holds the comparison fixed, which is the arrangement that lets a reader read straight down
+    the column. Every panel asks the same question, so the answer is the only thing that changes.
+
+    NO SHARED SCALE HERE, and that is the difference the two grids exist to show. These measures
+    are counts, a weight, hours and a step total in five figures: put them on one axis and five
+    panels flatten into a line. So each panel carries its own scale and says its own unit in the y
+    label — short, because "hours" is the whole label a panel needs when its title is already
+    "Sleep". A long label repeated six times is six copies of the same sentence.
     """
-    stages = burden_by_stage()
-    fig, axes = plt.subplots(3, 2, figsize=(11.0, 15.0))
-    for ax, stage in zip(axes.flat, STAGES_OF_THE_ROAD, strict=True):
-        companion, bearer, p = stages[stage]
+    measures = journey_measures()
+    subject = identity_colors(COHORT)  # one colour per walker, the same in all six panels
+    fig, axes = plt.subplots(3, 2, figsize=(13.0, 15.5))
+    seat = {stage: float(index) for index, stage in enumerate(STAGES_OF_THE_ROAD)}
+    for ax, (title, (unit, stages, tests)) in zip(axes.flat, measures.items(), strict=True):
         group_violins(
             ax,
-            [(0.0, companion, CONTROL, CONTROL_EDGE), (1.0, bearer, TREATED, TREATED_EDGE)],
-            comparisons=[(0.0, 1.0, p)],
-            categories=["Companion", "Ring-bearer"],
+            [
+                (seat[stage], stages[stage], fill, page_color())
+                for stage, fill in zip(STAGES_OF_THE_ROAD, CONDITION_TINTS, strict=True)
+            ],
+            comparisons=[(seat[a], seat[b], p) for a, b, p in tests],
+            point_colors=[subject] * len(STAGES_OF_THE_ROAD),
+            outline_violins=True,
+            violin_kwargs={"alpha": 0.28},
+            point_kwargs={"edge_width": 0.5, "size": 26.0},
+            categories=list(STAGES_OF_THE_ROAD),
             category_fontsize=14,
+            mean_fontsize=15,
+            mean_weight="normal",
         )
-        ax.set_title(stage, fontsize=16, fontweight="bold", pad=12)
-    share_value_limits(axes.flat)
-    for ax in axes[:, 0]:
-        ax.set_ylabel("Burden (arbitrary)", fontsize=15, fontweight="bold", labelpad=8)
+        # Per-panel scales mean per-panel TICKS, and the step panel is why: matplotlib's default
+        # formatter writes 10000, which the gate refuses. Then `ticks_over_data`, because the top
+        # of each panel is room held open for the bracket stack rather than values.
+        value_ticks(ax, count=4)
+        ticks_over_data(ax)
+        ax.set_title(title, fontsize=16, fontweight="bold", pad=12)
+        ax.set_ylabel(unit, fontsize=14, labelpad=8)
     header_bottom = titled(
         fig,
-        "The weight of the Ring along the road",
-        subtitle="invented numbers; the burden grows toward Mordor and is gone at the Havens",
+        "One company, six measures, three stages of the road",
+        subtitle="invented numbers; each panel keeps its own scale — the units do not compare",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "04_violin_grid_tall")

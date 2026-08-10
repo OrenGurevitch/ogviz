@@ -29,7 +29,7 @@ from ogviz.tags import mark
 from ogviz.theme import INK, page_color
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Mapping
+    from collections.abc import Collection, Mapping, Sequence
 
     from matplotlib.axes import Axes
     from numpy.typing import ArrayLike, NDArray
@@ -240,7 +240,7 @@ def points(
     ax: Axes,
     values: NDArray[np.float64],
     position: float,
-    color: str,
+    color: str | Sequence[str],
     edge_color: str,
     rng: np.random.Generator,
     *,
@@ -256,6 +256,12 @@ def points(
     orientation: Orientation = "vertical",
 ) -> None:
     """One dot per observation, jittered inside the violin body.
+
+    `color` is one colour for the cloud, or ONE COLOUR PER OBSERVATION in the order `values` are
+    given — which is how a dot carries an identity rather than a group. In a repeated-measures
+    panel the same subject appears in every violin, and colouring by subject lets a reader follow
+    one of them across the conditions; a single colour can only restate the fill they already sit
+    in. The sequence is passed to the scatter untouched, so it must be as long as `values`.
 
     `width`, `fill` and `center_gap` must match the violin this scatter sits in, or the dots
     spread outside a narrow body or clump inside a wide one.

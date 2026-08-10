@@ -22,6 +22,19 @@ TREATED_EDGE = "#4A6136"
 CONTROL = "#E8A838"
 CONTROL_EDGE = "#B97C10"
 
+# THREE conditions — amber, blue, green — for the two condition grids. Saturated rather than pastel
+# and drawn at a low alpha, so the body is pale but its outline is not: the dots sit ON the body,
+# and a fill strong enough to be seen behind forty dots is strong enough to compete with them.
+#
+# MEASURED, because the pair to watch is not the obvious one: amber against green is the widest gap
+# to normal vision and the tightest under protanopia (0.699 -> 0.302), while blue against green is
+# comfortable everywhere except tritanopia, where `ogviz.color.separation` puts it at 0.043 — one
+# colour. `indistinguishable_series` reports that pair, and it is kept anyway for a reason the
+# check cannot see: on a condition grid every violin sits over its own labelled tick, so nothing is
+# identified by colour alone and the labels survive any deficiency. Put these three in a LEGEND and
+# the finding applies in full.
+CONDITION_TINTS = ("#E8B33C", "#5B9BD5", "#3FA372")
+
 
 def two_groups(seed: int = 0) -> dict[str, np.ndarray]:
     """A moderate separation with unequal n — the ordinary case."""
@@ -170,25 +183,46 @@ def effort_ladders(seed: int = 12) -> dict[str, tuple[np.ndarray, np.ndarray]]:
 
 
 NATIONS = ("Air Nomads", "Water Tribe", "Earth Kingdom", "Fire Nation")
+BENDING_LEVELS = ("Novice", "Adept", "Master")
+# One cohort, measured under every condition in every panel — a REPEATED-MEASURES grid. The number
+# is the length of every array these builders return, and the dots are drawn in this order, so a
+# figure colouring by identity gets the same subject in the same colour everywhere by construction
+# rather than by the caller keeping two lists in step.
+COHORT = 26
 
 
-def bending_by_nation(seed: int = 13) -> dict[str, tuple[np.ndarray, np.ndarray, float]]:
-    """Novice against master benders in each of the four nations. Entirely invented.
+def bending_by_nation(
+    seed: int = 13,
+) -> dict[str, tuple[dict[str, np.ndarray], tuple[tuple[str, str, float], ...]]]:
+    """One cohort of benders at three levels of training, in each of the four nations. Invented.
 
-    Four panels of the same comparison at different strengths, which is what a grid is for: the
-    Air Nomads separate cleanly, the Fire Nation barely at all.
+    Four panels of the same three-way comparison at different strengths, which is what a grid is
+    for: the Air Nomads separate cleanly, the Fire Nation barely at all.
+
+    Every bender carries an OWN TALENT that follows them across the three levels, because that is
+    what makes a repeated-measures panel worth drawing: a reader following one dot sees a subject
+    who was strong as a novice still strong as a master. Drawing the three levels independently
+    would give the same violins and the same p-values, and every dot would be a different person.
     """
     rng = np.random.default_rng(seed)
-    separations = (1.35, 0.95, 0.55, 0.12)
-    p_values = (0.0002, 0.006, 0.05, 0.68)
-    return {
-        nation: (
-            rng.normal(0.0, 1.0, 36),
-            rng.normal(shift, 1.05, 48),
-            p,
+    gains = (1.35, 0.95, 0.55, 0.12)
+    significance = (
+        (("Novice", "Adept", 0.004), ("Adept", "Master", 0.03), ("Novice", "Master", 0.0002)),
+        (("Novice", "Adept", 0.04), ("Adept", "Master", 0.09), ("Novice", "Master", 0.006)),
+        (("Novice", "Adept", 0.21), ("Adept", "Master", 0.14), ("Novice", "Master", 0.05)),
+        (("Novice", "Adept", 0.74), ("Adept", "Master", 0.58), ("Novice", "Master", 0.68)),
+    )
+    grid = {}
+    for nation, gain, tests in zip(NATIONS, gains, significance, strict=True):
+        talent = rng.normal(0.0, 0.72, COHORT)
+        grid[nation] = (
+            {
+                level: talent + step * gain + rng.normal(0.0, 0.74, COHORT)
+                for level, step in zip(BENDING_LEVELS, (0.0, 0.5, 1.0), strict=True)
+            },
+            tests,
         )
-        for nation, shift, p in zip(NATIONS, separations, p_values, strict=True)
-    }
+    return grid
 
 
 FORMATIONS = ("4-2-3-1", "3-4-3", "4-3-3", "3-5-2")
@@ -207,32 +241,56 @@ def expected_goals(seed: int = 14) -> tuple[np.ndarray, np.ndarray]:
     return means, errors
 
 
-STAGES_OF_THE_ROAD = (
-    "The Shire",
-    "Bree",
-    "Moria",
-    "Lothlórien",
-    "Cirith Ungol",
-    "Grey Havens",
+STAGES_OF_THE_ROAD = ("The Shire", "The Road", "The Return")
+# Six measures of one company at those three stages: title, unit, the three means, and the spread.
+# The UNITS ARE DELIBERATELY UNLIKE EACH OTHER — a count, a weight, an hour, and one that runs into
+# five figures — because that is the case a per-panel scale exists for. On one shared scale the
+# steps would flatten every other panel into a line, and the panel that needs a thousands separator
+# would never get to show it.
+JOURNEY_MEASURES: tuple[tuple[str, str, tuple[float, float, float], float], ...] = (
+    ("Second breakfasts", "per day", (2.4, 0.7, 1.9), 0.26),
+    ("Pack weight", "kg", (11.0, 18.4, 8.6), 2.6),
+    ("Steps walked", "per day", (6200.0, 21500.0, 7400.0), 1700.0),
+    ("Sleep", "hours", (9.1, 5.3, 8.4), 1.05),
+    ("Songs sung", "per day", (4.3, 1.2, 3.7), 0.95),
+    ("Pipe-weed", "oz per week", (3.1, 1.4, 3.0), 0.42),
 )
 
 
-def burden_by_stage(seed: int = 15) -> dict[str, tuple[np.ndarray, np.ndarray, float]]:
-    """Two groups measured at six stages of one journey. Six panels of one comparison, all invented.
+def journey_measures(
+    seed: int = 15,
+) -> dict[str, tuple[str, dict[str, np.ndarray], tuple[tuple[str, str, float], ...]]]:
+    """One company, six measures, three stages of the road. Entirely invented.
 
-    The separations rise across the first five so a reader sees a gradient rather than six versions
-    of the same picture, and the sixth is null — which is why these six stages and not six others.
-    The gap between a ring-bearer and a companion grows the closer the road runs to Mordor and is
-    gone at the Havens, because by then there is no Ring to carry. A grid wants a story that ends,
-    and a null panel is the hardest kind to label honestly.
+    The shape a condition grid takes: the CONDITIONS are the same in every panel and the MEASURE
+    changes, so the grid answers one question six ways rather than asking six questions. Every
+    panel's comparison is therefore the same comparison, which is what lets a reader read down the
+    column instead of re-orienting at each panel.
+
+    The road is the hard stage in every measure and the return recovers most but not all of it,
+    except the pipe-weed, which recovers all of it. A grid wants one panel that does not follow the
+    pattern, or a reader learns the pattern from the first panel and stops looking.
     """
     rng = np.random.default_rng(seed)
-    separations = (0.12, 0.38, 0.62, 0.95, 1.30, 0.05)
-    p_values = (0.62, 0.09, 0.02, 0.001, 0.0002, 0.81)
-    return {
-        state: (rng.normal(0.0, 1.0, 34), rng.normal(shift, 1.05, 46), p)
-        for state, shift, p in zip(STAGES_OF_THE_ROAD, separations, p_values, strict=True)
-    }
+    grid = {}
+    for title, unit, means, spread in JOURNEY_MEASURES:
+        # Each walker's own level, in units of the spread, carried across all three stages.
+        walker = rng.normal(0.0, 0.68, COHORT)
+        stages = {
+            stage: mean + walker * spread + rng.normal(0.0, spread * 0.72, COHORT)
+            for stage, mean in zip(STAGES_OF_THE_ROAD, means, strict=True)
+        }
+        recovered = abs(means[2] - means[0]) < spread * 0.25  # the pipe-weed panel
+        grid[title] = (
+            unit,
+            stages,
+            (
+                ("The Shire", "The Road", 0.0004),
+                ("The Road", "The Return", 0.002),
+                ("The Shire", "The Return", 0.44 if recovered else 0.03),
+            ),
+        )
+    return grid
 
 
 TRIALS_OF_THE_TOURNAMENT = (

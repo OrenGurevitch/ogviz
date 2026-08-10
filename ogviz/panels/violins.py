@@ -64,6 +64,7 @@ def printed_means(
     row: float,
     *,
     fontsize: float = MEAN_LABEL_SIZE,
+    weight: str = "bold",
     decimals: int | None = None,
     orientation: Orientation = "vertical",
     scale: float = 1.0,
@@ -105,7 +106,11 @@ def printed_means(
             ha="center",
             va="center",
             fontsize=fontsize,
-            fontweight="bold",
+            # Bold by default because the printed mean IS the number a single panel reports. A GRID
+            # is the case for turning it down: the same row repeats in every cell, so at full weight
+            # six copies of it become the loudest thing on the figure and the reader's eye goes to
+            # the numbers rather than to the shapes the grid was drawn to compare.
+            fontweight=weight,
             # The house ink. This was `"#333333"` — a fourth black, in a package whose reason for
             # existing opens on a project that shipped two of them in one paper. It sits between
             # `INK` and `MUTED_INK`, 0.21 from one and 0.27 from the other, so it was not either of
@@ -234,12 +239,15 @@ def group_violins(
     groups: Sequence[tuple[float, NDArray[np.float64], str, str]],
     *,
     comparisons: Sequence[tuple[float, float, float]] = (),
+    point_colors: Sequence[Sequence[str] | None] | None = None,
+    outline_violins: bool = False,
     categories: Sequence[str] | None = None,
     category_fontsize: float | None = None,
     anchor_value: float | None = None,
     seed: int | np.random.Generator = 0,
     show_means: bool | None = None,
     mean_fontsize: float = MEAN_LABEL_SIZE,
+    mean_weight: str = "bold",
     mean_decimals: int | None = None,
     display_scale: float = 1.0,
     thousands_separator: bool = True,
@@ -260,6 +268,18 @@ def group_violins(
 
     `groups` is [(x position, values, fill colour, edge colour)].
     `comparisons` is [(x_left, x_right, p)] for significance brackets, lowest first.
+    `point_colors` is one entry PER GROUP, each either None for the group's own fill or one colour
+    per observation — a repeated-measures panel colours its dots by subject so a reader can follow
+    one across the conditions. It is indexed against `groups` as given, before empty groups are
+    dropped, so a caller need not know which of its groups turned out to have data.
+
+    `outline_violins` gives each body an outline in its OWN FILL COLOUR, for the pale-fill look: a
+    fill dropped to a low alpha so the dots on top stay legible needs an edge, or a narrow waist
+    fades out and the body stops reading as one shape. It is off by default and it is a per-group
+    fact, which is why it is a flag here rather than an `edge_color` in `violin_kwargs` — those
+    kwargs are one dict for every group, so a caller could only give all the bodies one edge. The
+    group's own `edge colour` is NOT used, because that one is the dots' rim: on a crowded cloud
+    the rim wants the page colour, to separate overlapping dots without darkening them.
     `anchor_value` forces a value into the range (0 for a zero-anchored measure).
     `label_for` overrides what a bracket's label says, the way `bracket_stack` does.
     `display_scale` converts the stored unit to the printed one — a quantity stored in ppm and
@@ -277,7 +297,26 @@ def group_violins(
     if show_means is None:
         show_means = orientation == "vertical"
 
-    populated = [(p, np.asarray(v, dtype=float), f, e) for p, v, f, e in groups if len(v)]
+    supplied = [None] * len(groups) if point_colors is None else list(point_colors)
+    require(
+        len(supplied) == len(groups),
+        f"point_colors has {len(supplied)} entries for {len(groups)} groups. It is indexed against "
+        "the groups, so a shorter list silently recolours the wrong ones.",
+    )
+    kept = [
+        ((p, np.asarray(v, dtype=float), f, e), dots)
+        for (p, v, f, e), dots in zip(groups, supplied, strict=True)
+        if len(v)
+    ]
+    populated = [group for group, _dots in kept]
+    dot_colors = [dots for _group, dots in kept]
+    for (position, values, _f, _e), dots in kept:
+        require(
+            dots is None or len(dots) == len(values),
+            f"group at x={position} has {len(values)} values and {len(dots or ())} point colours. "
+            "The colours are matched to the values by position, so a mismatch would give a dot "
+            "somebody else's identity rather than raise.",
+        )
     require(
         populated,
         "group_violins needs at least one non-empty group",
@@ -352,9 +391,12 @@ def group_violins(
     places = [p for p, _v, _f, _e in populated]
     category_limits(ax, orientation)(min(places) - body, max(places) + body)
 
-    for position, values, fill, edge in populated:
-        violin(ax, values, position, fill, **violin_kwargs)  # type: ignore[arg-type]
-        points(ax, values, position, fill, edge, rng, **point_kwargs)  # type: ignore[arg-type]
+    for (position, values, fill, edge), dots in zip(populated, dot_colors, strict=True):
+        body = dict(violin_kwargs)
+        if outline_violins:
+            body.setdefault("edge_color", fill)  # an explicit one in violin_kwargs still wins
+        violin(ax, values, position, fill, **body)  # type: ignore[arg-type]
+        points(ax, values, position, fill if dots is None else dots, edge, rng, **point_kwargs)  # type: ignore[arg-type]
         iqr_box(ax, values, position, **box_kwargs)  # type: ignore[arg-type]
         mean_line(ax, values, position, **mean_kwargs)  # type: ignore[arg-type]
 
@@ -365,6 +407,7 @@ def group_violins(
             [float(np.mean(sample)) for _p, sample, _f, _e in populated],
             low - mean_row_offset * span,
             fontsize=mean_fontsize,
+            weight=mean_weight,
             decimals=mean_decimals,
             orientation=orientation,
             scale=display_scale,

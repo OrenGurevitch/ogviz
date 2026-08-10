@@ -30,6 +30,7 @@ PASS_THROUGH = [
         printed_means,
         {
             "mean_fontsize": "fontsize",
+            "mean_weight": "weight",
             "mean_decimals": "decimals",
             "display_scale": "scale",
             "thousands_separator": "thousands_separator",

@@ -13,12 +13,15 @@ figures render the same on a machine with no system fonts.
 
 from __future__ import annotations
 
+import colorsys
 import warnings
 from contextlib import contextmanager
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import matplotlib as mpl
+
+from ogviz.require import require
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -58,6 +61,35 @@ KNOCKOUT_PAD = 0.18
 # Checked by `ogviz.color.indistinguishable_series`, which found it.
 SERIES: tuple[str, ...] = ("#2E7CE0", "#EFA607", "#14A97C", "#ED6B3B", "#9B3B8F")
 REFERENCE = "#D9D7CE"  # a de-emphasised comparison series
+
+
+def identity_colors(
+    count: int, *, saturation: float = 0.42, value: float = 0.93
+) -> tuple[str, ...]:
+    """`count` colours around the hue wheel, for marks that carry an IDENTITY rather than a meaning.
+
+    The case is a repeated-measures panel: the same subject appears in every violin, and giving each
+    one a colour lets a reader follow a single subject across the conditions. That is a different
+    job from `SERIES`, which names a handful of things a legend will list, and it wants the opposite
+    properties — dozens of colours, none of them meaning anything, none of them ever looked up.
+
+    So this is NOT checked with `indistinguishable_series` and must not be. Two of forty hues being
+    confusable costs a reader nothing, because no dot is ever identified by its colour alone; the
+    colour says only "these two dots are the same subject", and that reading survives a pair of
+    neighbouring hues. Run that check on anything a legend names, including a subset of these if a
+    figure ever calls one out by name.
+
+    Pastel by default — `saturation` low and `value` high — because these sit ON a violin body and
+    over its central marks. At full saturation forty dots out-shout the distribution they are drawn
+    to describe, which is the wrong way round: the cloud is the texture, the violin is the claim.
+    """
+    require(count >= 0, f"identity_colors needs a non-negative count, not {count}")
+    hues = (index / count for index in range(count))  # endpoint excluded: hue 1.0 IS hue 0.0
+    return tuple(
+        "#{:02X}{:02X}{:02X}".format(*(round(channel * 255) for channel in rgb))
+        for rgb in (colorsys.hsv_to_rgb(hue, saturation, value) for hue in hues)
+    )
+
 
 # The line panel's own order, which leads WARM rather than with the blue: a benchmark chart is read
 # as "this one, against those", and the leading series should arrive first. Three of the first five

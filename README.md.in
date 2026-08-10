@@ -47,10 +47,10 @@ the measurement behind it. Requires matplotlib ≥ 3.10.
 <table>
 <tr>
 <td width="50%"><img src="examples/out/02_display_units.png" width="100%"><br><sub><code>display_scale</code> — held in ppm, drawn in ppb</sub></td>
-<td width="50%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub><code>share_value_limits</code> — one scale, one row of means</sub></td>
+<td width="50%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub><code>share_value_limits</code> — one scale, dots coloured by subject</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub>a condition grid, two by three</sub></td>
+<td width="50%"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub>a condition grid — six measures, each keeping its own scale</sub></td>
 <td width="50%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><code>split_violins</code> — one quantity measured two ways</sub></td>
 </tr>
 <tr>
