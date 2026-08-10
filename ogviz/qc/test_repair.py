@@ -117,3 +117,26 @@ def test_a_threshold_the_bars_run_through_is_still_raised() -> None:
     assert [c for c in raise_buried_lines(fig) if "reference" in c]
     assert line.get_zorder() > before, "and it comes forward"
     plt.close(fig)
+
+
+def test_a_repaired_label_is_not_set_down_on_another_label() -> None:
+    """`clear_position` searched with `hits_data`, which walks marks and no TEXT at all.
+
+    So the repair could lift a label off the data and put it on top of another label — trading a
+    collision the gate reports for one the gate also reports. Measured on this figure: without the
+    labels in the search, the two repaired annotations overlap; with them, they do not.
+    """
+    from ogviz.layout.collision import text_box
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.5))
+    x = np.linspace(0.0, 10.0, 200)
+    ax.fill_between(x, 0.0, np.exp(-x / 3.0), color="#88aacc")
+    first = ax.text(4.0, 0.28, "first annotation")
+    second = ax.text(4.2, 0.24, "second annotation")
+    fig.canvas.draw()
+
+    assert len(repair(fig)) == 2, "both sit on the band and both are moved"
+    fig.canvas.draw()
+    assert not text_box(first).overlaps(text_box(second))
+    assert audit(fig) == [], "and the figure comes out clean"
+    plt.close(fig)

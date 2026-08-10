@@ -46,7 +46,7 @@ from ogviz.layout.render import ensure_rendered
 from ogviz.tags import marked
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
 
     from matplotlib.artist import Artist
     from matplotlib.axes import Axes
@@ -433,6 +433,7 @@ def clear_position(
     rings: int = SEARCH_RINGS,
     directions: int = SEARCH_DIRECTIONS,
     padding: float = PADDING_PX,
+    avoid: Sequence[Bbox] = (),
 ) -> tuple[float, float] | None:
     """A display-space offset that lifts `box` clear of the marks, or None if there is none.
 
@@ -443,9 +444,22 @@ def clear_position(
 
     The panel is resolved ONCE, before the search: nothing is drawn or moved while it runs, so the
     marks cannot change between candidates. See `hits_data` for what rebuilding them each time cost.
+
+    `avoid` is the OTHER LABELS, and it exists because this searched with `hits_data` alone — which
+    walks lines, collections, patches and images, and no text at all. So the repair could lift a
+    label off the data and set it down on top of another label, trading a collision the gate
+    reports for one it also reports. Passing them keeps the search honest about what "clear" means;
+    the default is empty so a caller asking only about the marks still gets that.
     """
     marks = PanelMarks.of(ax)
-    if not hits_data(ax, box, padding=padding, marks=marks):
+
+    def free(candidate: Bbox) -> bool:
+        if hits_data(ax, candidate, padding=padding, marks=marks):
+            return False
+        target = _padded(candidate, padding)
+        return not any(target.overlaps(other) for other in avoid)
+
+    if free(box):
         return (0.0, 0.0)
     inside = ax.get_window_extent()
     reach = float(np.hypot(inside.width, inside.height))
@@ -465,7 +479,7 @@ def clear_position(
                 continue
             if not inside.containsy(moved.y0) or not inside.containsy(moved.y1):
                 continue
-            if not hits_data(ax, moved, padding=padding, marks=marks):
+            if free(moved):
                 return offset
     return None
 

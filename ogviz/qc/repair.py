@@ -70,7 +70,16 @@ def move_labels_off_the_marks(
     moved: list[str] = []
     for ax, text, _struck in on_the_marks if on_the_marks is not None else labels_on_the_marks(fig):
         content = text.get_text().strip()
-        offset = clear_position(ax, text_box(text))
+        # Every OTHER label in the panel, so the search does not set this one down on one of them.
+        # Recomputed per label rather than once, on purpose: a label moved earlier in this loop is
+        # somewhere new, and a snapshot taken before the loop would route this one around where it
+        # used to be.
+        others = [
+            text_box(other)
+            for other in ax.texts
+            if other is not text and other.get_visible() and other.get_text().strip()
+        ]
+        offset = clear_position(ax, text_box(text), avoid=others)
         if offset is None or offset == (0.0, 0.0):
             moved.append(f"{quoted(content)!r} sits on the marks and nowhere in the panel is free")
             continue
