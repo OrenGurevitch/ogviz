@@ -115,6 +115,14 @@ def raise_buried_lines(fig: Figure) -> list[str]:
     A line a reader measures against — the category axis a bar stands on, a reference level the
     bars are compared to — survives only in the gaps when it is behind them, and reads as broken.
     Raising it is the whole fix; nothing moves.
+
+    BOTH LOOPS TEST OVERLAP, and only the spine one did. A low z-order is not by itself a defect:
+    a threshold drawn above every bar in the panel is behind them in paint order and in front of
+    nothing, because nothing reaches it. Measured on a threshold at 9.0 over bars reaching 2.0 —
+    `buried_baselines` correctly said only the spine was covered, and this returned "raised a
+    reference line above the marks it is read against" for a line no mark touched. The z-order
+    change was harmless, presentation being all this module moves; the REPORT was not. What
+    `repair` returns is a caller's list of what was wrong with their figure.
     """
     ensure_rendered(fig)
     changed: list[str] = []
@@ -122,22 +130,27 @@ def raise_buried_lines(fig: Figure) -> list[str]:
         if not ax.axison:
             continue
         highest = max((patch.get_zorder() for patch in ax.patches), default=0.0)
+
+        def buried_under_a_patch(artist, axes=ax) -> bool:
+            """Whether any patch is BOTH drawn over this artist and standing on it."""
+            box = artist.get_window_extent()
+            return any(
+                patch.get_zorder() > artist.get_zorder() and patch.get_window_extent().overlaps(box)
+                for patch in axes.patches
+            )
+
         for side, spine in ax.spines.items():
             if not spine.get_visible() or spine.get_zorder() > highest:
                 continue
-            covered = any(
-                patch.get_zorder() > spine.get_zorder()
-                and patch.get_window_extent().overlaps(spine.get_window_extent())
-                for patch in ax.patches
-            )
-            if covered:
+            if buried_under_a_patch(spine):
                 spine.set_zorder(highest + 0.5)
                 changed.append(f"raised the {side} spine above the marks standing on it")
         for line in ax.lines:
             if not marked(line, "reference") or line.get_zorder() > highest:
                 continue
-            line.set_zorder(highest + 0.75)
-            changed.append("raised a reference line above the marks it is read against")
+            if buried_under_a_patch(line):
+                line.set_zorder(highest + 0.75)
+                changed.append("raised a reference line above the marks it is read against")
     return changed
 
 

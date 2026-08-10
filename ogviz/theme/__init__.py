@@ -58,6 +58,48 @@ KNOCKOUT_PAD = 0.18
 SERIES: tuple[str, ...] = ("#2E7CE0", "#EFA607", "#14A97C", "#ED6B3B", "#9B3B8F")
 REFERENCE = "#D9D7CE"  # a de-emphasised comparison series
 
+# The line panel's own order, which leads WARM rather than with the blue: a benchmark chart is read
+# as "this one, against those", and the leading series should arrive first. Three of the first five
+# are shared with `SERIES` above; the two that differ are the first two.
+#
+# Here rather than as a literal inside `panels.lines.series_colors`, which is where it lived. A
+# package whose stated rule is that colour is a `theme` decision had one of its two palettes in a
+# function body, out of reach of the note above recording that `indistinguishable_series` was run
+# against the other one.
+#
+# THE LAST THREE ARE DARK TWINS OF HUES ALREADY IN USE, and that is a finding rather than a
+# compromise. Extended from five because `series_colors` used to index this modulo its length, so a
+# sixth series silently repeated the first — two lines a reader takes for one, on a figure the whole
+# gate passes, because `indistinguishable_series` skips pairs that are already close and identical
+# is the limit of that.
+#
+# Searched 4320 candidates for the additions, requiring every new pair to clear 0.216 — the tightest
+# pair the five already had, which is stricter than the 0.18 the check enforces — against normal
+# vision AND all three simulated deficiencies. 1019 cleared it, and NONE of them is a new hue
+# family: every rose, indigo and moss green that reads as a distinct colour to normal vision
+# collapses onto one of the five under some deficiency. Twelve hand-picked ones were tried first and
+# all twelve failed, the roses onto the teal under tritanopia and the greens onto the orange-red
+# under deuteranopia. What survives is darker, duller versions of hues already here — which is the
+# paired-palette pattern, and is what the constraint permits.
+#
+# So five is near the practical ceiling for a categorical palette that must survive three
+# deficiencies, and eight is the honest maximum. The floor across all eight is 0.216, unchanged.
+#
+# FIVE of the new pairs are bound by TRITANOPIA, tightest at 0.224 — and `ogviz.color` simulates
+# tritanopia with a single-matrix construction the literature reserves for the red-green
+# deficiencies. If that is ever corrected to Brettel's two half-planes, these are the pairs to
+# re-measure first.
+LINE_SERIES: tuple[str, ...] = (
+    "#E8552D",  # warm lead
+    "#F0A800",  # amber
+    "#2E7CE0",  # blue
+    "#9B3B8F",  # plum
+    "#14A97C",  # teal
+    "#1D3DBF",  # deep navy
+    "#8C1515",  # oxblood
+    "#BFBF56",  # khaki
+)
+
 
 # A conditions table wants a tick and a cross, and the display stack cannot draw them. Verified
 # against the font `findfont` actually returns on this machine: Arial has NO U+2713 ✓, U+2717 ✗,

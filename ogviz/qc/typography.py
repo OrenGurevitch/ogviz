@@ -39,9 +39,16 @@ def one_minus_sign(fig: Figure) -> list[str]:
             signed = bool(CANDIDATE_MINUS.search(content))
             (hyphen if signed else minus if "\u2212" in content else set()).add(content)
     if hyphen and minus:
+        # The examples are listed BARE rather than as a repr'd list. Like a buried spine, this
+        # complaint is about the figure and has no one label as its subject. But a repr'd list of
+        # strings puts quotes in it, and `report.subject_of` reads the first quoted run as the
+        # subject: the whole complaint was filed under a VALUE, and folded together with any other
+        # complaint about a label that happened to read the same. Nothing quoted, nothing to
+        # mis-group, and it reads better.
         return [
-            f"two different minus signs in one figure: {sorted(hyphen)[:3]} use a hyphen, "
-            f"{sorted(minus)[:3]} use \u2212"
+            "two different minus signs in one figure: "
+            f"{', '.join(sorted(hyphen)[:3])} use a hyphen, "
+            f"{', '.join(sorted(minus)[:3])} use \u2212"
         ]
     return []
 

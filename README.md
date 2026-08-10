@@ -211,6 +211,9 @@ ogviz
 │   ├── raster
 │   │   ├── frame_rgb(fig: Figure) -> NDArray[np.int16]
 │   │   └── ink_of(frame: NDArray[np.int16], *, tolerance: int) -> NDArray[np.bool_]
+│   ├── render
+│   │   ├── ensure_rendered(fig: Figure) -> None
+│   │   └── one_render(fig: Figure) -> Iterator[None]
 │   ├── stacking
 │   │   ├── place_end_labels(...) -> ...
 │   │   └── stack_without_overlap(...) -> ...
@@ -327,7 +330,6 @@ ogviz
 │   │   ├── bracket_spans_px(ax: Axes) -> list[tuple[float, float, float]]
 │   │   ├── bracket_tops_px(ax: Axes) -> list[float]
 │   │   ├── drawn_artists(ax) -> list
-│   │   ├── ensure_rendered(fig: Figure) -> None
 │   │   ├── is_backdrop(artist) -> bool
 │   │   ├── is_excused(label, other) -> bool
 │   │   ├── knocked_out_over(label, other) -> bool

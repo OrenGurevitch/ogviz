@@ -68,3 +68,52 @@ def test_repairing_a_clean_figure_changes_nothing() -> None:
     fig.canvas.draw()
     assert repair(fig) == []
     plt.close(fig)
+
+
+def _threshold_panel(level: float):
+    """Bars reaching 2.0, and a tagged reference line at `level` drawn UNDER them."""
+    from ogviz.tags import mark
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    ax.bar([0, 1, 2], [1.0, 2.0, 1.5], zorder=3)
+    line = ax.axhline(level, color="#B3261E", zorder=1)
+    mark(line, "reference", True)
+    ax.set_ylim(0.0, 10.0)
+    fig.canvas.draw()
+    return fig, line
+
+
+def test_a_threshold_nothing_covers_is_left_alone_and_not_reported() -> None:
+    """A low z-order is not a defect: nothing reaches a threshold drawn above every bar.
+
+    The spine loop tested overlap and the reference-line loop did not, so this returned "raised a
+    reference line above the marks it is read against" while `buried_baselines` — correctly — said
+    the line was fine. The z-order change was harmless; a repair claiming to have fixed a figure
+    that was not broken is not, because that list is what a caller reads as the defect report.
+    """
+    from ogviz.qc.marks import buried_baselines
+    from ogviz.qc.repair import raise_buried_lines
+
+    fig, line = _threshold_panel(9.0)
+    before = line.get_zorder()
+
+    assert not [c for c in buried_baselines(fig) if "reference" in c], "the check sees nothing"
+    assert not [c for c in raise_buried_lines(fig) if "reference" in c], (
+        "so the repair says nothing"
+    )
+    assert line.get_zorder() == before, "and changes nothing"
+    plt.close(fig)
+
+
+def test_a_threshold_the_bars_run_through_is_still_raised() -> None:
+    """The other direction, so the overlap test cannot be satisfied by never firing."""
+    from ogviz.qc.marks import buried_baselines
+    from ogviz.qc.repair import raise_buried_lines
+
+    fig, line = _threshold_panel(1.2)
+    before = line.get_zorder()
+
+    assert [c for c in buried_baselines(fig) if "reference" in c], "the bars really do cover it"
+    assert [c for c in raise_buried_lines(fig) if "reference" in c]
+    assert line.get_zorder() > before, "and it comes forward"
+    plt.close(fig)

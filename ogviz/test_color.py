@@ -8,7 +8,7 @@ import pytest
 
 from ogviz.color import indistinguishable_series, separation, simulate
 from ogviz.panels.lines import series_colors
-from ogviz.theme import SERIES
+from ogviz.theme import LINE_SERIES, SERIES
 
 
 def test_red_and_green_converge_for_a_deuteranope() -> None:
@@ -59,11 +59,39 @@ def test_a_grey_is_unchanged_by_any_deficiency() -> None:
         assert seen == pytest.approx((0.5019, 0.5019, 0.5019), abs=0.02)
 
 
-@pytest.mark.parametrize("palette", [SERIES, series_colors(5)], ids=["theme", "lines"])
+@pytest.mark.parametrize("palette", [SERIES, LINE_SERIES], ids=["theme", "lines"])
 def test_the_shipped_palettes_survive_colour_vision_deficiency(palette) -> None:
-    """Both had a violet that collapsed onto their blue under deuteranopia, at 0.10 apart."""
+    """Both had a violet that collapsed onto their blue under deuteranopia, at 0.10 apart.
+
+    Over the WHOLE palette, not `series_colors(5)`, which is what this used to take. That call
+    could not exhibit the defect it was guarding: the palette had five colours and the helper
+    wrapped modulo its length, so five was the one count at which no colour could repeat.
+    """
     named = {f"[{index}]": color for index, color in enumerate(palette)}
     assert not indistinguishable_series(named)
+
+
+def test_no_two_series_are_handed_the_same_colour() -> None:
+    """`series_colors` indexed the palette modulo its length, so the sixth series repeated the
+    first.
+
+    The colour check cannot see this and is not going to: it reports pairs that separate for normal
+    vision and converge under a deficiency, and two IDENTICAL colours never separated. So the
+    palette helper could produce the defect and the palette checker would decline to mention it —
+    which is why the guarantee is asserted here, over every count a caller may ask for.
+    """
+    for count in range(1, len(LINE_SERIES) + 1):
+        chosen = series_colors(count)
+        assert len(chosen) == count
+        assert len(set(chosen)) == count, f"series_colors({count}) repeats a colour: {chosen}"
+
+
+def test_a_count_the_palette_cannot_serve_is_refused() -> None:
+    """Eight is a real ceiling, and wrapping past it drew two series as one."""
+    with pytest.raises(AssertionError, match="were asked for"):
+        series_colors(len(LINE_SERIES) + 1)
+    with pytest.raises(AssertionError, match="at least one"):
+        series_colors(0)
 
 
 def test_a_pair_that_is_already_close_is_not_reported() -> None:

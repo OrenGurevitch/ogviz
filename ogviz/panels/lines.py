@@ -31,7 +31,7 @@ from matplotlib.ticker import FuncFormatter, NullFormatter
 
 from ogviz.layout import hairline_grid, legend_pill
 from ogviz.require import require
-from ogviz.theme import GRID, INK, MUTED_INK
+from ogviz.theme import GRID, INK, LINE_SERIES, MUTED_INK
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -50,7 +50,18 @@ TICK_MARGIN = 1.18  # multiplicative pad beyond the outermost tick, on a log axi
 
 @dataclass(frozen=True)
 class Line:
-    """One series: its points, its colour, and the name that goes in the legend."""
+    """One series: its points, its colour, and the name that goes in the legend.
+
+    `x` and `y` are ARRAY-LIKE and coerced here, which is what the rest of this package's inputs
+    already do — `bars.Series` types its values `ArrayLike`, and `effect_heatmap` takes nested
+    lists. This one declared `NDArray` and meant it: `line_panel` read `line.x.shape`, so passing
+    the plain lists everyone passes matplotlib raised `AttributeError: 'list' object has no
+    attribute 'shape'` from inside a `require` call — an internal attribute error where the caller
+    should have met a message, which is the failure `require` exists to prevent.
+
+    Coerced in `__post_init__` rather than by the caller, because the frozen dataclass is the one
+    place that can guarantee every reader downstream sees an array.
+    """
 
     label: str
     x: NDArray[np.float64]
@@ -59,6 +70,12 @@ class Line:
     marker: str = "o"
     muted: bool = False  # a comparison series, drawn back so the others read forward
     order: int = field(default=0, compare=False)
+
+    def __post_init__(self) -> None:
+        for name in ("x", "y"):
+            # `object.__setattr__` because the dataclass is frozen, which is the documented way to
+            # normalise a field on a frozen instance.
+            object.__setattr__(self, name, np.asarray(getattr(self, name), dtype=float))
 
 
 def money_ticks(ax: Axes, positions: Sequence[float], *, decimals: int = 2) -> None:
@@ -218,10 +235,33 @@ def value_floor(lines: Sequence[Line], *, gap: float = FLOOR_GAP) -> float:
 
 
 def series_colors(count: int) -> tuple[str, ...]:
-    """The benchmark-chart order: warm lead, amber, blue, then a near-grey for a baseline."""
-    # The fourth was a violet that collapses onto the blue beside it under deuteranopia.
-    wheel = ("#E8552D", "#F0A800", "#2E7CE0", "#9B3B8F", "#14A97C")
-    return tuple(wheel[index % len(wheel)] for index in range(count))
+    """The first `count` colours of the line palette, in benchmark-chart order.
+
+    Warm lead, amber, blue, plum, teal, then a deep navy, an oxblood and a khaki —
+    `theme.LINE_SERIES`, which is where the palette lives now and where the note on how those last
+    three were chosen lives with it. This docstring used to describe "a near-grey for a baseline" as
+    the fourth, and there is no near-grey in the palette at all: the baseline colour is
+    `MUTED_SERIES` below, a different constant for a different job, so a reader picking a baseline
+    from that sentence got a saturated plum.
+
+    A count past the palette is REFUSED rather than wrapped. It used to index modulo the length, so
+    `series_colors(6)` handed the first and sixth series the same colour — two lines a reader takes
+    for one, in a figure that passes the whole gate, because `indistinguishable_series` skips pairs
+    that are already close for normal vision and two identical colours are the limit of that.
+
+    Eight is where it stops, and the ceiling is real rather than a shortage of effort: of 4320
+    candidate colours, the 1019 that stay distinct from all five originals under three simulated
+    deficiencies contain no new hue family at all. A ninth series wants explicit colours, or a
+    second panel.
+    """
+    require(count > 0, f"series_colors needs a count of at least one, got {count}")
+    require(
+        count <= len(LINE_SERIES),
+        f"the line palette has {len(LINE_SERIES)} distinct colours and {count} were asked for. "
+        "Past that they would repeat, and two series in one colour read as one series. Pass "
+        "explicit colours, or split the panel",
+    )
+    return LINE_SERIES[:count]
 
 
 # The colour for a `Line(muted=True)`. Named rather than left as `GRID` at the call site, because
