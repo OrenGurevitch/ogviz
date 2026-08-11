@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
-def _reproducible_metadata(path: Path) -> dict[str, None]:
+def reproducible_metadata(path: Path) -> dict[str, None]:
     """Drop the write date, so a re-render of an unchanged figure produces an unchanged file.
 
     Two things in a matplotlib SVG change on every run: the `dc:date` stamp, and the random ids
@@ -33,6 +33,12 @@ def _reproducible_metadata(path: Path) -> dict[str, None]:
     figure". A generated artifact that cannot be diffed cannot be reviewed.
 
     PNG takes the same treatment through its own key.
+
+    PUBLIC because `save` is not the only way a figure gets written. A caller with a reason to use
+    `fig.savefig` directly — a before/after where one half is meant to fail the gate, most obviously
+    — still wants the file to be diffable, and the alternative is that they copy the two key names
+    and go stale when a third format needs one. This example's own gallery figure was committed with
+    a live date stamp for exactly that reason, and churned on every render.
     """
     return {"Date": None} if path.suffix == ".svg" else {"Software": None}
 
@@ -94,7 +100,7 @@ def save(
                 bbox_inches="tight" if crop else None,
                 facecolor=canvas,
                 dpi=dpi,
-                metadata=_reproducible_metadata(path),
+                metadata=reproducible_metadata(path),
             )
     if close:
         plt.close(fig)

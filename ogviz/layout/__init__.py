@@ -56,7 +56,7 @@ from ogviz.layout.panels import (
 )
 from ogviz.layout.stacking import place_end_labels, stack_without_overlap
 from ogviz.layout.ticks import auto_decimals, format_value, round_ticks, value_ticks
-from ogviz.layout.write import save
+from ogviz.layout.write import reproducible_metadata, save
 
 __all__ = [
     "Margins",
@@ -86,6 +86,7 @@ __all__ = [
     "pill_frame",
     "place_end_labels",
     "point_offsets",
+    "reproducible_metadata",
     "required_margins",
     "room_below",
     "round_ticks",

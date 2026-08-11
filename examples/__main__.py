@@ -84,6 +84,7 @@ from ogviz import (
     line_panel,
     page_color,
     reference_line,
+    reproducible_metadata,
     save,
     series_colors,
     slopegraph,
@@ -572,8 +573,13 @@ def the_gate() -> None:
     )
     fig.tight_layout(rect=(0.0, 0.0, 1.0, header_bottom))
     _assert_shows_the_defect(build)
-    fig.savefig(OUT / "13_the_gate.png", dpi=200)
-    fig.savefig(OUT / "13_the_gate.svg")
+    # `reproducible_metadata`, because `save` is what usually drops the write date and this is the
+    # one figure that does not go through it. Without it the committed SVG carries a live timestamp
+    # and changes on every render, which is precisely the un-diffable gallery that helper exists to
+    # prevent — caught here by `git status` after a no-op re-render.
+    for suffix, kwargs in ((".png", {"dpi": 200}), (".svg", {})):
+        path = OUT / f"13_the_gate{suffix}"
+        fig.savefig(path, metadata=reproducible_metadata(path), **kwargs)
     plt.close(fig)
 
 

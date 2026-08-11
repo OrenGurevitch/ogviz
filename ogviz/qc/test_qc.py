@@ -565,3 +565,24 @@ def test_a_clipped_line_complaint_says_what_actually_fixes_it() -> None:
     (complaint,) = clipped_artists(fig)
     assert "clipping it does not change this" in complaint
     assert "shorten the data or raise the limit" in complaint
+
+
+def test_every_direct_savefig_in_the_gallery_drops_the_date() -> None:
+    """A committed figure that changes on every render cannot be reviewed.
+
+    `save` strips the write date through `reproducible_metadata`; `fig.savefig` does not, and the
+    gallery has one figure that must bypass `save` because half of it is meant to fail the gate.
+    That figure was committed with a live `dc:date` and churned on every build — a one-line diff
+    on a binary-ish file, which is exactly the noise the helper exists to remove.
+
+    Asserted against the SOURCE rather than by rendering, so it also catches the next example that
+    reaches for `savefig` without knowing why the first one had to.
+    """
+    import re
+    from pathlib import Path
+
+    source = (Path(__file__).parent.parent.parent / "examples" / "__main__.py").read_text()
+    calls = re.findall(r"\.savefig\((.*?)\)\n", source, re.S)
+    assert calls, "the premise: the gallery still has a direct savefig to check"
+    bare = [call for call in calls if "metadata=" not in call]
+    assert not bare, f"savefig without reproducible metadata: {bare}"
