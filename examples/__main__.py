@@ -24,7 +24,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, MaxNLocator, NullFormatter
+from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, NullFormatter
 
 from examples.data import (
     ARM_LABELS,
@@ -86,7 +86,6 @@ from ogviz import (
     reference_line,
     save,
     series_colors,
-    share_value_limits,
     slopegraph,
     spectrogram,
     split_violins,
@@ -758,22 +757,29 @@ def controlled_comparison() -> None:
 
 
 def violin_grid() -> None:
-    """One violin panel per region, on one shared scale.
+    """One violin panel per region, EACH ON ITS OWN SCALE — and the figure says so.
 
-    The composition case: four panels have to be comparable to each other, which means one value
-    range across all of them and the group labels stated once rather than under every panel.
+    This grid used to share one value range across all four panels. Measured with
+    `layout.density.panel_emptiness`, that left the two quiet nations 39% and 41% empty at the top:
+    the shared limit has to contain every panel's drawn ink, and one panel's three-bracket stack
+    reaches far above data the others never approach. Roughly a third of that emptiness was bracket
+    headroom only one panel used; the rest was the honest cost of one scale.
+
+    THE COST OF FITTING EACH PANEL IS THAT THE PANELS NO LONGER COMPARE. Four violins the same size
+    on the page now span different ranges, and a reader who compares their shapes without reading
+    the ticks gets the wrong answer. That is not a thing a figure may leave implicit, so the
+    subtitle states it — the same move `controlled_comparison` makes when one of its bars is not
+    comparable with the rest.
+
+    `share_value_limits` is the other answer and is the right one whenever the panels are meant to
+    be read against each other. It is no longer exercised by any example; its tests still cover it.
     """
     regions = bending_by_nation()
     subject = identity_colors(COHORT)  # one colour per bender, the same in all four panels
 
-    # NOT sharey: with a shared axis every panel's own fit writes to the same limits, so the last
-    # one drawn wins and a panel whose bracket stack is taller gets clipped by a neighbour. Each
-    # panel fits itself, then `share_value_limits` puts them on the union of those answers.
-    fig, axes = plt.subplots(2, 2, figsize=(13.0, 12.0))
-    # Stacked panels share a boundary, so the bottom tick of one row sits a few pixels from the top
-    # tick of the row below and the two read as one number. Pruning the end ticks is the same fix
-    # the estimate strips use, and costs nothing here: both extremes fall in the padding.
-    axes[0, 0].yaxis.set_major_locator(MaxNLocator(nbins=6, prune="both"))
+    # NOT sharey either: a shared matplotlib axis makes the last panel drawn win, so a panel whose
+    # bracket stack is taller gets clipped by a neighbour. Each panel fits itself and keeps it.
+    fig, axes = plt.subplots(2, 2, figsize=(13.0, 10.5))
     for ax, name in zip(axes.flat, NATIONS, strict=True):
         levels, tests = regions[name]
         seat = {level: float(index) for index, level in enumerate(BENDING_LEVELS)}
@@ -800,22 +806,23 @@ def violin_grid() -> None:
             # weight the twelve numbers become the loudest ink on a figure about twelve shapes.
             mean_fontsize=15,
             mean_weight="normal",
-            # PINNED, on a shared scale. `printed_means` picks its decimals from the largest value
-            # in ITS OWN row, which is right for one panel and wrong for a grid: the four rows came
-            # out as 0.32 / 0.133 / 0.011 / 0.0120, four spellings of one quantity, and the Fire
-            # Nation's noise-level row read as the most precise measurement on the figure.
+            # PINNED across the panels even though the scales are not. `printed_means` picks its
+            # decimals from the largest value in ITS OWN row, and the four rows came out as
+            # 0.32 / 0.133 / 0.011 / 0.0120 — four spellings of one quantity, with the Fire Nation's
+            # noise-level row reading as the most precise measurement on the figure. The scales may
+            # differ; how a number is written is still one decision for the whole grid.
             mean_decimals=2,
         )
         ax.set_title(name, fontsize=17, fontweight="bold", pad=14)
-    # Each panel measured the headroom its own bracket needs; the shared scale is the union of
-    # those answers rather than a number picked in advance.
-    share_value_limits(axes.flat)
     for ax in axes[:, 0]:
         ax.set_ylabel("Bending strength (arbitrary)", fontsize=16, fontweight="bold", labelpad=8)
     header_bottom = titled(
         fig,
         "Three levels of training, four nations",
-        subtitle="one cohort at each level, on one scale; a bracket is drawn only where p < 0.05",
+        subtitle=(
+            "each panel on its own scale \u2014 the panels do not compare; "
+            "brackets only where p < 0.05"
+        ),
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "03_violin_grid")

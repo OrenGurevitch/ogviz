@@ -52,7 +52,7 @@ which reads as an accident rather than a comparison.
 <table>
 <tr>
 <td width="50%"><img src="examples/out/01_two_group_violin.png" width="100%"><br><sub><code>group_violins</code> — the whole panel in one call</sub></td>
-<td width="50%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub><code>share_value_limits</code> — one scale, dots coloured by subject</sub></td>
+<td width="50%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub>four panels, each on its own scale — dots coloured by subject</sub></td>
 </tr>
 <tr>
 <td width="50%" rowspan="2"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub>a condition grid — six measures, each keeping its own scale</sub></td>
