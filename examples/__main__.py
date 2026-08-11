@@ -82,7 +82,6 @@ from ogviz import (
     label_rows,
     legend_pill,
     line_panel,
-    multiplicity_ladder,
     page_color,
     reference_line,
     save,
@@ -504,37 +503,99 @@ def coupling_triangle() -> None:
     render(fig, "12_coupling_panels")
 
 
-def multiplicity_ladder_example() -> None:
-    """Fifteen tests, eight of them under 0.05, and what a correction leaves of that.
+def the_gate() -> None:
+    """The one claim the README leads on, and the only figure here that is not saved by `save`.
 
-    The panel a table of stars cannot replace: with fifteen independent tests at 0.05, the chance of
-    at least one false positive is about 54%, so eight stars is not eight findings. Drawing the
-    Benjamini-Hochberg ramp shows WHY its cutoff falls where it does: the rule takes the largest
-    rank whose p clears the ramp, so points above the line at smaller ranks are declared too.
+    A bar panel with three ordinary defects — the value labels planted on the bars, a threshold
+    label lying across its own rule — beside the same panel after `repair` has been over it. The
+    complaint counts in the subtitle come from `audit`, so they cannot drift from what is drawn.
+
+    THE LEFT PANEL IS SUPPOSED TO FAIL, which is why this uses `fig.savefig` where every other
+    example uses `save`. `save` runs the gate and refuses, correctly: it cannot know that half the
+    figure is an exhibit. It is the one bypass in the gallery and it is asserted rather than
+    trusted — `_assert_shows_the_defect` below checks the left panel is still refused on its own,
+    so this cannot quietly become a picture of two clean panels.
+
+    BOTH panels are built broken and `repair` is run on the whole figure; the left panel's labels
+    are then put back where they started. Repairing one axes of a two-axes figure is not a thing
+    `repair` offers — it takes a figure — and building the right panel "already correct" by hand
+    would make the caption a claim rather than a demonstration. Here the right panel's labels are
+    where `repair` actually moved them.
     """
-    from examples.data import tournament_p_values
+    from ogviz.qc import audit
+    from ogviz.qc.repair import repair
 
-    names, p_values = tournament_p_values()
-    fig, ax = plt.subplots(figsize=(10.5, 6.6))
-    # LOG, or the figure shows everything except its own subject. Every threshold here lives below
-    # 0.05, so on a linear axis the whole decision happens in the bottom twentieth and the other 95%
-    # is given over to p-values nobody is deciding about — the Bonferroni line and the BH ramp's
-    # first rung landed 0.4 px apart, which is one line, not two rules being compared.
-    declared = multiplicity_ladder(ax, p_values, labels=names, log=True)
-    loose = sum(p < 0.05 for p in p_values)
+    values = np.array([0.34, 0.47, 0.58, 0.64])
+    target = 0.52
+
+    def build(ax) -> None:
+        ax.bar(range(len(values)), values, color=series_colors(3)[0], width=0.62, zorder=2)
+        ax.axhline(target, color=MUTED_INK, lw=2.0, zorder=3)
+        for index, value in enumerate(values):
+            ax.text(
+                index,
+                value * 0.55,  # planted ON the bar, which is the defect
+                f"{value:.2f}",
+                ha="center",
+                va="center",
+                fontsize=15,
+                fontweight="bold",
+                color=INK,
+                zorder=4,
+            )
+        ax.text(1.5, target, "target", ha="center", va="center", fontsize=14, color=MUTED_INK)
+        ax.set_xticks(range(len(values)))
+        ax.set_xticklabels(list(ARM_LABELS), fontsize=13)
+        ax.set_ylim(0.0, 0.78)
+        hairline_grid(ax, axis="y")
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.2, 5.6))
+    for ax in axes:
+        build(ax)
+    fig.canvas.draw()
+    before = audit(fig)
+    as_drawn = [(label, label.get_position()) for label in axes[0].texts]
+    resolved = repair(fig)
+    for label, where in as_drawn:  # the left panel goes back to being the "before"
+        label.set_position(where)
+
+    axes[0].set_title("as drawn", fontsize=17, fontweight="bold", pad=12)
+    axes[1].set_title("after repair()", fontsize=17, fontweight="bold", pad=12)
     header_bottom = titled(
         fig,
-        # COMPUTED, not written. This said "three findings" beside a subtitle that computed two,
-        # because the title was typed once against data that has since been reseeded and a sentence
-        # cannot be re-checked by anything. The one number a reader takes away was the wrong one.
-        f"{loose} stars, {declared} finding{'s' if declared != 1 else ''}",
+        "The gate reads the pixels, then moves the ink",
         subtitle=(
-            f"{loose} of {len(p_values)} invented trials fall under "
-            f"0.05; Benjamini-Hochberg declares {declared}"
+            f"{len(before) // 2} complaints about the panel on the left; "
+            f"repair() resolved {len(resolved) // 2}"
         ),
     )
     fig.tight_layout(rect=(0.0, 0.0, 1.0, header_bottom))
-    render(fig, "13_multiplicity_ladder")
+    _assert_shows_the_defect(build)
+    fig.savefig(OUT / "13_the_gate.png", dpi=200)
+    fig.savefig(OUT / "13_the_gate.svg")
+    plt.close(fig)
+
+
+def _assert_shows_the_defect(build) -> None:
+    """The premise: a panel built by `build` really is refused on its own.
+
+    Without this the figure would keep rendering after a change that made the "before" panel clean —
+    two identical panels, a subtitle counting zero, and nothing to see. The house style is autouse
+    in the tests and moves layout, so a figure written to be broken is exactly the thing that
+    quietly stops being broken.
+    """
+    from ogviz.qc import audit
+
+    probe, ax = plt.subplots(figsize=(6.6, 5.4))
+    build(ax)
+    probe.canvas.draw()
+    complaints = audit(probe)
+    plt.close(probe)
+    if not complaints:
+        message = "the 'as drawn' panel no longer fails the gate — the figure shows nothing"
+        raise AssertionError(message)
 
 
 def effect_matrix() -> None:
@@ -967,7 +1028,7 @@ EXAMPLES = (
     effort_curves,
     coupling_triangle,
     # What a family of tests leaves once it is treated as a family.
-    multiplicity_ladder_example,
+    the_gate,
     # Matrices: many effects at once, then the same shape set as a table.
     effect_matrix,
     # A sequence of stages, where the shape of each series is the comparison.

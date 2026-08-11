@@ -88,23 +88,18 @@ which reads as an accident rather than a comparison.
 </tr>
 </table>
 
-### Curves and coupling
+### Curves, coupling and change
 
 <table>
 <tr>
 <td width="50%"><img src="examples/out/11_effort_curves.png" width="100%"><br><sub><code>line_panel</code> — log axis, <code>broken_zero</code></sub></td>
 <td width="50%"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><code>coupling_panels</code> — scatters over forest plots</sub></td>
 </tr>
-</table>
-
-### Estimates and change
-
-<table>
 <tr>
-<td width="50%"><img src="examples/out/13_multiplicity_ladder.png" width="100%"><br><sub><code>multiplicity_ladder</code> — Bonferroni and BH</sub></td>
-<td width="50%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><code>slopegraph</code> — even stages, spread as a band</sub></td>
+<td colspan="2"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><code>slopegraph</code> — even stages, spread as a band; full width because the end labels live outside the panel</sub></td>
 </tr>
 </table>
+
 
 ### Matrices and tables
 
@@ -118,6 +113,11 @@ which reads as an accident rather than a comparison.
 The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, which works standalone.
 
 ## The QC gate
+
+![](examples/out/13_the_gate.png)
+
+<sub>the same panel as <code>audit</code> finds it and as <code>repair</code> leaves it — the one figure here
+that <code>save</code> refuses, because half of it is an exhibit</sub>
 
 `save` runs it. `guard()` extends it to every `fig.savefig`, whoever called it; `OGVIZ_GUARD=1` does
 the same with no code change, for CI and paper builds.
@@ -437,6 +437,42 @@ ogviz
 ```
 
 </details>
+
+## Credit
+
+Where an idea in here came from somebody else. The first group is quoted in full because each one was
+checked against the reference library on this machine; the second is named without a volume, page or
+DOI, because those are not in that library and a citation nobody has verified is worse than a name.
+
+**Checked**
+
+- Benjamini, Y. & Hochberg, Y. (1995). "Controlling the False Discovery Rate: A Practical and
+  Powerful Approach to Multiple Testing." *Journal of the Royal Statistical Society: Series B*
+  57(1), 289–300. doi:10.1111/j.2517-6161.1995.tb02031.x — the BH ramp in `panels/multiplicity.py`.
+- Task Force of the European Society of Cardiology and the North American Society of Pacing and
+  Electrophysiology (1996). "Heart rate variability: standards of measurement, physiological
+  interpretation and clinical use." *Circulation* 93(5), 1043–1065 — the LF and HF band edges the
+  power spectrum example shades.
+- Donoghue, T. et al. (2020). "Parameterizing neural power spectra into periodic and aperiodic
+  components." *Nature Neuroscience* 23(12), 1655–1665. doi:10.1038/s41593-020-00744-x — the kneed
+  aperiodic form the example spectra are built on, rather than a straight power law.
+- Julien, C. (2020). "An update on the enigma of Mayer waves." *Cardiovascular Research* 116(14),
+  e210–e211. doi:10.1093/cvr/cvz327 — the peak near 0.1 Hz in that same figure.
+
+**Named, unverified here**
+
+- **Viénot, Brettel and Mollon** — `ogviz/color.py` implements their dichromat simulation.
+- **Crameri, Shephard and Heron** — the scientific colour maps, and the reference work when a figure
+  must be colour-vision safe in print. `panels/spectrogram.py` carries the citation as recorded there.
+- **McNutt and Kindlmann**, **Hopkins et al.** (VisuaLint), **Chen et al.** — the visualization
+  linter, the idea this package's gate is one implementation of. See [The QC gate](#the-qc-gate).
+- **Hintze and Nelson** — the violin plot, as a box plot and a density trace in one mark.
+- **Tufte** — the slopegraph, and the data-ink argument the whole house style rests on.
+
+What this package deliberately does NOT implement: colour difference is measured in sRGB here, not
+with **CIEDE2000**, and the docstring in `ogviz/color.py` says so. For an exact answer use
+`colorspacious` or `daltonlens`; for the colour maps, `cmcrameri`. The module tree above is
+generated with [pypatree](https://github.com/yberreby/pypatree).
 
 ## License
 
