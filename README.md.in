@@ -42,46 +42,77 @@ the measurement behind it. Requires matplotlib ≥ 3.10.
 `uv run just figures` renders these from invented data with fixed seeds. The source,
 `examples/__main__.py`, is the specification rather than an illustration.
 
-![](examples/out/01_two_group_violin.png)
+They are grouped by what they are FOR, and paired by shape within each group: a 0.85-ratio grid
+beside a 1.98-ratio strip in equal columns makes one cell over twice the height of its neighbour,
+which reads as an accident rather than a comparison.
+
+### Distributions
 
 <table>
 <tr>
-<td width="50%"><img src="examples/out/02_display_units.png" width="100%"><br><sub><code>display_scale</code> — held in ppm, drawn in ppb</sub></td>
+<td width="50%"><img src="examples/out/01_two_group_violin.png" width="100%"><br><sub><code>group_violins</code> — the whole panel in one call</sub></td>
 <td width="50%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub><code>share_value_limits</code> — one scale, dots coloured by subject</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub>a condition grid — six measures, each keeping its own scale</sub></td>
-<td width="50%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><code>split_violins</code> — one quantity measured two ways</sub></td>
+<td width="50%" rowspan="2"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub>a condition grid — six measures, each keeping its own scale</sub></td>
+<td width="50%"><img src="examples/out/02_display_units.png" width="100%"><br><sub><code>display_scale</code> — held in ppm, drawn in ppb</sub></td>
 </tr>
 <tr>
+<td width="50%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><code>split_violins</code> — one quantity measured two ways</sub></td>
+</tr>
+</table>
+
+### Spectra
+
+<table>
+<tr>
 <td width="50%"><img src="examples/out/06_power_spectrum.png" width="100%"><br><sub>a power spectrum — log-log, named bands, a 95% CI</sub></td>
+<td width="50%"><img src="examples/out/18_stft_spectrogram.png" width="100%"><br><sub><code>spectrogram</code> — an STFT, with the scale that makes it a measurement</sub></td>
+</tr>
+</table>
+
+### Bars
+
+<table>
+<tr>
 <td width="50%"><img src="examples/out/07_bars_with_reference.png" width="100%"><br><sub><code>bar_panel</code> — asymmetric CI, a threshold over the bars</sub></td>
+<td width="50%"><img src="examples/out/17_controlled_comparison.png" width="100%"><br><sub>one bar that is not comparable, said on the axis</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="examples/out/08_grouped_bars.png" width="100%"><br><sub>two series, sign-aware labels</sub></td>
 <td width="50%"><img src="examples/out/09_headline_bars.png" width="100%"><br><sub><code>rounded</code> and <code>highlight</code></sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><code>orientation="horizontal"</code>, for long names</sub></td>
-<td width="50%"><img src="examples/out/11_effort_curves.png" width="100%"><br><sub><code>line_panel</code> — log axis, <code>broken_zero</code></sub></td>
-</tr>
-<tr>
-<td width="50%"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><code>coupling_panels</code> — scatters over forest plots</sub></td>
-<td width="50%"><img src="examples/out/13_multiplicity_ladder.png" width="100%"><br><sub><code>multiplicity_ladder</code> — Bonferroni and BH</sub></td>
-</tr>
-<tr>
-<td width="50%"><img src="examples/out/14_effect_heatmap.png" width="100%"><br><sub><code>effect_heatmap</code> — diverging, stars, missing cells</sub></td>
-<td width="50%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><code>slopegraph</code> — even stages, spread as a band</sub></td>
-</tr>
-<tr>
-<td width="50%"><img src="examples/out/16_comparison_table.png" width="100%"><br><sub><code>table_panel</code> — highlighted row or column, cell tone</sub></td>
-<td width="50%"><img src="examples/out/17_controlled_comparison.png" width="100%"><br><sub>one bar that is not comparable, said on the axis</sub></td>
+<td colspan="2"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><code>orientation="horizontal"</code>, for long names — full width, because at 2.77:1 a half column leaves a sliver</sub></td>
 </tr>
 </table>
 
-![](examples/out/18_stft_spectrogram.png)
+### Curves and coupling
 
-<sub><code>spectrogram</code> — a Short-Time Fourier Transform, with the scale that makes it a measurement</sub>
+<table>
+<tr>
+<td width="50%"><img src="examples/out/11_effort_curves.png" width="100%"><br><sub><code>line_panel</code> — log axis, <code>broken_zero</code></sub></td>
+<td width="50%"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><code>coupling_panels</code> — scatters over forest plots</sub></td>
+</tr>
+</table>
+
+### Estimates and change
+
+<table>
+<tr>
+<td width="50%"><img src="examples/out/13_multiplicity_ladder.png" width="100%"><br><sub><code>multiplicity_ladder</code> — Bonferroni and BH</sub></td>
+<td width="50%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><code>slopegraph</code> — even stages, spread as a band</sub></td>
+</tr>
+</table>
+
+### Matrices and tables
+
+<table>
+<tr>
+<td width="50%"><img src="examples/out/14_effect_heatmap.png" width="100%"><br><sub><code>effect_heatmap</code> — diverging, stars, missing cells</sub></td>
+<td width="50%"><img src="examples/out/16_comparison_table.png" width="100%"><br><sub><code>table_panel</code> — highlighted row or column, cell tone</sub></td>
+</tr>
+</table>
 
 The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, which works standalone.
 
