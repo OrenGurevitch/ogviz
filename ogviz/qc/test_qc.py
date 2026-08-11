@@ -23,9 +23,9 @@ pytestmark = pytest.mark.usefixtures("pinned_font")
 def _three_groups(seed: int = 9):
     rng = np.random.default_rng(seed)
     palette = ("#2E7CE0", "#EFA607", "#14A97C")
-    # INK for the edge, matching the `stacked_brackets` example this mirrors — it moved off a stray
-    # near-black on 2026-08-07 and this fixture stayed behind, so the two stopped feeding the panel
-    # the same colours. Harmless in itself; the point of a mirror is that it mirrors.
+    # INK for the edge. This mirrored the three-group example that stood at gallery slot 06 until a
+    # power spectrum replaced it; the fixture is kept because the SHAPE is what it tests — three
+    # groups and a full bracket stack — and that shape now lives in the two condition grids.
     return [(float(i), rng.normal(i * 0.8, 0.9, 30), c, INK) for i, c in enumerate(palette)]
 
 
@@ -358,10 +358,10 @@ def test_the_gallery_build_pins_its_backend() -> None:
     """The committed figures are a reproducibility claim, and a backend is part of the render.
 
     On a Mac with a display matplotlib picks `macosx`, which lays text out differently from `Agg`:
-    `06_stacked_brackets` came out with seven y-ticks under one and four under the other, from
-    identical code and data, because the text metrics moved the axis limits enough to change what
-    the locator chose. Every test runs under `Agg`, so an unpinned gallery is rendered by something
-    the suite never exercises and cannot be reproduced headlessly.
+    the violin panel that stood at gallery slot 06 came out with seven y-ticks under one and four
+    under the other, from identical code and data, because the text metrics moved the axis limits
+    enough to change what the locator chose. Every test runs under `Agg`, so an unpinned gallery is
+    rendered by something the suite never exercises and cannot be reproduced headlessly.
     """
     import re
     from pathlib import Path

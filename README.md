@@ -55,7 +55,7 @@ the measurement behind it. Requires matplotlib ≥ 3.10.
 <td width="50%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><code>split_violins</code> — one quantity measured two ways</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="examples/out/06_stacked_brackets.png" width="100%"><br><sub><code>bracket_stack</code> — stars anchored by their ink</sub></td>
+<td width="50%"><img src="examples/out/06_power_spectrum.png" width="100%"><br><sub>a power spectrum — log-log, named bands, a 95% CI</sub></td>
 <td width="50%"><img src="examples/out/07_bars_with_reference.png" width="100%"><br><sub><code>bar_panel</code> — asymmetric CI, a threshold over the bars</sub></td>
 </tr>
 <tr>

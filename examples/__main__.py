@@ -14,9 +14,9 @@ import matplotlib
 # Pinned BEFORE pyplot is imported, and this is not a formality. The committed gallery is a
 # reproducibility claim — the whole point of `svg.hashsalt` and of dropping the date stamp — and a
 # backend is part of what a figure is rendered by. On a Mac with a display, matplotlib picks
-# `macosx`, which lays text out differently from `Agg`: `06_stacked_brackets` came out with SEVEN
-# y-ticks under `macosx` and FOUR under `Agg`, from identical code and identical data, because the
-# text metrics moved the axis limits enough to change what the locator chose.
+# `macosx`, which lays text out differently from `Agg`: the violin panel that stood at slot 06 came
+# out with SEVEN y-ticks under `macosx` and FOUR under `Agg`, from identical code and identical
+# data, because the text metrics moved the axis limits enough to change what the locator chose.
 #
 # Every test runs under `Agg`. So without this line the gallery was rendered by something the suite
 # never exercises, and could not be reproduced on a headless machine or in CI.
@@ -24,7 +24,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, MaxNLocator, NullFormatter
 
 from examples.data import (
     ARM_LABELS,
@@ -38,6 +38,7 @@ from examples.data import (
     FORMATIONS,
     LEAGUE_AVERAGE_XG,
     NATIONS,
+    SPECTRAL_BANDS,
     STAGES_OF_THE_ROAD,
     TREATED,
     TREATED_EDGE,
@@ -49,6 +50,7 @@ from examples.data import (
     effort_ladders,
     expected_goals,
     headline_arms,
+    heart_rate_spectra,
     journey_measures,
     large_magnitudes,
     paired_sensors,
@@ -57,6 +59,7 @@ from examples.data import (
 )
 from ogviz import (
     INK,
+    MUTED_INK,
     Cell,
     Cloud,
     Estimate,
@@ -74,6 +77,7 @@ from ogviz import (
     error_bars,
     fit_under_header,
     group_violins,
+    hairline_grid,
     identity_colors,
     label_rows,
     legend_pill,
@@ -96,7 +100,9 @@ from ogviz import (
     value_ticks,
     zero_baseline,
 )
+from ogviz.layout.ticks import typeset
 from ogviz.panels.lines import MUTED_SERIES
+from ogviz.tags import mark
 
 OUT = Path(__file__).parent / "out"
 
@@ -181,34 +187,101 @@ def display_units() -> None:
     render(fig, "02_display_units")
 
 
-def stacked_brackets() -> None:
-    """Three comparisons: each star sits against its own line, not midway to the next."""
-    rng = np.random.default_rng(9)
-    palette = ["#2E7CE0", "#EFA607", "#14A97C"]
-    # The fills are the CALLER's, which is the contract — but the shared edge is the house ink
-    # rather than the `"#333333"` that stood here: a fourth near-black in a package whose README
-    # opens on a project that shipped two of them in one paper.
-    groups = [
-        (float(i), rng.normal(i * 0.8, 0.9, 30), colour, INK) for i, colour in enumerate(palette)
-    ]
-    fig, ax = plt.subplots(figsize=(8.0, 8.0))
-    group_violins(
-        ax,
-        groups,
-        comparisons=[(0.0, 1.0, 0.03), (1.0, 2.0, 0.006), (0.0, 2.0, 0.0002)],
-    )
-    ax.set_ylabel("Measurement (units)", fontsize=17, fontweight="bold", labelpad=8)
-    ax.set_xticks([0, 1, 2])
-    ax.set_xticklabels(["low", "mid", "high"], fontsize=15)
-    ax.tick_params(axis="x", length=0)
-    baseline(ax)
+def power_spectrum() -> None:
+    """A power spectral density: three conditions on log-log, with a 95% CI around each.
+
+    The companion to the spectrogram at the end of the gallery — the same measurement with time
+    integrated out, which is the form most spectra are actually reported in.
+
+    THE SERIES PALETTE, NOT THE CONDITION TINTS, and the difference is the whole colour argument in
+    one figure. A condition grid may keep a pair that collapses under a deficiency, because every
+    violin sits over its own labelled tick and nothing is identified by colour alone. This panel
+    names its conditions in a LEGEND, so colour is the only key a reader has — and the gate refused
+    the condition tints here for exactly that reason. `series_colors` is the palette that was
+    checked with `indistinguishable_series` for this case.
+
+    The ribbon is a 95% CI OF THE MEAN, and the subtitle says so because the alternative is a
+    different claim, not a different style: a 95% interval across subjects is wider by the root of
+    n — 4.9 times, here — and a reader who takes one for the other draws the opposite conclusion
+    about whether the conditions differ. Computed in log power, since the spectra are log-normal
+    and an interval built on the raw values would run negative at the quiet end.
+    """
+    frequencies, spectra = heart_rate_spectra()
+    palette = series_colors(3)
+    fig, ax = plt.subplots(figsize=(11.5, 6.8))
+
+    for label, low, high, tone in SPECTRAL_BANDS:
+        # Tagged as a backdrop, or the gate reads a band's own name as a label sitting on a mark.
+        band = ax.axvspan(low, high, color=tone, alpha=0.085, lw=0, zorder=0)
+        mark(band, "backdrop")
+        edge = ax.axvline(low, color=tone, alpha=0.35, lw=1.0, zorder=1)
+        mark(edge, "backdrop")
+        ax.text(
+            np.sqrt(low * high),  # the midpoint of a log axis is the GEOMETRIC mean
+            0.965,
+            label,
+            transform=ax.get_xaxis_transform(),
+            ha="center",
+            va="top",
+            fontsize=15,
+            fontweight="bold",
+            color=tone,
+        )
+
+    for (label, rows), color in zip(spectra.items(), palette, strict=True):
+        logs = np.log(rows)
+        middle = np.exp(logs.mean(axis=0))
+        half = 2.069 * logs.std(axis=0, ddof=1) / np.sqrt(rows.shape[0])  # t, 23 d.f.
+        # UNDER the frame: a ribbon that reaches the left limit is drawn over the spine, and the
+        # gate reports a buried axis. The line stays above it.
+        ax.fill_between(
+            frequencies,
+            middle * np.exp(-half),
+            middle * np.exp(half),
+            color=color,
+            alpha=0.25,
+            lw=0,
+            zorder=2,
+        )
+        ax.plot(frequencies, middle, color=color, lw=2.8, label=label, zorder=4)
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(frequencies[0], frequencies[-1])
+
+    # THE AXIS HAS TO LOOK LOGARITHMIC, and two decades of bare powers of ten do not: with only
+    # 10⁻² and 10⁻¹ labelled, the reader has two marks and no evidence of what happens between
+    # them. So the decade ticks are joined by the 2x and 5x steps, LABELLED — 0.005, 0.01, 0.02,
+    # 0.05, 0.1, 0.2, 0.5 — whose visibly UNEVEN spacing is the log structure made legible, and by
+    # unlabelled minor ticks at every remaining multiple, which say the same thing at finer grain.
+    # Plain decimals rather than scientific, because 5e-3 beside 10⁻² asks the reader to compare
+    # a mantissa and an exponent at once. The axis label carries the word as well: a figure should
+    # not depend on the reader inferring its scale from the tick spacing alone.
+    decades_and_halves = (0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5)
+    ax.xaxis.set_major_locator(FixedLocator(decades_and_halves))
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _pos: typeset(f"{value:g}")))
+    ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=tuple(np.arange(2, 10) * 0.1)))
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    # The value axis is logarithmic too, and saying so on one axis and not the other reads as a
+    # claim that they differ. Marks only — labelling both sets would crowd a panel this size.
+    ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=tuple(np.arange(2, 10) * 0.1)))
+    ax.yaxis.set_minor_formatter(NullFormatter())
+    ax.tick_params(axis="both", which="minor", length=3.5, width=0.9, color=MUTED_INK)
+    ax.tick_params(axis="both", which="major", length=6.0, width=1.2)
+
+    ax.set_xlabel("Frequency (Hz), log scale", fontsize=16, fontweight="bold", labelpad=8)
+    ax.set_ylabel("Power (ms² per Hz), log scale", fontsize=16, fontweight="bold", labelpad=8)
+    hairline_grid(ax, axis="y")
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    legend_pill(ax, loc="lower left", fontsize=14)
     header_bottom = titled(
         fig,
-        "Stacked brackets",
-        subtitle="each star is anchored by its ink, not its box",
+        "Where the power sits",
+        subtitle="invented spectra, 24 subjects; the ribbon is a 95% CI of the geometric mean",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
-    render(fig, "06_stacked_brackets")
+    render(fig, "06_power_spectrum")
 
 
 def grouped_bars() -> None:
@@ -850,7 +923,7 @@ EXAMPLES = (
     violin_grid,
     violin_grid_tall,
     split_violin_pair,
-    stacked_brackets,
+    power_spectrum,
     # Bars: one series, then two, then a decorated one, then the other orientation.
     bars_with_reference,
     grouped_bars,

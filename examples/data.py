@@ -35,6 +35,57 @@ CONTROL_EDGE = "#B97C10"
 # the finding applies in full.
 CONDITION_TINTS = ("#E8B33C", "#5B9BD5", "#3FA372")
 
+# The standard heart-rate-variability bands, and the tone each is shaded in. VLF is deliberately
+# NOT shaded: three adjacent regions read as one grey block, and it is the band everyone reports
+# and nobody interprets.
+SPECTRAL_BANDS = (("LF", 0.04, 0.15, "#B9860B"), ("HF", 0.15, 0.40, "#2E7D5B"))
+SPECTRUM_CONDITIONS = ("Baseline", "Task", "Recovery")
+
+
+def heart_rate_spectra(seed: int = 3) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """Invented spectra with the SHAPE a heart-rate spectrum actually has. Nobody's data.
+
+    A pure power law is a straight line on log-log, and a straight line is what a spectrum looks
+    like when it has been invented by someone who has not seen one. A real spectrum BENDS: flat
+    below a knee, falling above it. So the background here is `1 / (1 + (f/knee)**chi)`, the form a
+    bounded stochastic process gives and the one FOOOF fits as its knee model.
+
+    On top of that sit the two peaks that make it physiology rather than a slope — the Mayer wave
+    near 0.1 Hz and the respiratory peak near 0.25. The conditions move them in OPPOSITE
+    directions, which is the reading the figure exists to show: the task trades HF for LF, and the
+    recovery overshoots the baseline in HF rather than merely returning to it.
+
+    Every subject gets their own overall level, their own knee and their own peak frequencies,
+    because a between-subject interval computed from spectra that differ only by noise is an
+    interval about nothing.
+    """
+    rng = np.random.default_rng(seed)
+    frequencies = np.logspace(np.log10(0.003), np.log10(0.5), 260)
+    # (knee Hz, chi, LF gain, LF centre, HF gain, HF centre, HF width)
+    settings = {
+        "Baseline": (0.022, 1.9, 2.4, 0.098, 3.0, 0.245, 0.085),
+        "Task": (0.026, 2.1, 5.2, 0.105, 0.9, 0.290, 0.070),
+        "Recovery": (0.020, 1.8, 1.9, 0.092, 4.4, 0.235, 0.100),
+    }
+    spectra = {}
+    for name, (knee, chi, lf_gain, lf_at, hf_gain, hf_at, hf_width) in settings.items():
+        rows = []
+        for _ in range(COHORT):
+            level = 10 ** (2.55 + rng.normal(0.0, 0.13))
+            background = level / (1.0 + (frequencies / (knee * rng.uniform(0.9, 1.1))) ** chi)
+            low = lf_gain * rng.uniform(0.7, 1.3) * _bump(frequencies, lf_at, 0.075, rng)
+            high = hf_gain * rng.uniform(0.6, 1.4) * _bump(frequencies, hf_at, hf_width / 2.2, rng)
+            wobble = rng.normal(0.0, 0.045, frequencies.size)
+            rows.append(background * (1 + low + high) * 10**wobble)
+        spectra[name] = np.array(rows)
+    return frequencies, spectra
+
+
+def _bump(frequencies: np.ndarray, centre: float, width: float, rng: np.random.Generator):
+    """A Gaussian in LOG frequency — a peak is a constant fraction of its centre, not of a Hz."""
+    moved = centre * rng.uniform(0.94, 1.06)  # this subject's own peak frequency
+    return np.exp(-((np.log10(frequencies) - np.log10(moved)) ** 2) / (2 * width**2))
+
 
 def two_groups(seed: int = 0) -> dict[str, np.ndarray]:
     """A moderate separation with unequal n — the ordinary case."""
