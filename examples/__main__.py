@@ -127,6 +127,30 @@ def _groups(data: dict[str, np.ndarray]) -> list[tuple[float, np.ndarray, str, s
     ]
 
 
+ALPHA = 0.05
+# Big enough that a star reads as a mark rather than as punctuation. The house default is sized for
+# a single panel; a grid cell is a fraction of the page, and the same point size in a cell that is
+# half the width is half the apparent size to the reader.
+GRID_STAR_SIZE = 26.0
+
+
+def _significant(tests, seat) -> list[tuple[float, float, float]]:
+    """Only the comparisons that cleared `ALPHA`, positioned for `group_violins`.
+
+    A BRACKET IS DRAWN WHEN THERE IS SOMETHING TO SAY. `bracket_stack` will happily label a null
+    result "n.s.", and that is the right behaviour for a caller who wants it — a two-group panel
+    reporting one planned comparison should say the comparison was made and failed. But a grid
+    stacks three of them per cell, and a cell whose three brackets all read "n.s." spends its whole
+    headroom announcing an absence: the reader gets three lines, three labels and a taller axis in
+    exchange for nothing, and the panels that DO have a finding are pushed down to match.
+
+    The cost is that a missing bracket is ambiguous between "tested and null" and "never tested",
+    so the figure has to say which — both grids state the rule in their subtitle. That is one line
+    for the whole figure against three labels per cell.
+    """
+    return [(seat[a], seat[b], p) for a, b, p in tests if p < ALPHA]
+
+
 def _ticks(ax, data: dict[str, np.ndarray], count: int = 2) -> None:
     ax.set_xticks(range(count))
     ax.set_xticklabels(
@@ -491,13 +515,21 @@ def multiplicity_ladder_example() -> None:
     from examples.data import tournament_p_values
 
     names, p_values = tournament_p_values()
-    fig, ax = plt.subplots(figsize=(10.0, 6.4))
-    declared = multiplicity_ladder(ax, p_values, labels=names)
+    fig, ax = plt.subplots(figsize=(10.5, 6.6))
+    # LOG, or the figure shows everything except its own subject. Every threshold here lives below
+    # 0.05, so on a linear axis the whole decision happens in the bottom twentieth and the other 95%
+    # is given over to p-values nobody is deciding about — the Bonferroni line and the BH ramp's
+    # first rung landed 0.4 px apart, which is one line, not two rules being compared.
+    declared = multiplicity_ladder(ax, p_values, labels=names, log=True)
+    loose = sum(p < 0.05 for p in p_values)
     header_bottom = titled(
         fig,
-        "Eight stars, three findings",
+        # COMPUTED, not written. This said "three findings" beside a subtitle that computed two,
+        # because the title was typed once against data that has since been reseeded and a sentence
+        # cannot be re-checked by anything. The one number a reader takes away was the wrong one.
+        f"{loose} stars, {declared} finding{'s' if declared != 1 else ''}",
         subtitle=(
-            f"{sum(p < 0.05 for p in p_values)} of {len(p_values)} invented trials fall under "
+            f"{loose} of {len(p_values)} invented trials fall under "
             f"0.05; Benjamini-Hochberg declares {declared}"
         ),
     )
@@ -690,7 +722,8 @@ def violin_grid() -> None:
                 (seat[level], levels[level], fill, page_color())
                 for level, fill in zip(BENDING_LEVELS, CONDITION_TINTS, strict=True)
             ],
-            comparisons=[(seat[a], seat[b], p) for a, b, p in tests],
+            comparisons=_significant(tests, seat),
+            bracket_kwargs={"fontsize": GRID_STAR_SIZE},
             # Every violin holds the same cohort in the same order, so one list of colours serves
             # all three and a reader can follow one bender from novice to master.
             point_colors=[subject] * len(BENDING_LEVELS),
@@ -721,7 +754,7 @@ def violin_grid() -> None:
     header_bottom = titled(
         fig,
         "Three levels of training, four nations",
-        subtitle="one cohort at each level, on one scale, so the panels read against each other",
+        subtitle="one cohort at each level, on one scale; a bracket is drawn only where p < 0.05",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "03_violin_grid")
@@ -889,7 +922,8 @@ def violin_grid_tall() -> None:
                 (seat[stage], stages[stage], fill, page_color())
                 for stage, fill in zip(STAGES_OF_THE_ROAD, CONDITION_TINTS, strict=True)
             ],
-            comparisons=[(seat[a], seat[b], p) for a, b, p in tests],
+            comparisons=_significant(tests, seat),
+            bracket_kwargs={"fontsize": GRID_STAR_SIZE},
             point_colors=[subject] * len(STAGES_OF_THE_ROAD),
             outline_violins=True,
             violin_kwargs={"alpha": 0.28},
@@ -909,7 +943,7 @@ def violin_grid_tall() -> None:
     header_bottom = titled(
         fig,
         "One company, six measures, three stages of the road",
-        subtitle="invented numbers; each panel keeps its own scale — the units do not compare",
+        subtitle="invented numbers, own scale per panel; a bracket is drawn only where p < 0.05",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "04_violin_grid_tall")

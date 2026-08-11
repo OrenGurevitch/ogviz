@@ -80,6 +80,7 @@ def multiplicity_ladder(
     legend: bool = True,
     grid: bool = True,
     label_rotation: float = 90.0,
+    log: bool = False,
 ) -> int:
     """Every p in a family, sorted, against the thresholds. Returns how many BH declares.
 
@@ -87,6 +88,18 @@ def multiplicity_ladder(
     Bonferroni is drawn as a flat line and left uncoloured: where it sits relative to each point is
     plain, and colouring the same points twice would say which correction the caller used, which
     this panel does not know.
+
+    `log` PUTS THE DECISION WHERE IT CAN BE SEEN. On a linear axis every threshold this panel draws
+    lives below alpha, so at alpha = 0.05 the whole comparison is squeezed into the bottom twentieth
+    of the axis and the remaining 95% shows p-values nobody is deciding anything about: measured on
+    a family of 15, the Bonferroni line at 0.0033 and the BH ramp's first rung at 0.0033 landed 0.4
+    px apart, and the two rules a reader is here to tell apart were one line. A log axis spends its
+    room in proportion to how small the numbers are, which is how p-values are read.
+
+    It is not the default because a family can contain a p of exactly 0 — an exact test, or a
+    permutation p reported as 0 rather than as 1/(draws+1) — and log has nowhere to put it. Those
+    are refused rather than clamped: a zero silently drawn at the axis floor is a p of 1e-300 and a
+    p of 0.0009 shown as the same point.
     """
     values = np.asarray(p_values, dtype=float)
     require(
@@ -100,6 +113,13 @@ def multiplicity_ladder(
     require(
         labels is None or len(labels) == len(values),
         f"{len(labels or ())} labels for {len(values)} p-values",
+    )
+    require(
+        not log or np.all(values > 0.0),
+        f"{int(np.count_nonzero(values <= 0.0))} p-value(s) are zero and log=True has nowhere to "
+        "put them. A permutation p reported as 0 is really < 1/(draws+1) — say that number, in the "
+        "project, where the choice is visible. Clamping here would draw it at the axis floor and "
+        "make it look like the most significant result in the family.",
     )
 
     order = np.argsort(values)
@@ -155,7 +175,15 @@ def multiplicity_ladder(
     else:
         ax.set_xticks(ranks)
     ax.set_xlim(0.5, count + 0.5)
-    ax.set_ylim(0.0, max(float(sorted_p.max()), alpha) * 1.15)
+    if log:
+        # The floor is the smallest thing that has to be VISIBLE — the smallest p or the tightest
+        # threshold, whichever is lower — rather than a round decade, so the panel never opens a
+        # blank decade below the data. The top is 1 because that is where p stops.
+        floor = min(float(sorted_p.min()), bonferroni_threshold(count, alpha=alpha))
+        ax.set_yscale("log")
+        ax.set_ylim(floor / 2.5, 1.0)
+    else:
+        ax.set_ylim(0.0, max(float(sorted_p.max()), alpha) * 1.15)
     ax.set_xlabel("Rank")
     ax.set_ylabel("p")
     if legend:

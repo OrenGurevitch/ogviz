@@ -75,3 +75,71 @@ def test_a_labelled_family_does_not_collide_with_itself() -> None:
     fig.tight_layout()
     fig.canvas.draw()
     assert not audit(fig)
+
+
+def test_a_log_ladder_shows_the_two_rules_apart() -> None:
+    """The reason `log` exists: on a linear axis both thresholds sit under alpha and merge.
+
+    The premise is asserted first — that the linear panel really does put the Bonferroni line and
+    the BH ramp's first rung within a pixel of each other — because without it this test would pass
+    against a family whose thresholds were never close, and prove nothing about the fix.
+    """
+    p = [
+        0.0004,
+        0.006,
+        0.011,
+        0.019,
+        0.028,
+        0.033,
+        0.041,
+        0.049,
+        0.08,
+        0.12,
+        0.19,
+        0.24,
+        0.41,
+        0.63,
+        0.88,
+    ]
+    figsize = (10.5, 6.6)
+
+    def gap_px(**kwargs) -> float:
+        fig, ax = plt.subplots(figsize=figsize)
+        multiplicity_ladder(ax, p, **kwargs)
+        fig.canvas.draw()
+        first_rung = 0.05 * 1 / len(p)
+        bonferroni = 0.05 / len(p)
+        both = ax.transData.transform([(1, first_rung), (1, bonferroni)])
+        apart = abs(both[0][1] - both[1][1])
+        plt.close(fig)
+        return apart
+
+    # They are the SAME NUMBER for rank 1 — 0.05/15 either way — so the pixel gap is zero on both
+    # scales. What differs is the room around them: the distance from that shared point to alpha.
+    def alpha_room_px(**kwargs) -> float:
+        fig, ax = plt.subplots(figsize=figsize)
+        multiplicity_ladder(ax, p, **kwargs)
+        fig.canvas.draw()
+        edges = ax.transData.transform([(1, 0.05 / len(p)), (1, 0.05)])
+        room = abs(edges[0][1] - edges[1][1])
+        plt.close(fig)
+        return room
+
+    assert gap_px() == pytest.approx(gap_px(log=True), abs=0.5)
+    linear, logged = alpha_room_px(), alpha_room_px(log=True)
+    assert linear < 30.0, f"the premise: linear crushes threshold to alpha into {linear:.0f} px"
+    assert logged > 3 * linear, f"log spreads it to {logged:.0f} px, from {linear:.0f}"
+
+
+def test_a_log_ladder_refuses_a_p_of_zero() -> None:
+    """Clamping would draw it at the axis floor, where it reads as the strongest result there is."""
+    _fig, ax = plt.subplots()
+    with pytest.raises(AssertionError, match="nowhere to put them"):
+        multiplicity_ladder(ax, [0.0, 0.02, 0.4], log=True)
+
+
+def test_a_linear_ladder_still_accepts_a_p_of_zero() -> None:
+    """The refusal belongs to `log`, not to the panel — a linear axis has a place for zero."""
+    _fig, ax = plt.subplots()
+    assert multiplicity_ladder(ax, [0.0, 0.02, 0.4]) >= 1
+    assert ax.get_yscale() == "linear"
