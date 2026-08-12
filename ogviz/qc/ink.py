@@ -40,8 +40,11 @@ def drawn_but_invisible(fig: Figure) -> list[str]:
             if not is_backdrop(artist)
         ]
         for index in hidden_artists(fig, artists):
+            # `artist_name`, the same namer `colliding_ink` uses below. This said only
+            # "a Line2D is drawn and almost entirely covered", which on a panel carrying thirty
+            # lines names nothing a reader can go and look at.
             complaints.append(
-                f"a {type(artists[index]).__name__} is drawn and almost entirely covered — "
+                f"{artist_name(artists[index])} is drawn and almost entirely covered — "
                 "either it is redundant or something is on top of it"
             )
     return complaints

@@ -66,14 +66,21 @@ def series_confusable_under_cvd(fig: Figure) -> list[str]:
 
     Advisory in spirit but fails the build like the rest: a pair that merges is a figure a reader
     cannot use, and "add a marker or a dash" is a small change to make while the figure is open.
-    """
 
+    EVERY LEGEND ON THE FIGURE, not only the ones an axes owns. A legend attached to the FIGURE
+    lives in `fig.legends` and `ax.get_legend()` never returns it — so for as long as this walked
+    the axes alone, `legend_pill(fig, ...)`, which this package offers and a grid normally wants,
+    produced a legend the check could not see. Measured before the fix: a deliberate red/green pair
+    drew "0.16 apart under deuteranopia" through an axes legend and NOTHING through a figure one.
+    """
     complaints: list[str] = []
-    for ax in fig.axes:
-        legend = ax.get_legend()
-        if legend is None:
-            continue
+    legends = [legend for ax in fig.axes if (legend := ax.get_legend()) is not None]
+    legends.extend(fig.legends)
+    for legend in legends:
         entries: dict[str, str] = {}
+        # NOT `strict=True`. The two are the same length for every legend matplotlib builds, but a
+        # checker that raises where it meant to report turns a colour question into a crashed
+        # build, and a custom handler is the caller's business rather than a defect in the figure.
         for text, handle in zip(legend.get_texts(), legend.legend_handles, strict=False):
             color = _handle_color(handle)
             if color is not None:
