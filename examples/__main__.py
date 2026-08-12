@@ -441,74 +441,119 @@ def metric_grid_figure() -> None:
     """One panel per metric, every system in every panel — a benchmark table that can be read.
 
     Eight metrics as eight panels rather than eight columns, the same five systems in the same
-    order and the same colour in each, so a reader compares DOWN a panel and ACROSS the grid
-    without re-learning anything.
+    order and the same HUE in each, so a reader compares down a panel and across the grid without
+    re-learning anything.
 
-    THE WINNER IS MARKED THREE WAYS AND NONE OF THEM BY HAND: an outlined bar, its value in bold,
-    its name in bold on the axis. `metric_grid` derives it from the values and the metric's
-    direction, so the outline cannot come to disagree with the bars — and it would disagree
-    SILENTLY, since a bold bar looks deliberate whichever one it is.
+    COLOUR CARRIES TWO THINGS AT ONCE, which is the whole trick. Each system owns a hue, so it is
+    recognisable in every panel; and within a panel the leader is drawn in that hue at full
+    strength while everyone else is the same hue faded toward the page. So a system's bar changes
+    saturation from panel to panel without ever changing colour, and "who won here" is answered
+    before a reader has read a number. Four other things follow the same split — the leader's bar
+    is outlined, its value, its name and its interval are set in the ink colour, and the rest are
+    muted — because one signal repeated four ways survives a reader who is skimming.
 
-    TWO PANELS ARE ERRORS, where the shortest bar wins, which is why the direction is carried per
-    metric rather than inferred from the numbers. They are also the point of the figure: the system
-    that wins those is not the one that wins the six scores, which a single headline number hides.
+    NONE OF IT IS SET BY HAND. `metric_grid` derives the leader from the values and the metric's own
+    direction, so the marking cannot come to disagree with the bars — and it would disagree
+    SILENTLY, since a saturated bar looks deliberate whichever one it is.
 
-    Each panel keeps its own scale — a millimetre and a fraction do not share an axis — and
-    `emphasis` does the bold-value third of the marking already.
+    TWO PANELS ARE ERRORS, where the shortest bar wins. That is why the direction is carried per
+    metric rather than inferred, and it is the point of the figure: the system that wins those two
+    is not the one that wins the six scores, which a single headline number would hide.
     """
     grid = metric_grid()
-    # TINTED toward the page. Forty saturated bars is a lot of colour for a figure whose
-    # subject is the small differences between their heights; muting the fill lets the
-    # outlined leader and the error bars be the things that carry weight.
-    palette = [tint(color, strength=0.45) for color in series_colors(len(SYSTEMS))]
+    hues = series_colors(len(SYSTEMS))
     fig, axes = plt.subplots(2, 4, figsize=(17.0, 8.6))
     for ax, (name, what, _lower) in zip(axes.flat, METRICS, strict=True):
-        values, spread, _lower_is_better, best = grid[name]
+        values, spread, lower_is_better, best = grid[name]
+        # The leader at full strength, the rest of the same hue faded. `tint` blends toward the
+        # page, so the pale form is derived from the hue rather than being a second colour that
+        # would have to be re-chosen every time the first one changed.
+        fills = [
+            hue if index == best else tint(hue, strength=0.55) for index, hue in enumerate(hues)
+        ]
         # SIZED TO THE SLOT, then wrapped inside it. Five names across a quarter-width panel
-        # collide — the gate said so twice, and the second time only under the pinned DejaVu, which
-        # is wider than the Arial this renders in locally. Wrapping alone cannot fix it: "Baseline"
-        # is one word and `wrap_to_panel` has nowhere to break it, so the type has to come down
-        # until the longest UNBREAKABLE word fits the width one bar actually gets.
+        # collide, and `wrap_to_panel` cannot help "Baseline" because there is nowhere to break one
+        # word — so the type comes down until the longest UNBREAKABLE word fits the width one bar
+        # actually gets. Measured, so it holds under whichever font resolves; the collision showed
+        # up only under the pinned DejaVu, which is wider than the Arial this renders in locally.
         label_size = _size_that_fits(ax, SYSTEMS, slots=len(SYSTEMS))
         bar_panel(
             ax,
-            [Series("", values, list(palette), spread)],
+            [Series("", values, fills, spread)],
             [
-                "\n".join(wrap_to_panel(ax, name, label_size, fraction=1.0 / len(SYSTEMS)))
-                for name in SYSTEMS
+                "\n".join(wrap_to_panel(ax, system, label_size, fraction=1.0 / len(SYSTEMS)))
+                for system in SYSTEMS
             ],
-            emphasis=best,
+            emphasis=best,  # the value label half of the marking, which the panel already does
             value_format="{:.3f}" if values.max() < 2.0 else "{:.2f}",
         )
-        ax.tick_params(axis="x", labelsize=label_size)
-        # The outline and the bold tick label, which `bar_panel` has no argument for. Done here
-        # rather than added to it: this is one figure's convention for saying "this one", and the
-        # panel already offers the third of it that is about the NUMBER.
-        bars = [patch for patch in ax.patches if isinstance(patch, Rectangle) and patch.get_width()]
-        if best < len(bars):
-            bars[best].set_edgecolor(INK)
-            bars[best].set_linewidth(2.0)
-        ax.get_xticklabels()[best].set_fontweight("bold")
-        # The title wraps for the same reason the tick labels shrink, and can be wrapped
-        # rather than shrunk because it has spaces in it: "Boundary error (mm) — lower
-        # better" ran 70 px past its panel under the pinned font and into its neighbour.
+        _mark_the_leader(ax, best, count=len(SYSTEMS), label_size=label_size)
+        # The title wraps rather than shrinks, because unlike a system name it has spaces in it:
+        # "Boundary (mm) — lower better" ran 70 px past its panel under the pinned font.
         ax.set_title(
             "\n".join(wrap_to_panel(ax, f"{name} — {what}", 14.0)),
             fontsize=14,
             fontweight="bold",
             pad=10,
         )
+        # THE SIX BOUNDED METRICS SHARE 0-1, the two error metrics do not. A score that cannot
+        # exceed 1 should show that ceiling: it says how much room is left, and it puts 0.74 at the
+        # same height in every panel that uses the same scale, which is the whole reason to draw a
+        # grid rather than eight separate figures. An error in millimetres has no such bound and
+        # would be crushed into the bottom tenth of a shared axis, so those two keep their own.
+        # Keyed on the DIRECTION, not on whether the numbers happen to be under 1. Written the
+        # obvious way first — `values.max() <= 1.0` — it caught the volume error, which is a
+        # fraction rather than a bounded score, and crushed it into the bottom quarter of an axis
+        # it has no reason to share. Nothing about a number says which kind it is.
+        if not lower_is_better:
+            ax.set_ylim(0.0, 1.06)
+        # A FULL BOX, which the house style does not normally draw. Eight panels side by side
+        # need their own edges: with only two spines the eye reads the grid as one field of bars
+        # and a value near the top of a short panel looks taller than one near the top of a tall
+        # one. The frame is what says each panel has its own scale.
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(True)
+            ax.spines[side].set_color(INK)
+            ax.spines[side].set_linewidth(0.9)
         zero_baseline(ax)
     header_bottom = titled(
         fig,
         "Every metric, one panel each",
         subtitle=(
-            "invented scores; the outlined bar leads its metric, and on the two error panels "
-            "that is the shortest one"
+            "invented scores, 95% intervals; each system keeps its hue and a panel's leader "
+            "is the saturated bar"
         ),
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "09_metric_grid")
+
+
+def _mark_the_leader(ax, best: int, *, count: int, label_size: float) -> None:
+    """Outline the leading bar, and set its name and its interval in ink while the rest stay muted.
+
+    `bar_panel`'s `emphasis` already does the VALUE, so this is the rest of the same signal. Reached
+    for through the drawn artists rather than added to `bar_panel` as arguments: this is one
+    figure's convention for saying "this one", and a panel that grew a knob per decoration would be
+    a figure's style sheet wearing a function's clothes.
+    """
+    bars = [patch for patch in ax.patches if isinstance(patch, Rectangle) and patch.get_width()]
+    if best < len(bars):
+        bars[best].set_edgecolor(INK)
+        bars[best].set_linewidth(2.0)
+    for index, label in enumerate(ax.get_xticklabels()):
+        label.set_fontweight("bold" if index == best else "normal")
+        label.set_color(INK if index == best else MUTED_INK)
+        label.set_fontsize(label_size)
+    # The whiskers live in one LineCollection across every bar, so the colour is set per segment.
+    shades = [INK if index == best else MUTED_INK for index in range(count)]
+    for container in ax.containers:
+        parts = getattr(container, "lines", None)
+        if not parts or len(parts) < 3:
+            continue
+        for collection in parts[2]:
+            collection.set_colors(shades)
+        for cap, shade in zip(parts[1], [s for s in shades for _ in (0, 1)], strict=False):
+            cap.set_color(shade)
 
 
 def coupling_triangle() -> None:
