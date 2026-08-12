@@ -171,42 +171,22 @@ this file. `uv run just ci` is the read-only subset CI runs, on matplotlib 3.10 
 
 ## Credit
 
-Where an idea in here came from somebody else. The first group is quoted in full because each one was
-checked against the reference library on this machine; the second is named without a volume, page or
-DOI, because those are not in that library and a citation nobody has verified is worse than a name.
+Verified against the reference library on this machine:
 
-**Checked**
+- Benjamini & Hochberg (1995), doi:10.1111/j.2517-6161.1995.tb02031.x — the BH ramp.
+- ESC/NASPE Task Force (1996), *Circulation* 93(5), 1043–1065 — the LF and HF band edges.
+- Donoghue et al. (2020), doi:10.1038/s41593-020-00744-x — the kneed spectrum shape.
+- Julien (2020), doi:10.1093/cvr/cvz327 — the Mayer-wave peak.
 
-- Benjamini, Y. & Hochberg, Y. (1995). "Controlling the False Discovery Rate: A Practical and
-  Powerful Approach to Multiple Testing." *Journal of the Royal Statistical Society: Series B*
-  57(1), 289–300. doi:10.1111/j.2517-6161.1995.tb02031.x — the BH ramp in `panels/multiplicity.py`.
-- Task Force of the European Society of Cardiology and the North American Society of Pacing and
-  Electrophysiology (1996). "Heart rate variability: standards of measurement, physiological
-  interpretation and clinical use." *Circulation* 93(5), 1043–1065 — the LF and HF band edges the
-  power spectrum example shades.
-- Donoghue, T. et al. (2020). "Parameterizing neural power spectra into periodic and aperiodic
-  components." *Nature Neuroscience* 23(12), 1655–1665. doi:10.1038/s41593-020-00744-x — the kneed
-  aperiodic form the example spectra are built on, rather than a straight power law.
-- Julien, C. (2020). "An update on the enigma of Mayer waves." *Cardiovascular Research* 116(14),
-  e210–e211. doi:10.1093/cvr/cvz327 — the peak near 0.1 Hz in that same figure.
+Named without details, because those are not in that library: **Viénot, Brettel and Mollon** (the
+dichromat simulation), **Crameri et al.** (the colour maps), **McNutt and Kindlmann**, **Hopkins et
+al.** and **Chen et al.** (the visualization linter), **Hintze and Nelson** (the violin plot),
+**Tufte** (the slopegraph, and data-ink).
 
-**Named, unverified here**
-
-- **Viénot, Brettel and Mollon** — `ogviz/color.py` implements their dichromat simulation.
-- **Crameri, Shephard and Heron** — the scientific colour maps, and the reference work when a figure
-  must be colour-vision safe in print. `panels/spectrogram.py` carries the citation as recorded there.
-- **McNutt and Kindlmann**, **Hopkins et al.** (VisuaLint), **Chen et al.** — the visualization
-  linter, the idea this package's gate is one implementation of. See [The QC gate](#the-qc-gate).
-- **Hintze and Nelson** — the violin plot, as a box plot and a density trace in one mark.
-- **Tufte** — the slopegraph, and the data-ink argument the whole house style rests on.
-
-What this package deliberately does NOT implement: the dichromat simulation is the single-matrix
-one rather than **Brettel**'s two half-planes, and colour difference is Euclidean in sRGB rather
-than in a uniform space such as **CAM02-UCS**. Both shortcuts are now measured rather than merely
-confessed — neither changes a single verdict on the palettes that ship, and `ogviz/color.py` carries
-the numbers, including the one in eight true positives the simulation costs on arbitrary colours.
-For an exact answer use `colorspacious` or `daltonlens`; for the colour maps, `cmcrameri`. The module tree above is
-generated with [pypatree](https://github.com/yberreby/pypatree).
+Not implemented here: Brettel's two half-planes, and a uniform colour space. Both measured, neither
+changes a verdict on the shipped palettes — `ogviz/color.py` has the numbers. Use `colorspacious`,
+`daltonlens` or `cmcrameri` when the answer must be exact. The module tree is generated with
+[pypatree](https://github.com/yberreby/pypatree).
 
 ## License
 
