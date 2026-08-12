@@ -18,6 +18,33 @@ properly and more: the matrices are published and twenty lines, and a figure pac
 make a project install a colour-science stack to be told its two series look alike. Use those
 libraries when the answer needs to be exact.
 
+WHAT THAT SIMPLIFICATION ACTUALLY COSTS — measured 2026-08-12 against `daltonlens`'s Brettel (1997)
+implementation, which is the two-half-plane construction the literature reserves for tritanopia and
+which this module does not use. It had been carried as an open worry for a week on the theory that
+tritanopia was the weak leg and that a correction might make the shipped palettes report
+themselves. Both halves of that were wrong:
+
+  the 114 pairs in SERIES and LINE_SERIES   0 change verdict at the 0.18 threshold
+  tritanopia, the deficiency under suspicion  mean |difference| 0.023, and the LEAST affected
+  protanopia, which nobody suspected          mean |difference| 0.082, max 0.270
+  the tightest pair anywhere, either way      0.216 here, 0.219 under Brettel, both clear of 0.18
+  the specific fear, blue against green       moves UP under Brettel (0.232 -> 0.288), not down
+
+On a CONSUMER's own colours, which is the case that matters since a caller passes whatever they
+like, 4000 random pairs per deficiency put it at: of the pairs Brettel calls confusable this
+catches **88.1%**, missing 0.85% of all pairs and over-reporting 1.32%. So the simplification loses
+about one in eight true positives and errs toward complaining in volume. For a screening check
+whose every complaint ends in "tell them apart by marker or dash as well", that is the right side
+to be wrong on — and it is now a measured limitation rather than an unexamined one.
+
+THE METRIC IS THE SAME STORY. `separation` is Euclidean in sRGB where the accepted choice is a
+uniform space; Petroff's accessible-sequence work builds palettes in CAM02-UCS for exactly that
+reason. Measured on the same 114 pairs, the two rank pairs 0.896 alike, and a CAM02-UCS threshold
+anywhere in (5.2, 8.2) reproduces every verdict the 0.18 sRGB threshold gives — 5.2 being
+matplotlib's own red/green, which must be caught, and 8.2 the tightest shipped pair, which must
+not be. Switching would change the units, force the threshold to be re-derived, add a dependency,
+and return the same answers on everything that ships.
+
 `indistinguishable_series` reports pairs, never a verdict on a palette. A figure may legitimately
 use two colours that converge if a marker or a dash tells them apart, and this cannot see that.
 
