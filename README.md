@@ -443,22 +443,19 @@ ogviz
 
 ## Credit
 
-Verified against the reference library on this machine:
+The ideas behind how this package places and checks things:
 
-- Benjamini & Hochberg (1995), doi:10.1111/j.2517-6161.1995.tb02031.x — the BH ramp.
-- ESC/NASPE Task Force (1996), *Circulation* 93(5), 1043–1065 — the LF and HF band edges.
-- Donoghue et al. (2020), doi:10.1038/s41593-020-00744-x — the kneed spectrum shape.
-- Julien (2020), doi:10.1093/cvr/cvz327 — the Mayer-wave peak.
+- **McNutt and Kindlmann**, **Hopkins et al.** (VisuaLint) and **Chen et al.** — the visualization
+  linter, and pairing one with a fixer, which is `audit` and `repair`.
+- **Viénot, Brettel and Mollon** — the dichromat simulation in `ogviz/color.py`.
+- **Crameri et al.** — the scientific colour maps.
+- **Hintze and Nelson** — the violin plot; **Tufte** — the slopegraph, and data-ink.
+- **Christensen, Marks and Shieber** — why label placement is solved by heuristics: the general
+  case is NP-hard, which is why `stack_without_overlap` solves only the one-dimensional one.
 
-Named without details, because those are not in that library: **Viénot, Brettel and Mollon** (the
-dichromat simulation), **Crameri et al.** (the colour maps), **McNutt and Kindlmann**, **Hopkins et
-al.** and **Chen et al.** (the visualization linter), **Hintze and Nelson** (the violin plot),
-**Tufte** (the slopegraph, and data-ink).
-
-Not implemented here: Brettel's two half-planes, and a uniform colour space. Both measured, neither
-changes a verdict on the shipped palettes — `ogviz/color.py` has the numbers. Use `colorspacious`,
-`daltonlens` or `cmcrameri` when the answer must be exact. The module tree is generated with
-[pypatree](https://github.com/yberreby/pypatree).
+Tools: [pypatree](https://github.com/yberreby/pypatree) generates the module tree;
+`colorspacious`, `daltonlens` and `cmcrameri` are what to use when the colour answer must be exact.
+`ogviz/color.py` says what its own shortcuts cost.
 
 ## License
 
