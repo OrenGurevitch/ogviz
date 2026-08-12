@@ -12,6 +12,10 @@ import pytest
 from ogviz import guard, guarded, is_guarded, unguard
 from ogviz.guard import ENV_VAR, FigureRejectedError, guard_from_environment
 
+# The assertions below are about which characters RESOLVE, which differs by machine —
+# Arial locally, DejaVu on a runner with no Arial. Pinned so both measure the same font.
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 @pytest.fixture(autouse=True)
 def _leave_savefig_as_found():
@@ -163,24 +167,32 @@ def test_two_threads_saving_at_once_are_both_audited(tmp_path) -> None:
     assert verdicts == ["refused", "refused"], verdicts
 
 
-def _with_a_missing_glyph() -> plt.Figure:
-    """A figure whose text has a character the pinned font has no glyph for.
+def _with_a_missing_glyph(char: str) -> plt.Figure:
+    """A figure whose title carries a character with no glyph in the resolved font.
 
-    DejaVu Sans is pinned by `conftest`, so the character has to be one IT lacks — an Arial-only
-    choice would render fine here and the test would measure nothing. U+1F600 is absent from both.
+    EACH TEST PASSES ITS OWN CHARACTER, and that is not tidiness. matplotlib emits the missing-glyph
+    warning at most ONCE PER PROCESS for a given font-and-glyph pair, so two tests sharing one
+    character means the first to render silently consumes the warning and the second sees a figure
+    that renders clean. Written that way these passed locally and failed on both CI legs.
+
+    THE CHARACTERS ARE CHOSEN BY MEASUREMENT, not by looking unusual. The obvious pick — an emoji,
+    U+1F600 — does NOT warn under the pinned DejaVu, so tests written around it asserted nothing
+    about a font that has no glyph. Probed under the pin: CJK U+4E2D, Devanagari U+0915 and Thai
+    U+0E01 all warn; U+1F600 and Hebrew U+05D0 do not. This module takes `pinned_font` for the same
+    reason — which font resolves decides the answer, and it differs by machine.
     """
     fig, ax = plt.subplots(figsize=(4.0, 3.0))
     ax.plot([0.0, 1.0], [0.0, 1.0])
-    ax.set_title("no glyph for this: \U0001f600")
+    ax.set_title(f"no glyph for this: {char}")
     return fig
 
 
 def test_the_missing_glyph_is_a_warning_the_checks_cannot_see() -> None:
     """The premise. `audit` reads finished artists; a missing glyph is emitted while RASTERISING,
-    so nothing in `CHECKS` can report it and the guard has to wrap the write itself."""
+    so nothing in `CHECKS` can report it and the guard has to wrap the render itself."""
     from ogviz.qc import audit
 
-    fig = _with_a_missing_glyph()
+    fig = _with_a_missing_glyph("\u4e2d")
     with warnings.catch_warnings():  # the render warns by design; that IS the thing being described
         warnings.simplefilter("ignore")
         fig.canvas.draw()
@@ -194,7 +206,7 @@ def test_the_guard_refuses_a_figure_with_no_glyph_for_its_text(tmp_path) -> None
     A project moving from `save` to `guard()` — which the README encourages — silently lost it and
     shipped a tofu box where a tick should be.
     """
-    fig = _with_a_missing_glyph()
+    fig = _with_a_missing_glyph("\u0915")
     with guarded(mode="raise"), pytest.raises(FigureRejectedError, match="no glyph"):
         fig.savefig(tmp_path / "tofu.png")
     assert not (tmp_path / "tofu.png").exists(), "a refused figure was written anyway"
@@ -203,7 +215,7 @@ def test_the_guard_refuses_a_figure_with_no_glyph_for_its_text(tmp_path) -> None
 
 def test_warn_mode_writes_the_tofu_and_says_so(tmp_path) -> None:
     """`warn` reports and does not block, which is the contract every other check here keeps."""
-    fig = _with_a_missing_glyph()
+    fig = _with_a_missing_glyph("\u0e01")
     with guarded(mode="warn"), warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         fig.savefig(tmp_path / "written.png")
