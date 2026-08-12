@@ -1,3 +1,15 @@
+"""Things a consumer had to reach past the public API for, and now does not.
+
+Each test here started as a project doing by hand what this package should have offered: spelling a
+tag name as a bare string, taking room for a caption out of the plot when it wanted it out of the
+page, inventing a rule for how wide a panel of N bars must be, guessing a character count to wrap
+to, knocking a label out with a stroke where only a box was supported.
+
+They are grouped by that origin rather than by which module they touch, because the gap is the
+thing they have in common — an API that was adequate from inside the package and not from outside
+it, which is a defect no test written from inside would have found.
+"""
+
 from __future__ import annotations
 
 import matplotlib

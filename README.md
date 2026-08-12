@@ -116,23 +116,17 @@ The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, whic
 
 ![](examples/out/13_the_gate.png)
 
-<sub>every word on the right comes from <code>audit</code> — and this is the only figure in the repository
-that <code>save</code> refuses to write, because the panel on the left is an exhibit</sub>
+<sub>every word on the right comes from <code>audit</code></sub>
 
 `save` runs it. `guard()` extends it to every `fig.savefig`, whoever called it; `OGVIZ_GUARD=1` does
-the same with no code change, for CI and paper builds.
+the same with no code change. Both also refuse a tofu box — text with no glyph in the resolved font.
 
-It catches colliding text, labels sitting on the marks, clipped ink, buried spines and
-thresholds, stars at uneven distances, dots on the mean line, ungrouped thousands, mixed minus
-signs, and two legend series that separate now and merge under colour-vision deficiency.
-`--list-checks` prints the current set.
+It catches colliding text, labels sitting on the marks, clipped ink, buried spines and thresholds,
+stars at uneven distances, dots on the mean line, ungrouped thousands, mixed minus signs, and two
+legend series that merge under colour-vision deficiency. `--list-checks` prints the current set.
 
-`save` and `guard()` both also refuse a figure whose text has no glyph in the resolved font — the
-tofu box. That one is not in `--list-checks`, because a missing glyph is a warning matplotlib emits
-while laying text out rather than anything a finished figure carries, so it is caught by whoever
-renders first rather than by reading the artists.
-
-It needs nothing else from this package — point it at any matplotlib figure, from any project:
+Where a linter reads a chart specification, these read the RENDERED figure — so they work on any
+matplotlib figure, from any project:
 
 ```bash
 uv run python -m ogviz.qc mypackage.figures:build_panel   # a callable returning a figure
@@ -141,20 +135,10 @@ uv run python -m ogviz.qc scripts/make_figures.py --fix out/
 uv run python -m ogviz.qc --list-checks
 ```
 
-Exit 0 when clean, 1 otherwise. `--fix` changes presentation only — it moves a label, adds a
-knockout, raises a buried line. It never moves a mark or alters a value, and what it cannot decide
-it reports and leaves. From Python: `audit(fig)`, `repair(fig)`, `assert_clean(fig)`.
-
-`type_too_small(fig, column_width=...)` asks the one question a figure cannot answer about itself:
-given the width it will be PLACED at, does its smallest type still clear the 5 pt that Nature,
-Science and ACS set as a floor at final published size (IEEE, 6 pt)? A figure authored 18 inches
-wide and dropped into a 6.5-inch column is scaled by a third, and its type with it.
-
-This is a **visualization linter**, a thing with a literature: McNutt and Kindlmann named the idea,
-Hopkins et al.'s VisuaLint surfaces suspected errors in the visualization itself, and Chen et al.
-pair a linter with a fixer — which is `audit` and `repair` here, arrived at independently. What this
-package adds is that the checks run on the RENDERED figure rather than on a chart specification, so
-they apply to any matplotlib figure whoever drew it.
+Exit 0 when clean, 1 otherwise. `--fix` changes presentation only — a label moved, a knockout added,
+a buried line raised — and leaves what it cannot decide. From Python: `audit(fig)`, `repair(fig)`,
+`assert_clean(fig)`, and `type_too_small(fig, column_width=...)` for whether the smallest type still
+clears 5 pt at the width the figure will be printed at.
 
 ## Testing
 
