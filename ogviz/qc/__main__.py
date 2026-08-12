@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from matplotlib.figure import Figure
 
+from ogviz.layout.write import reproducible_metadata
 from ogviz.qc import CHECKS, audit
 from ogviz.qc.repair import repair
 from ogviz.qc.report import group_by_subject
@@ -18,6 +19,28 @@ from ogviz.require import require
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+def _figures_from(produced: object, plt) -> list[Figure]:
+    """What a builder returned, read as figures — and the three shapes it is allowed to be.
+
+    A `Figure` is the documented one. `(fig, ax)` is the commonest matplotlib idiom there is, and a
+    list of figures is what a builder drawing several returns; both used to fall silently through to
+    "whatever happens to be open", which is a different set and could quietly be a previous
+    import's leftovers. They are read properly now.
+
+    RETURNING NOTHING IS STILL ALLOWED and still means the open figures: a builder that draws and
+    leaves them open is the normal script shape, and `plt.close("all")` ran before it, so the open
+    set really is this builder's work. What is no longer possible is confusing that case with a
+    builder that meant to return something and returned the wrong thing.
+    """
+    if isinstance(produced, Figure):
+        return [produced]
+    if isinstance(produced, (tuple, list)):
+        found = [item for item in produced if isinstance(item, Figure)]
+        if found:
+            return found
+    return [plt.figure(number) for number in plt.get_fignums()]
 
 
 def _load_figures(target: str) -> list[Figure]:
@@ -46,14 +69,27 @@ def _load_figures(target: str) -> list[Figure]:
         # branch, and cannot learn it from a function call.
         if not callable(builder):
             raise AssertionError(f"{target}: {attribute!r} is not a callable in {module_name}")
-        produced = builder()
-        if isinstance(produced, Figure):
-            return [produced]
+        return _figures_from(builder(), plt)
     else:
         path = Path(target)
         require(path.exists(), f"no such file: {target}")
         runpy.run_path(str(path), run_name="__ogviz_qc__")
     return [plt.figure(number) for number in plt.get_fignums()]
+
+
+def _filename(label: str) -> str:
+    """A figure label made safe to join onto a directory.
+
+    A label is arbitrary caller text and this builds a path out of it. One containing a separator
+    wrote OUTSIDE the directory the user named — `--fix out/` and a label of `../escaped` puts the
+    file a level up — which contradicts the help text's promise that the originals are not touched.
+    Everything that is not a plain filename character becomes an underscore, and a label that is
+    nothing but separators still has to produce a name, so it falls back to `figure`.
+    """
+    safe = "".join(
+        character if character.isalnum() or character in "-_. " else "_" for character in label
+    ).strip(" .")
+    return safe or "figure"
 
 
 def _report_one(figure: Figure, index: int, *, thorough: bool, destination: Path | None) -> int:
@@ -67,7 +103,9 @@ def _report_one(figure: Figure, index: int, *, thorough: bool, destination: Path
     status. It was called twice, once per use, which on `--thorough` is a second full
     render-per-artist pass over every figure for an answer already in hand.
     """
-    label = figure.get_label() or f"figure_{index + 1}"
+    # `str(...)`: the stubs type a figure label as `object`, and this one is joined onto a
+    # path and printed. Coerced here rather than ignored at each use.
+    label = str(figure.get_label() or f"figure_{index + 1}")
     print(f"{label}:")
     found = audit(figure, thorough=thorough)
     for line in group_by_subject(found):
@@ -78,8 +116,16 @@ def _report_one(figure: Figure, index: int, *, thorough: bool, destination: Path
 
     for change in repair(figure):
         print(f"  fixed: {change}")
-    written = destination / f"{label}.png"
-    figure.savefig(written, dpi=200, bbox_inches="tight")
+    written = destination / f"{_filename(label)}.png"
+    # `reproducible_metadata`, because this does not go through `save` — `save` refuses a figure
+    # with complaints, and the whole point here is to write one that had them.
+    #
+    # MEASURED, and it is not the write date: a bare PNG `savefig` is already byte-identical across
+    # runs, because PNG carries `Software` where SVG carries `dc:date`. What `Software` holds is the
+    # matplotlib VERSION — so the same repaired figure written under 3.10 and under 3.11 differs in
+    # its bytes, on a repo whose whole CI shape is two matplotlib legs. Stripping it is what makes
+    # `--fix` output comparable between them.
+    figure.savefig(written, dpi=200, bbox_inches="tight", metadata=reproducible_metadata(written))
     print(f"  wrote {written}")
     # Re-audited because `repair` has just changed the figure — this is the "what still needs a
     # person" number, and it is a different question from the one printed above.
