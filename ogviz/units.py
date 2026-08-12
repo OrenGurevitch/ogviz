@@ -122,6 +122,17 @@ def midpoint(ax: Axes, low: float, high: float, *, orientation: str = "vertical"
 
 
 def panel_px(ax: Axes, *, orientation: str = "vertical") -> float:
-    """How many pixels tall (or wide) the panel is — the scale a search should be sized against."""
+    """The panel's extent in pixels ALONG ITS VALUE AXIS — the scale a search should be sized to.
+
+    `orientation` names which way the PANEL runs, as everywhere else in this module, so it decides
+    which side is the value axis rather than which side to measure: a vertical panel's values run up
+    the height, a horizontal one's run across the width. That is what makes a threshold written
+    against this survive `orientation="horizontal"` unchanged.
+
+    A caller who wants one FIXED side whatever the panel is doing does not want this — they want
+    `ax.get_window_extent().width`, which is a line and says so. It was recorded as a defect that
+    the nearest candidate caller reached for the width regardless of orientation and did not use
+    this; that caller was right, and the two are different questions rather than one badly named.
+    """
     box = ax.get_window_extent()
     return float(box.height if orientation == "vertical" else box.width)

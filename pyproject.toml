@@ -2,7 +2,25 @@
 name = "ogviz"
 version = "0.1.0"
 description = "My matplotlib house style, and a gate that refuses to save a broken figure."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Oren Gurevitch" }]
 requires-python = ">=3.12"
+# Declared so a package page says what this is rather than showing a blank card. It was ALL
+# missing — no readme, no licence, no author, no links — which nobody noticed because every
+# consumer installs from a git ref and never sees a rendered page. `hatchling` builds a wheel
+# either way; what was absent was everything a human reads.
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Matplotlib",
+    "Intended Audience :: Science/Research",
+    # NO `License :: OSI Approved :: ...` classifier. The licence is declared as an SPDX expression
+    # above, and PyPI refuses an upload that carries both — the classifier is the superseded form.
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
 dependencies = [
     # 3.10, not 3.9: `Axes.get_figure(root=True)` — which `wrap_to_panel` needs to resolve a
     # SubFigure to its parent — gained that argument in 3.10, and on 3.9 the call raises TypeError
@@ -13,6 +31,11 @@ dependencies = [
     "numpy>=1.26",
     "scipy>=1.13",
 ]
+
+[project.urls]
+Homepage = "https://github.com/OrenGurevitch/ogviz"
+Source = "https://github.com/OrenGurevitch/ogviz"
+Issues = "https://github.com/OrenGurevitch/ogviz/issues"
 
 [project.optional-dependencies]
 dev = ["basedpyright>=1.31", "pytest>=8", "ruff>=0.6", "rust-just>=1.36"]
