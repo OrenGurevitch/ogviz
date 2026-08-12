@@ -66,9 +66,19 @@ def save(
     margin, and it keeps a label that reaches past the page instead of cutting it off.
 
     THE COST, which this docstring claimed the opposite of until 2026-08-04: two figures declaring
-    the same canvas do not write the same size. Measured on a 7x4 in figure at dpi 100 — 700x400 px
-    declared — a plain panel writes 602x353 and the same panel with one label reaching past the
-    edge writes 829x353. A document placing both at one width then shows them at different scales.
+    the same canvas do not write the same size. It used to be large — a plain 7x4 in panel at dpi
+    100 wrote 602x353 against 829x353 for the same panel with one label reaching past the edge.
+
+    RE-MEASURED 2026-08-12, and it is now small, because the gate closed the case that made it big.
+    A label reaching past the canvas is what grew the page, and `text_off_canvas` refuses that
+    figure outright — both of the divergent cases above are now rejected before they can be written.
+    What remains is the difference in dead margin between two figures that both PASS: a bare panel
+    writes 602x353 and one carrying a y-label and a title writes 631x376, which placed at a common
+    width in a document is a 1.6% difference in aspect.
+
+    So the argument for inverting this default — that cropping breaks side-by-side use — was
+    measured against figures the gate no longer lets through, and 1.6% does not break it. The
+    default stays cropped.
 
     So `crop=False` for a PINNED layout, where the point is that every figure has the same axes
     rectangle: it writes the canvas as declared, and `required_margins` is how the margins get
