@@ -115,8 +115,8 @@ The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, whic
 
 ![](examples/out/13_the_gate.png)
 
-<sub>the same panel as <code>audit</code> finds it and as <code>repair</code> leaves it — and the only figure
-in this repository that <code>save</code> refuses to write, because the left half is an exhibit</sub>
+<sub>every word on the right comes from <code>audit</code> — and this is the only figure in the repository
+that <code>save</code> refuses to write, because the panel on the left is an exhibit</sub>
 
 `save` runs it. `guard()` extends it to every `fig.savefig`, whoever called it; `OGVIZ_GUARD=1` does
 the same with no code change, for CI and paper builds.

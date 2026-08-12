@@ -60,6 +60,7 @@ from examples.data import (
 from ogviz import (
     INK,
     MUTED_INK,
+    PANEL_FILL,
     Cell,
     Cloud,
     Estimate,
@@ -504,82 +505,133 @@ def coupling_triangle() -> None:
 
 
 def the_gate() -> None:
-    """The one claim the README leads on, and the only figure here that is not saved by `save`.
+    """The claim the README leads on, shown as the refusal it actually is.
 
-    A bar panel with three ordinary defects — the value labels planted on the bars, a threshold
-    label lying across its own rule — beside the same panel after `repair` has been over it. The
-    complaint counts in the subtitle come from `audit`, so they cannot drift from what is drawn.
+    A bar panel a project asked to save, and the error it got instead. Not a before/after: `repair`
+    is the smaller half of what this package does — it fixes what has one obvious answer and leaves
+    the rest — and a two-panel fix/unfixed pair sold that as the headline while making the repair
+    look like a lateral move, because lifting five value labels produces a detached staircase.
+
+    EVERY WORD ON THE RIGHT COMES FROM `audit`. The complaint lines are the strings it returned and
+    the count in the subtitle is their length, so the figure cannot claim a defect the checks did
+    not find, and cannot go stale when a message is reworded.
 
     THE LEFT PANEL IS SUPPOSED TO FAIL, which is why this uses `fig.savefig` where every other
-    example uses `save`. `save` runs the gate and refuses, correctly: it cannot know that half the
-    figure is an exhibit. It is the one bypass in the gallery and it is asserted rather than
-    trusted — `_assert_shows_the_defect` below checks the left panel is still refused on its own,
-    so this cannot quietly become a picture of two clean panels.
-
-    BOTH panels are built broken and `repair` is run on the whole figure; the left panel's labels
-    are then put back where they started. Repairing one axes of a two-axes figure is not a thing
-    `repair` offers — it takes a figure — and building the right panel "already correct" by hand
-    would make the caption a claim rather than a demonstration. Here the right panel's labels are
-    where `repair` actually moved them.
+    example uses `save` — `save` runs the gate and refuses, correctly, since it cannot know the
+    panel is an exhibit. The bypass is asserted rather than trusted: `_assert_shows_the_defect`
+    rebuilds that panel alone and fails the build if it has stopped being refused. It keeps the
+    GLYPH check, though, because that one costs nothing and a tofu box here would be embarrassing.
     """
-    from ogviz.qc import audit
-    from ogviz.qc.repair import repair
+    import textwrap
 
-    values = np.array([0.34, 0.47, 0.58, 0.64])
-    target = 0.52
+    from ogviz.qc import audit
+    from ogviz.qc.report import group_by_subject
+    from ogviz.theme import glyphs_must_render
+
+    values = np.array([0.341, 0.478, 0.559, 0.612, 0.646])
+    threshold = 0.52
 
     def build(ax) -> None:
-        ax.bar(range(len(values)), values, color=series_colors(3)[0], width=0.62, zorder=2)
-        ax.axhline(target, color=MUTED_INK, lw=2.0, zorder=3)
+        ax.bar(range(len(values)), values, color=series_colors(3)[2], width=0.86, zorder=3)
+        ax.axhline(threshold, color=INK, lw=2.4, zorder=1)  # UNDER the bars, which is the defect
         for index, value in enumerate(values):
             ax.text(
                 index,
-                value * 0.55,  # planted ON the bar, which is the defect
-                f"{value:.2f}",
+                value + 0.012,
+                f"{value:.3f} units",
                 ha="center",
-                va="center",
-                fontsize=15,
+                va="bottom",
+                fontsize=14,
                 fontweight="bold",
                 color=INK,
                 zorder=4,
             )
-        ax.text(1.5, target, "target", ha="center", va="center", fontsize=14, color=MUTED_INK)
         ax.set_xticks(range(len(values)))
-        ax.set_xticklabels(list(ARM_LABELS), fontsize=13)
-        ax.set_ylim(0.0, 0.78)
+        ax.set_xticklabels([*ARM_LABELS, "variant D"], fontsize=12)
+        ax.set_ylim(0.0, 0.80)
         hairline_grid(ax, axis="y")
         for side in ("top", "right"):
             ax.spines[side].set_visible(False)
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.2, 5.6))
-    for ax in axes:
-        build(ax)
+    fig, (panel, report) = plt.subplots(1, 2, figsize=(14.0, 6.0), width_ratios=(1.0, 1.05))
+    build(panel)
     fig.canvas.draw()
-    before = audit(fig)
-    as_drawn = [(label, label.get_position()) for label in axes[0].texts]
-    resolved = repair(fig)
-    for label, where in as_drawn:  # the left panel goes back to being the "before"
-        label.set_position(where)
+    found = audit(fig)
 
-    axes[0].set_title("as drawn", fontsize=17, fontweight="bold", pad=12)
-    axes[1].set_title("after repair()", fontsize=17, fontweight="bold", pad=12)
+    report.set_axis_off()
+    report.add_patch(
+        plt.Rectangle(
+            (0.0, 0.0),
+            1.0,
+            1.0,
+            transform=report.transAxes,
+            facecolor=PANEL_FILL,
+            edgecolor=MUTED_INK,
+            lw=1.0,
+            zorder=0,
+        )
+    )
+
+    # GROUPED, because that is what a reader of this tool actually sees — `python -m ogviz.qc`
+    # reports through the same function. Ungrouped, one mis-set label produces a line per check it
+    # trips, and the card fills with near-identical "sits on 1 mark(s)" rows that say one thing.
+    complaints = group_by_subject(found)
+
+    def card(width: int) -> list[str]:
+        """The report at a given wrap width, continuation lines indented under their bullet."""
+        out = ['    save(fig, out_dir, "comparison")', "", "AssertionError: figure QC:"]
+        for complaint in complaints:
+            folded = textwrap.wrap(complaint, width=width) or [complaint]
+            out.append(f"  - {folded[0]}")
+            out.extend(f"    {piece}" for piece in folded[1:])
+        return [*out, "", "nothing was written."]
+
+    # MEASURED, not guessed. The first version truncated each complaint at 59 characters and the
+    # longest still ran past the card — a figure about a layout checker with text out of its own
+    # box. Narrow the wrap until every line fits the card it is drawn on, and refuse if none does.
+    drawn: list = []
+    for width in range(72, 28, -2):
+        for text in drawn:
+            text.remove()
+        lines = card(width)
+        drawn = [
+            report.text(
+                0.035,
+                0.94 - index * (0.88 / max(len(lines), 1)),
+                line,
+                family="monospace",
+                fontsize=12,
+                color="#B3402F" if line.lstrip().startswith(("AssertionError", "-")) else MUTED_INK,
+                fontweight="bold" if line.startswith("AssertionError") else "normal",
+                va="top",
+                transform=report.transAxes,
+            )
+            for index, line in enumerate(lines)
+        ]
+        fig.canvas.draw()
+        room = report.get_window_extent()
+        if not any(text.get_window_extent().x1 > room.x1 - 4.0 for text in drawn):
+            break
+    else:
+        message = "no wrap width fits the report card"
+        raise AssertionError(message)
+
+    panel.set_title("the figure a project asked to save", fontsize=15, fontweight="bold", pad=10)
+    report.set_title("what it got instead", fontsize=15, fontweight="bold", pad=10)
     header_bottom = titled(
         fig,
-        "The gate reads the pixels, then moves the ink",
+        "It refuses to write, and says why",
         subtitle=(
-            f"{len(before) // 2} complaints about the panel on the left; "
-            f"repair() resolved {len(resolved) // 2}"
+            f"{len(found)} complaints on {len(complaints)} subjects — grouped the way "
+            "`python -m ogviz.qc` reports them"
         ),
     )
-    fig.tight_layout(rect=(0.0, 0.0, 1.0, header_bottom))
+    fit_under_header(fig, header_bottom, bottom=0.0)
     _assert_shows_the_defect(build)
-    # `reproducible_metadata`, because `save` is what usually drops the write date and this is the
-    # one figure that does not go through it. Without it the committed SVG carries a live timestamp
-    # and changes on every render, which is precisely the un-diffable gallery that helper exists to
-    # prevent — caught here by `git status` after a no-op re-render.
-    for suffix, kwargs in ((".png", {"dpi": 200}), (".svg", {})):
-        path = OUT / f"13_the_gate{suffix}"
-        fig.savefig(path, metadata=reproducible_metadata(path), **kwargs)
+    with glyphs_must_render():
+        for suffix, kwargs in ((".png", {"dpi": 200}), (".svg", {})):
+            path = OUT / f"13_the_gate{suffix}"
+            fig.savefig(path, metadata=reproducible_metadata(path), **kwargs)
     plt.close(fig)
 
 
