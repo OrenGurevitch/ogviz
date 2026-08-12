@@ -14,6 +14,8 @@ uv add "ogviz @ git+https://github.com/OrenGurevitch/ogviz"
 ```
 
 ```python
+import matplotlib.pyplot as plt
+
 from ogviz import fit_under_header, group_violins, save, titled, use_house_style, value_ticks
 
 use_house_style()
@@ -42,9 +44,8 @@ the measurement behind it. Requires Python ≥ 3.12 and matplotlib ≥ 3.10.
 `uv run just figures` renders these from invented data with fixed seeds. The source,
 `examples/__main__.py`, is the specification rather than an illustration.
 
-They are grouped by what they are FOR, and each pair's COLUMN WIDTHS are solved from the two
-figures' aspect ratios so both cells come out the same height. Equal columns do not: a 0.95-ratio
-panel beside a 1.25-ratio grid differs by 121 px, which reads as an accident rather than a pair.
+They are grouped by what each one is FOR, and paired so the two figures in a row are the same
+height.
 
 ### Distributions
 
@@ -83,7 +84,7 @@ panel beside a 1.25-ratio grid differs by 121 px, which reads as an accident rat
 <td width="50%"><img src="examples/out/09_headline_bars.png" width="100%"><br><sub><code>rounded</code> and <code>highlight</code></sub></td>
 </tr>
 <tr>
-<td colspan="2"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><code>orientation="horizontal"</code>, for long names — full width, because at 2.77:1 a half column leaves a sliver</sub></td>
+<td colspan="2"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><code>orientation="horizontal"</code>, for long names</sub></td>
 </tr>
 </table>
 
@@ -95,9 +96,11 @@ panel beside a 1.25-ratio grid differs by 121 px, which reads as an accident rat
 <td width="45%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><code>slopegraph</code> — even stages, spread as a band</sub></td>
 </tr>
 <tr>
-<td colspan="2"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><code>coupling_panels</code> — scatters over forest plots; full width because six panels in a half column are unreadable</sub></td>
+<td colspan="2"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><code>coupling_panels</code> — scatters over forest plots</sub></td>
 </tr>
 </table>
+
+The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, which works standalone.
 
 ### Matrices and tables
 
@@ -108,14 +111,12 @@ panel beside a 1.25-ratio grid differs by 121 px, which reads as an accident rat
 </tr>
 </table>
 
-The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, which works standalone.
-
 ## The QC gate
 
 ![](examples/out/13_the_gate.png)
 
-<sub>the same panel as <code>audit</code> finds it and as <code>repair</code> leaves it — the one figure here
-that <code>save</code> refuses, because half of it is an exhibit</sub>
+<sub>the same panel as <code>audit</code> finds it and as <code>repair</code> leaves it — and the only figure
+in this repository that <code>save</code> refuses to write, because the left half is an exhibit</sub>
 
 `save` runs it. `guard()` extends it to every `fig.savefig`, whoever called it; `OGVIZ_GUARD=1` does
 the same with no code change, for CI and paper builds.
