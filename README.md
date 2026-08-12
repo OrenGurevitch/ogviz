@@ -471,9 +471,12 @@ DOI, because those are not in that library and a citation nobody has verified is
 - **Hintze and Nelson** — the violin plot, as a box plot and a density trace in one mark.
 - **Tufte** — the slopegraph, and the data-ink argument the whole house style rests on.
 
-What this package deliberately does NOT implement: colour difference is measured in sRGB here, not
-with **CIEDE2000**, and the docstring in `ogviz/color.py` says so. For an exact answer use
-`colorspacious` or `daltonlens`; for the colour maps, `cmcrameri`. The module tree above is
+What this package deliberately does NOT implement: the dichromat simulation is the single-matrix
+one rather than **Brettel**'s two half-planes, and colour difference is Euclidean in sRGB rather
+than in a uniform space such as **CAM02-UCS**. Both shortcuts are now measured rather than merely
+confessed — neither changes a single verdict on the palettes that ship, and `ogviz/color.py` carries
+the numbers, including the one in eight true positives the simulation costs on arbitrary colours.
+For an exact answer use `colorspacious` or `daltonlens`; for the colour maps, `cmcrameri`. The module tree above is
 generated with [pypatree](https://github.com/yberreby/pypatree).
 
 ## License
