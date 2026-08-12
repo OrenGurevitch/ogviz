@@ -152,14 +152,6 @@ BLOCKS = ("B1", "B2", "B3", "B4", "B5", "B6")
 ARM_LABELS = ("baseline", "variant A", "variant B", "variant C")
 
 
-def headline_arms(seed: int = 7) -> tuple[np.ndarray, np.ndarray]:
-    """Four arms scored on two metrics, with CI half-widths — the headline-bar case."""
-    rng = np.random.default_rng(seed)
-    first = np.array([0.34, 0.47, 0.58, 0.64]) + rng.normal(0, 0.004, 4)
-    second = first - 0.09 + rng.normal(0, 0.004, 4)
-    return first, second
-
-
 def coupled_variables(seed: int = 8) -> dict[str, dict[str, np.ndarray]]:
     """Three variables on two groups, made to disagree pooled versus within.
 
