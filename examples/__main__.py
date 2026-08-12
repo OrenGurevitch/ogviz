@@ -24,6 +24,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import Rectangle
 from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, NullFormatter
 
 from examples.data import (
@@ -37,9 +38,11 @@ from examples.data import (
     DOMAINS,
     FORMATIONS,
     LEAGUE_AVERAGE_XG,
+    METRICS,
     NATIONS,
     SPECTRAL_BANDS,
     STAGES_OF_THE_ROAD,
+    SYSTEMS,
     TREATED,
     TREATED_EDGE,
     bending_by_nation,
@@ -49,10 +52,10 @@ from examples.data import (
     domain_profile,
     effort_ladders,
     expected_goals,
-    headline_arms,
     heart_rate_spectra,
     journey_measures,
     large_magnitudes,
+    metric_grid,
     paired_sensors,
     skewed_groups,
     two_groups,
@@ -98,11 +101,13 @@ from ogviz import (
     use_house_style,
     value_floor,
     value_ticks,
+    wrap_to_panel,
     zero_baseline,
 )
 from ogviz.layout.ticks import typeset
 from ogviz.panels.lines import MUTED_SERIES
 from ogviz.tags import mark
+from ogviz.units import to_points
 
 OUT = Path(__file__).parent / "out"
 
@@ -415,33 +420,95 @@ def split_violin_pair() -> None:
     render(fig, "05_split_violins")
 
 
-def headline_bars() -> None:
-    """The headline comparison: paired metrics, a highlighted arm, a reference band."""
-    first, second = headline_arms()
-    fig, ax = plt.subplots(figsize=(11.5, 6.8))
-    bar_panel(
-        ax,
-        [
-            Series("metric A", first, "#5C82B5", np.full(4, 0.035)),
-            Series("metric B", second, "#C9C6BB", np.full(4, 0.030)),
-        ],
-        list(ARM_LABELS),
-        rounded=True,
-        highlight=3,
-        emphasis=3,
-        value_format="{:.3f}",
-    )
-    ax.set_ylabel("Score", fontsize=17, fontweight="bold")
-    ax.set_ylim(0, 0.86)
-    baseline(ax)
-    legend_pill(ax, loc="upper center", bbox_to_anchor=(0.5, -0.10), ncol=2)
+def _size_that_fits(ax, labels, *, slots: int, largest: float = 11.0) -> float:
+    """The largest type size at which every label's longest WORD fits the width of one slot.
+
+    `wrap_to_panel` breaks at spaces, so it cannot help a one-word name — and a category axis is
+    mostly one-word names. This asks the other question: a word cannot be broken, so how big may it
+    be set? Measured against the panel as rendered, so the answer follows whichever font resolved
+    rather than the one the author happened to have installed.
+    """
+    from ogviz.layout.caption import longest_unbreakable
+
+    slot = to_points(ax.get_window_extent().width / slots, fig=ax.get_figure(root=True))
+    for size in (largest, 10.0, 9.0, 8.0, 7.0):
+        if all(longest_unbreakable(label, size) <= slot * 0.94 for label in labels):
+            return size
+    return 7.0
+
+
+def metric_grid_figure() -> None:
+    """One panel per metric, every system in every panel — a benchmark table that can be read.
+
+    Eight metrics as eight panels rather than eight columns, the same five systems in the same
+    order and the same colour in each, so a reader compares DOWN a panel and ACROSS the grid
+    without re-learning anything.
+
+    THE WINNER IS MARKED THREE WAYS AND NONE OF THEM BY HAND: an outlined bar, its value in bold,
+    its name in bold on the axis. `metric_grid` derives it from the values and the metric's
+    direction, so the outline cannot come to disagree with the bars — and it would disagree
+    SILENTLY, since a bold bar looks deliberate whichever one it is.
+
+    TWO PANELS ARE ERRORS, where the shortest bar wins, which is why the direction is carried per
+    metric rather than inferred from the numbers. They are also the point of the figure: the system
+    that wins those is not the one that wins the six scores, which a single headline number hides.
+
+    Each panel keeps its own scale — a millimetre and a fraction do not share an axis — and
+    `emphasis` does the bold-value third of the marking already.
+    """
+    grid = metric_grid()
+    # TINTED toward the page. Forty saturated bars is a lot of colour for a figure whose
+    # subject is the small differences between their heights; muting the fill lets the
+    # outlined leader and the error bars be the things that carry weight.
+    palette = [tint(color, strength=0.45) for color in series_colors(len(SYSTEMS))]
+    fig, axes = plt.subplots(2, 4, figsize=(17.0, 8.6))
+    for ax, (name, what, _lower) in zip(axes.flat, METRICS, strict=True):
+        values, spread, _lower_is_better, best = grid[name]
+        # SIZED TO THE SLOT, then wrapped inside it. Five names across a quarter-width panel
+        # collide — the gate said so twice, and the second time only under the pinned DejaVu, which
+        # is wider than the Arial this renders in locally. Wrapping alone cannot fix it: "Baseline"
+        # is one word and `wrap_to_panel` has nowhere to break it, so the type has to come down
+        # until the longest UNBREAKABLE word fits the width one bar actually gets.
+        label_size = _size_that_fits(ax, SYSTEMS, slots=len(SYSTEMS))
+        bar_panel(
+            ax,
+            [Series("", values, list(palette), spread)],
+            [
+                "\n".join(wrap_to_panel(ax, name, label_size, fraction=1.0 / len(SYSTEMS)))
+                for name in SYSTEMS
+            ],
+            emphasis=best,
+            value_format="{:.3f}" if values.max() < 2.0 else "{:.2f}",
+        )
+        ax.tick_params(axis="x", labelsize=label_size)
+        # The outline and the bold tick label, which `bar_panel` has no argument for. Done here
+        # rather than added to it: this is one figure's convention for saying "this one", and the
+        # panel already offers the third of it that is about the NUMBER.
+        bars = [patch for patch in ax.patches if isinstance(patch, Rectangle) and patch.get_width()]
+        if best < len(bars):
+            bars[best].set_edgecolor(INK)
+            bars[best].set_linewidth(2.0)
+        ax.get_xticklabels()[best].set_fontweight("bold")
+        # The title wraps for the same reason the tick labels shrink, and can be wrapped
+        # rather than shrunk because it has spaces in it: "Boundary error (mm) — lower
+        # better" ran 70 px past its panel under the pinned font and into its neighbour.
+        ax.set_title(
+            "\n".join(wrap_to_panel(ax, f"{name} — {what}", 14.0)),
+            fontsize=14,
+            fontweight="bold",
+            pad=10,
+        )
+        zero_baseline(ax)
     header_bottom = titled(
         fig,
-        "Headline comparison",
-        subtitle="rounded bars, the arm in question shaded, the reference as a band not a line",
+        "Every metric, one panel each",
+        subtitle=(
+            "invented scores; the outlined bar leads its metric, and on the two error panels "
+            "that is the shortest one"
+        ),
     )
-    fit_under_header(fig, header_bottom, bottom=0.06)
-    render(fig, "09_headline_bars")
+    fit_under_header(fig, header_bottom, bottom=0.0)
+    render(fig, "09_metric_grid")
 
 
 def coupling_triangle() -> None:
@@ -1087,7 +1154,7 @@ EXAMPLES = (
     # Bars: one series, then two, then a decorated one, then the other orientation.
     bars_with_reference,
     grouped_bars,
-    headline_bars,
+    metric_grid_figure,
     horizontal,
     # Relationships over a continuous axis: one panel of series, then the composite built from them.
     effort_curves,

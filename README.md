@@ -81,13 +81,15 @@ height.
 <td width="53%"><img src="examples/out/17_controlled_comparison.png" width="100%"><br><sub>one bar that is not comparable, said on the axis</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="examples/out/08_grouped_bars.png" width="100%"><br><sub>two series, sign-aware labels</sub></td>
-<td width="50%"><img src="examples/out/09_headline_bars.png" width="100%"><br><sub><code>rounded</code> and <code>highlight</code></sub></td>
-</tr>
-<tr>
-<td colspan="2"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><code>orientation="horizontal"</code>, for long names</sub></td>
+<td width="39%"><img src="examples/out/08_grouped_bars.png" width="100%"><br><sub>two series, sign-aware labels</sub></td>
+<td width="61%"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><code>orientation="horizontal"</code>, for long names</sub></td>
 </tr>
 </table>
+
+![](examples/out/09_metric_grid.png)
+
+<sub>a benchmark table as panels — the same systems in every one, the leader outlined and its value
+bold, and two panels where lower wins so the leader is the shortest bar</sub>
 
 ### Curves, coupling and change
 

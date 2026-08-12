@@ -487,3 +487,51 @@ def short_time_spectrum(seed: int = 14) -> tuple[np.ndarray, np.ndarray, np.ndar
     transform = ShortTimeFFT(window, hop=64, fs=rate, scale_to="magnitude")
     power = np.abs(transform.stft(signal)) ** 2
     return to_decibels(power, floor_db=-70.0), transform.t(signal.size), transform.f
+
+
+# One panel per metric, the same systems in every panel — the shape a benchmark table wants to be.
+# `lower_is_better` is carried per metric rather than inferred, because nothing about a number says
+# which direction is good, and a grid that guesses will bold the loser on the error metrics.
+SYSTEMS = ("Baseline", "System A", "System B", "System C", "System D")
+METRICS: tuple[tuple[str, str, bool], ...] = (
+    ("Overlap", "area agreement", False),
+    ("Detection", "items found at all", False),
+    ("Recall", "of what is there", False),
+    ("Precision", "of what is claimed", False),
+    ("Stability", "across reruns", False),
+    ("Agreement", "two raters", False),
+    ("Boundary (mm)", "lower better", True),
+    ("Volume error", "lower better", True),
+)
+
+
+def metric_grid(seed: int = 21) -> dict[str, tuple[np.ndarray, np.ndarray, bool, int]]:
+    """Five systems scored on eight invented metrics, with a bootstrap-style interval each.
+
+    Returns per metric: the values, the interval half-widths, whether lower wins, and which system
+    won. The WINNER IS COMPUTED from the values and the direction, never passed in — a grid whose
+    outline is set by hand goes wrong the first time a number changes, and it would go wrong
+    silently, because a bold bar looks deliberate whichever one it is.
+
+    No system wins everything, and the two error metrics are won by a different one than the six
+    score metrics. That is the arrangement the figure exists for: read down a column and one system
+    is not simply best, which a single headline number would have hidden.
+    """
+    rng = np.random.default_rng(seed)
+    grid: dict[str, tuple[np.ndarray, np.ndarray, bool, int]] = {}
+    scores = {
+        "Overlap": (0.742, 0.681, 0.675, 0.669, 0.658),
+        "Detection": (0.737, 0.724, 0.688, 0.671, 0.592),
+        "Recall": (0.664, 0.731, 0.726, 0.690, 0.551),
+        "Precision": (0.858, 0.744, 0.679, 0.702, 0.719),
+        "Stability": (0.713, 0.727, 0.748, 0.741, 0.712),
+        "Agreement": (0.812, 0.661, 0.642, 0.638, 0.651),
+        "Boundary (mm)": (5.14, 4.32, 4.77, 5.09, 9.11),
+        "Volume error": (0.244, 0.219, 0.272, 0.264, 0.269),
+    }
+    for name, _what, lower_is_better in METRICS:
+        values = np.array(scores[name], dtype=float)
+        spread = values * rng.uniform(0.035, 0.12, values.size)
+        best = int(np.argmin(values) if lower_is_better else np.argmax(values))
+        grid[name] = (values, spread, lower_is_better, best)
+    return grid
