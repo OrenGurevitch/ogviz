@@ -335,25 +335,6 @@ def journey_measures(
     return grid
 
 
-TRIALS_OF_THE_TOURNAMENT = (
-    "Sword swallowing",
-    "Fire breathing",
-    "Plate spinning",
-    "Knife juggling",
-    "Lion taming",
-    "Tightrope",
-    "Trapeze",
-    "Escapology",
-    "Contortion",
-    "Human cannonball",
-    "Card throwing",
-    "Stilt walking",
-    "Hoop diving",
-    "Whip cracking",
-    "Unicycling",
-)
-
-
 ACTS = ("Acrobatics", "Illusion", "Clowning", "Aerials", "Beasts", "Music")
 JUDGES = ("Technique", "Danger", "Showmanship", "Costume")
 

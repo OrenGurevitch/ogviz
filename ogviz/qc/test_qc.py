@@ -586,3 +586,38 @@ def test_every_direct_savefig_in_the_gallery_drops_the_date() -> None:
     assert calls, "the premise: the gallery still has a direct savefig to check"
     bare = [call for call in calls if "metadata=" not in call]
     assert not bare, f"savefig without reproducible metadata: {bare}"
+
+
+def test_the_gallery_uses_every_name_its_data_module_exports() -> None:
+    """`examples/data.py` feeds the gallery, so a name it exports and nothing draws is dead.
+
+    Twice now a figure has been replaced and left its data behind: `tournament_p_values` when the
+    multiplicity ladder lost its slot, `headline_arms` when the headline bars became the metric
+    grid. Both were found by reading, weeks apart, which is the argument for asking the question
+    here instead — a builder nobody calls still imports, still type-checks, and still looks like
+    part of the specification the module docstring claims to be.
+
+    Public names only: `COHORT` and `_bump` are used inside the module by the builders themselves,
+    which is a different thing from being drawn.
+    """
+    import ast
+    import re
+    from pathlib import Path
+
+    examples = Path(__file__).resolve().parent.parent.parent / "examples"
+    data, gallery = (examples / "data.py").read_text(), (examples / "__main__.py").read_text()
+    exported = [
+        node.name if isinstance(node, ast.FunctionDef) else target.id
+        for node in ast.parse(data).body
+        for target in (getattr(node, "targets", []) or [node])
+        if (isinstance(node, ast.FunctionDef) and not node.name.startswith("_"))
+        or (isinstance(node, ast.Assign) and isinstance(target, ast.Name) and target.id.isupper())
+    ]
+    orphans = [
+        name
+        for name in dict.fromkeys(exported)
+        if not re.search(rf"\b{name}\b", gallery) and len(re.findall(rf"\b{name}\b", data)) <= 1
+    ]
+    assert not orphans, (
+        f"nothing in the gallery draws these, and nothing else in data.py uses them: {orphans}"
+    )
