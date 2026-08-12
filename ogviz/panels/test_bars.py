@@ -152,24 +152,63 @@ def test_a_buried_threshold_is_reported() -> None:
 
 
 def test_a_rounded_corner_is_the_same_size_on_any_axis() -> None:
-    """The radius was a fraction of the tallest VALUE, and `rounding_size` applies to BOTH axes.
+    """The radius was a fraction of the tallest VALUE, and a rounding applies to BOTH axes.
 
     So it was only sensible where the value axis happened to be order-1: measured on a counts axis,
     the corner came out at 394,460% of the bar's own width — a lozenge rather than a bar.
+
+    MEASURED IN RENDERED PIXELS. This used to read `rounding_size` off the boxstyle, which stopped
+    existing when the boxstyle became a callable that rounds only the free end — and an attribute is
+    the input rather than the result anyway. The corner is now taken from the ink: how much narrower
+    the bar is at its top than at its middle is twice the radius, whatever produced it.
     """
-    from matplotlib.patches import FancyBboxPatch
+    import numpy as np
 
     from ogviz import bar_panel
+    from ogviz.layout.raster import frame_rgb, ink_of
     from ogviz.panels.bars import Series
 
     def corner_px(values: list[float]) -> float:
         fig, ax = plt.subplots(figsize=(8.0, 5.0))
-        bar_panel(ax, [Series("s", values, "#7C9A6E")], ["A", "B", "C"], rounded=True)
+        bar_panel(ax, [Series("s", np.array(values), "#7C9A6E")], ["A"], rounded=True)
         fig.canvas.draw()
-        patch = next(p for p in ax.patches if isinstance(p, FancyBboxPatch))
-        low, high = ax.get_xlim()
-        return patch.get_boxstyle().rounding_size / (high - low) * ax.get_window_extent().width
+        ink = ink_of(frame_rgb(fig), tolerance=8)
+        rows = np.flatnonzero(ink.sum(axis=1) > 0)
+        top, bottom = rows.min(), rows.max()
+        at_top = int(ink[top + 2].sum())  # clear of the antialiased first row
+        at_middle = int(ink[(top + bottom) // 2].sum())
+        plt.close(fig)
+        return (at_middle - at_top) / 2.0
 
-    near_one = corner_px([0.42, 0.61, 0.70])
-    near_thousands = corner_px([26000.0, 38000.0, 45000.0])
-    assert near_one == pytest.approx(near_thousands, rel=0.01), (near_one, near_thousands)
+    near_one = corner_px([0.61])
+    near_thousands = corner_px([38000.0])
+    assert near_one > 1.0, "the premise: there is a corner to measure at all"
+    assert near_one == pytest.approx(near_thousands, abs=1.5), (near_one, near_thousands)
+
+
+def test_a_rounded_bar_still_meets_its_baseline_square() -> None:
+    """A bar encodes its value as the distance from zero, so the corner AT zero must be square.
+
+    `boxstyle="round"` rounds all four, and for as long as `rounded=True` existed the foot curved
+    away from the axis: a visible gap where the bar should meet zero, and a base narrower than the
+    bar. Measured on the RENDERED pixels rather than on the path, because the path is mutated by
+    `mutation_aspect` on the way to the page and the vertices alone do not say what landed.
+    """
+    import numpy as np
+
+    from ogviz.layout.raster import frame_rgb, ink_of
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    bar_panel(ax, [Series("v", np.array([0.9, 0.6]), "#5B7FB9")], ["a", "b"], rounded=True)
+    fig.canvas.draw()
+    ink = ink_of(frame_rgb(fig), tolerance=8)
+
+    base_y = round(ax.transData.transform((0.0, 0.0))[1])
+    row_at_base = ink.shape[0] - base_y - 3  # a few px above zero, inside the bar
+    mid_y = ink.shape[0] - round(ax.transData.transform((0.0, 0.45))[1])
+    widths = [int(ink[row].sum()) for row in (row_at_base, mid_y)]
+    assert widths[0] >= widths[1], (
+        f"narrower at the baseline ({widths[0]} px) than at mid height ({widths[1]} px) — "
+        "the feet are rounded and the bar does not meet zero"
+    )
+    plt.close(fig)

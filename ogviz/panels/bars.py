@@ -65,6 +65,73 @@ HIGHLIGHT_FILL = "#EFEDE4"  # the shaded column behind a highlighted category
 BAR_ROUNDING = 0.16  # corner radius, as a fraction of the BAR'S OWN WIDTH
 
 
+def _rounded_free_end(radius: float):
+    """A boxstyle rounding the end AWAY from zero and leaving the base square.
+
+    `boxstyle="round"` rounds all four corners, so a rounded bar curved away from its own baseline:
+    the foot left a visible gap where the bar should meet zero, and the base read as narrower than
+    the bar. A bar encodes its value as the distance from zero, so the one corner that must not be
+    softened is the one at zero. The docstring above always said "softened TOPS"; the implementation
+    rounded four corners for as long as the option existed.
+
+    A CALLABLE BOXSTYLE rather than a hand-built path, because `FancyBboxPatch` divides y by
+    `mutation_aspect` before calling this and multiplies it back afterwards. Inside here a circle is
+    a circle, so one radius serves both axes — and the corner stays round when a later
+    `tight_layout` resizes the axes, which a path baked in data coordinates would not.
+    """
+    from matplotlib.path import Path
+
+    def boxstyle(x0: float, y0: float, width: float, height: float, mutation_size: float) -> Path:
+        del mutation_size  # the radius is a fraction of the bar, not of the font
+        reach = abs(height)
+        r = min(radius, width / 2.0, reach)
+        if r <= 0.0:
+            return Path(
+                [
+                    (x0, y0),
+                    (x0 + width, y0),
+                    (x0 + width, y0 + height),
+                    (x0, y0 + height),
+                    (x0, y0),
+                ],
+                closed=True,
+            )
+        rise = r if height >= 0 else -r  # a negative bar grows downward; its free end is below
+        tip, near = y0 + height, y0 + height - rise
+        k = 0.5523  # the circle-to-bezier constant, for a quarter turn
+        pull = r * (1.0 - k)
+        return Path(
+            [
+                (x0, y0),
+                (x0, near),
+                (x0, tip - rise * (1.0 - k)),
+                (x0 + pull, tip),
+                (x0 + r, tip),
+                (x0 + width - r, tip),
+                (x0 + width - pull, tip),
+                (x0 + width, tip - rise * (1.0 - k)),
+                (x0 + width, near),
+                (x0 + width, y0),
+                (x0, y0),
+            ],
+            [
+                Path.MOVETO,
+                Path.LINETO,
+                Path.CURVE4,
+                Path.CURVE4,
+                Path.CURVE4,
+                Path.LINETO,
+                Path.CURVE4,
+                Path.CURVE4,
+                Path.CURVE4,
+                Path.LINETO,
+                Path.CLOSEPOLY,
+            ],
+        )
+
+    return boxstyle
+
+
 def _data_aspect(ax: Axes, span_hint: float) -> float:
     """Data units of y per data unit of x, as the page sees them.
 
@@ -105,7 +172,12 @@ def _rounded_bars(
                 (position - width / 2, 0.0),
                 width,
                 value,
-                boxstyle=f"round,pad=0,rounding_size={radius}",
+                # A CALLABLE is what matplotlib documents for a custom box and what it accepts;
+                # the stubs type this parameter as `BoxStyle | str` only, so the ignore is a gap in
+                # them rather than a doubt about the call. Registering a `BoxStyle` subclass instead
+                # would mean subclassing `BoxStyle._Base`, which is private and which matplotlib
+                # deprecated in favour of exactly this.
+                boxstyle=_rounded_free_end(radius),  # type: ignore[arg-type]
                 facecolor=color,
                 edgecolor="none",
                 mutation_aspect=aspect,
