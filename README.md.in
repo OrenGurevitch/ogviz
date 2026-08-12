@@ -87,8 +87,9 @@ height.
 
 ![](examples/out/09_metric_grid.png)
 
-<sub>a benchmark table as panels — the same systems in every one, the leader outlined and its value
-bold, and two panels where lower wins so the leader is the shortest bar</sub>
+<sub>a benchmark table as panels — each system keeps its hue across the grid and the panel's leader
+is that hue at full strength, so who won reads before any number does. Two panels are errors, where
+the leader is the shortest bar</sub>
 
 ### Curves, coupling and change
 
