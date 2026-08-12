@@ -35,7 +35,7 @@ import pytest
 
 from ogviz.theme import use_house_style
 
-# At the REPO ROOT rather than inside the package, deliberately.  is what the wheel ships
+# At the REPO ROOT rather than inside the package, deliberately. `ogviz/` is what the wheel ships
 # (see `[tool.hatch.build.targets.wheel]`), so a conftest there would put pytest fixtures — and an
 # import of pytest — into what consumers install. It also appeared in the generated README module
 # tree, which is meant to say what the API is.

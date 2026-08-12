@@ -183,9 +183,6 @@ def raise_buried_lines(fig: Figure) -> list[str]:
     return changed
 
 
-REPAIRS = (move_labels_off_the_marks, knock_out_labels_over_rules, raise_buried_lines)
-
-
 def repair(fig: Figure) -> list[str]:
     """Apply every repair that has one obvious answer. Returns what changed, in order.
 

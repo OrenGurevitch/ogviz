@@ -24,34 +24,6 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 
-LANE_TOLERANCE = 0.75
-
-
-def _group_centres(ax: Axes) -> list[float]:
-    """The exact x of each group, taken from the vertical marks drawn ON the centre line.
-
-    Estimating it from the dots does not work: the jitter is symmetric about the position but
-    avoids a lane at its centre, so both the median and the min-max midpoint land slightly off and
-    the lane is then measured from the wrong origin — which flags dots that are perfectly placed.
-    The IQR whisker is a two-point line at exactly the position, so read it from there.
-    """
-    across = 0 if orientation_of(ax) == "vertical" else 1
-    centres = []
-    for line in ax.lines:
-        data = np.asarray(line.get_xdata() if across == 0 else line.get_ydata(), dtype=float)
-        if data.size == 2 and float(data[0]) == float(data[1]):
-            centres.append(float(data[0]))
-    return sorted(set(centres))
-
-
-def _nearest_centre(ax: Axes, offsets: np.ndarray, across: int) -> float | None:
-    centres = _group_centres(ax)
-    if not centres:
-        return None
-    middle = float((offsets[:, across].min() + offsets[:, across].max()) / 2)
-    return min(centres, key=lambda c: abs(c - middle))
-
-
 def dots_off_the_marks(fig: Figure) -> list[str]:
     """No jittered point may sit on the central marks it is there to leave readable.
 

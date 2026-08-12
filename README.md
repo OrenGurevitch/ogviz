@@ -36,7 +36,7 @@ Three things the names do not give away:
   a warm off-white that composites as a grey rectangle on a journal's white.
 
 Everything else is documented where it lives: each function's docstring carries the reasoning and
-the measurement behind it. Requires matplotlib ≥ 3.10.
+the measurement behind it. Requires Python ≥ 3.12 and matplotlib ≥ 3.10.
 
 ## Figures
 

@@ -55,7 +55,6 @@ HIGHLIGHT_RADIUS = 0.012
 # to enclose the row and there was no gap for it to sit in.
 LABEL_INDENT = 0.008
 TINT_STRENGTH = 0.84  # how far a highlight colour is blended toward the page for a cell fill
-LABEL_COLUMN_SHARE = 0.26  # of the table width, before measurement widens it
 CELL_PAD_PT = 18.0
 
 

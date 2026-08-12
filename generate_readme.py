@@ -11,6 +11,8 @@ import re
 import subprocess
 from pathlib import Path
 
+from ogviz.require import require
+
 ROOT = Path(__file__).parent
 MARKER = "{{MODULE_TREE}}"
 WIDTH = 96  # a signature longer than this is collapsed; the code carries the full one
@@ -19,7 +21,9 @@ BRANCH = re.compile(r"[├└]──")  # what pypatree puts in front of a real 
 
 def main() -> None:
     template = (ROOT / "README.md.in").read_text()
-    assert MARKER in template, f"README.md.in has no {MARKER}"
+    # `require`, not `assert`: under `python -O` an assert is deleted, `replace` then
+    # substitutes nothing, and a README ships with the literal marker in it and no error.
+    require(MARKER in template, f"README.md.in has no {MARKER}")
     raw = subprocess.run(
         ["uv", "run", "pypatree", "ogviz", "--docstrings", "none"],
         capture_output=True,

@@ -277,4 +277,7 @@ __all__ = [
 
 # Off unless a project asks. See `ogviz.guard` for why a bare import must not change how matplotlib
 # behaves, and why an environment variable is the right place for a project to decide once.
-_GUARDING = guard_from_environment()
+# Called for the side effect, and NOT bound: a name here would be read as the current state
+# and is only ever true at import — `guard()` and `unguard()` do not update it. `is_guarded()`
+# is the accessor that asks the guard itself.
+guard_from_environment()

@@ -39,7 +39,6 @@ CONDITION_TINTS = ("#E8B33C", "#5B9BD5", "#3FA372")
 # NOT shaded: three adjacent regions read as one grey block, and it is the band everyone reports
 # and nobody interprets.
 SPECTRAL_BANDS = (("LF", 0.04, 0.15, "#B9860B"), ("HF", 0.15, 0.40, "#2E7D5B"))
-SPECTRUM_CONDITIONS = ("Baseline", "Task", "Recovery")
 
 
 def heart_rate_spectra(seed: int = 3) -> tuple[np.ndarray, dict[str, np.ndarray]]:
@@ -361,33 +360,6 @@ TRIALS_OF_THE_TOURNAMENT = (
     "Whip cracking",
     "Unicycling",
 )
-
-
-def tournament_p_values(seed: int = 16) -> tuple[tuple[str, ...], list[float]]:
-    """A family of fifteen tests, most of which are noise. Invented, and round on purpose.
-
-    Eight land under 0.05 and only a few survive the correction, which is the whole reason the
-    panel exists: eight stars in a table read as eight findings.
-    """
-    del seed  # the values are written down, not drawn
-    p_values = [
-        0.0004,
-        0.006,
-        0.011,
-        0.019,
-        0.028,
-        0.033,
-        0.041,
-        0.049,
-        0.08,
-        0.12,
-        0.19,
-        0.24,
-        0.41,
-        0.63,
-        0.88,
-    ]
-    return TRIALS_OF_THE_TOURNAMENT, p_values
 
 
 ACTS = ("Acrobatics", "Illusion", "Clowning", "Aerials", "Beasts", "Music")
