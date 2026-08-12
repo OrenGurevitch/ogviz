@@ -161,3 +161,61 @@ def test_two_threads_saving_at_once_are_both_audited(tmp_path) -> None:
             thread.join()
 
     assert verdicts == ["refused", "refused"], verdicts
+
+
+def _with_a_missing_glyph() -> plt.Figure:
+    """A figure whose text has a character the pinned font has no glyph for.
+
+    DejaVu Sans is pinned by `conftest`, so the character has to be one IT lacks — an Arial-only
+    choice would render fine here and the test would measure nothing. U+1F600 is absent from both.
+    """
+    fig, ax = plt.subplots(figsize=(4.0, 3.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.set_title("no glyph for this: \U0001f600")
+    return fig
+
+
+def test_the_missing_glyph_is_a_warning_the_checks_cannot_see() -> None:
+    """The premise. `audit` reads finished artists; a missing glyph is emitted while RASTERISING,
+    so nothing in `CHECKS` can report it and the guard has to wrap the write itself."""
+    from ogviz.qc import audit
+
+    fig = _with_a_missing_glyph()
+    with warnings.catch_warnings():  # the render warns by design; that IS the thing being described
+        warnings.simplefilter("ignore")
+        fig.canvas.draw()
+    assert not audit(fig), "if a check can see this, the guard need not wrap the render"
+    plt.close(fig)
+
+
+def test_the_guard_refuses_a_figure_with_no_glyph_for_its_text(tmp_path) -> None:
+    """The one protection `save` had that the checks do not, which `guard()` used to drop.
+
+    A project moving from `save` to `guard()` — which the README encourages — silently lost it and
+    shipped a tofu box where a tick should be.
+    """
+    fig = _with_a_missing_glyph()
+    with guarded(mode="raise"), pytest.raises(FigureRejectedError, match="no glyph"):
+        fig.savefig(tmp_path / "tofu.png")
+    assert not (tmp_path / "tofu.png").exists(), "a refused figure was written anyway"
+    plt.close(fig)
+
+
+def test_warn_mode_writes_the_tofu_and_says_so(tmp_path) -> None:
+    """`warn` reports and does not block, which is the contract every other check here keeps."""
+    fig = _with_a_missing_glyph()
+    with guarded(mode="warn"), warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        fig.savefig(tmp_path / "written.png")
+    assert (tmp_path / "written.png").exists(), "warn mode must still write"
+    assert any("no glyph" in str(w.message) for w in caught), [str(w.message) for w in caught]
+    plt.close(fig)
+
+
+def test_a_figure_whose_glyphs_all_resolve_is_untouched(tmp_path) -> None:
+    """The guard must not start refusing ordinary text; every gallery figure goes through here."""
+    fig = _clean()
+    with guarded(mode="raise"):
+        fig.savefig(tmp_path / "fine.png")
+    assert (tmp_path / "fine.png").exists()
+    plt.close(fig)

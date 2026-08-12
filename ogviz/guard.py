@@ -90,6 +90,30 @@ def _complaints(fig: Figure, *, mode: Mode, min_gap: float, advise: bool) -> lis
     return found
 
 
+def _missing_glyphs(figure: Figure) -> list[str]:
+    """Render the figure, and report any character with no glyph in the resolved font.
+
+    THE RENDER IS THE MEASUREMENT, which is why this replaces the guard's plain `ensure_rendered`
+    rather than wrapping the write. A missing glyph is a warning matplotlib emits while laying text
+    out, so it is not a property of the finished artists and no check in `CHECKS` can read it — and
+    matplotlib does not necessarily emit it twice for the same text, so a wrapper around the write
+    finds nothing once the figure has already been drawn. Whoever performs the FIRST render is the
+    only one in a position to see it, and inside the guard that is this call.
+
+    Returned as complaints rather than raised, so a missing glyph flows through the same `mode`
+    logic as everything else: refused under `raise`, reported under `warn`.
+    """
+    from ogviz.layout.render import ensure_rendered
+    from ogviz.theme import glyphs_must_render
+
+    try:
+        with glyphs_must_render():
+            ensure_rendered(figure)
+    except AssertionError as missing:
+        return [str(missing)]
+    return []
+
+
 def guard(
     *,
     mode: Mode = "raise",
@@ -101,6 +125,17 @@ def guard(
     `min_gap` is the breathing room two labels on one row must have; leaving it out uses the house
     default, which catches labels that have run together rather than a figure that is merely tight.
     `advise=True` adds the dead-space notes, which never fail anything.
+
+    THE TOFU CHECK IS PART OF THIS, and was not until 2026-08-12. `save` refuses a figure whose text
+    has no glyph in the resolved font; the checks in `CHECKS` cannot see it, because a missing glyph
+    is a warning matplotlib emits while RENDERING rather than a property of the finished artists. So
+    for as long as the guard wrapped only the checks, the one protection `save` had that the checks
+    do not was exactly the one a project lost by moving from `save` to `guard()` — which the README
+    encourages. A figure shipped with a tofu box where a tick should be, and nothing said so.
+
+    It honours `mode` like everything else here: a missing glyph raises under `raise` and warns
+    under `warn`. That is the whole reason it is not simply `with glyphs_must_render():` around the
+    write — that context manager only raises, and a guard installed to warn must keep warning.
     """
     from ogviz.layout.overlap import DEFAULT_MIN_GAP
 
@@ -111,10 +146,9 @@ def guard(
             return _ORIGINAL(self, *args, **kwargs)  # type: ignore[arg-type]
         token = _AUDITING.set(True)
         try:
-            from ogviz.layout.render import ensure_rendered
-
-            ensure_rendered(self)
-            found = _complaints(self, mode=mode, min_gap=floor, advise=advise)
+            found = _missing_glyphs(self) + _complaints(
+                self, mode=mode, min_gap=floor, advise=advise
+            )
             hard = [note for note in found if not note.startswith("(advisory)")]
             if hard and mode == "raise":
                 where = args[0] if args else kwargs.get("fname", "a figure")

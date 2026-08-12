@@ -125,8 +125,10 @@ thresholds, stars at uneven distances, dots on the mean line, ungrouped thousand
 signs, and two legend series that separate now and merge under colour-vision deficiency.
 `--list-checks` prints the current set.
 
-`save` alone also refuses a figure whose text has no glyph in the resolved font — the tofu box.
-That one is not a check and `guard()` does not carry it.
+`save` and `guard()` both also refuse a figure whose text has no glyph in the resolved font — the
+tofu box. That one is not in `--list-checks`, because a missing glyph is a warning matplotlib emits
+while laying text out rather than anything a finished figure carries, so it is caught by whoever
+renders first rather than by reading the artists.
 
 It needs nothing else from this package — point it at any matplotlib figure, from any project:
 
