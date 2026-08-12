@@ -42,11 +42,18 @@ def ticks_over_data(
     extent. The failure is real; the explanation was not, which is exactly the kind of claim this
     package asks to be measured.
 
-    ON A SHARED SCALE, `data_high` means the reach across EVERY panel sharing it, not this panel's
-    own. Measuring per panel gives each a different bracketing tick — the disagreement this function
-    exists to prevent — and only the caller knows which axes are grouped. `align_ticks` does this
-    correctly by passing the maximum over the whole grid; a caller pairing two axes by hand has to
-    do the same.
+    ON A SHARED SCALE, DO NOT CALL THIS PER PANEL — call `align_ticks` with the axes together.
+    `data_high` means the reach across EVERY panel sharing the scale, not this panel's own, and only
+    the caller knows which axes are grouped. Measured on two hand-paired panels where the right one
+    holds averages of the left one's blocks, so its maximum is necessarily lower: calling this on
+    each gives them seven ticks and six, which is the disagreement this function exists to prevent,
+    and `panels_disagree_about_ticks` reports it. `align_ticks(axes)` on the same pair gives both
+    the same six and the check goes quiet.
+
+    That works for any set of axes, not only a grid — it takes an iterable, and a hand-paired pair
+    is a set of two. This docstring used to say such a caller "has to do the same", meaning compute
+    the shared maximum themselves; they do not, and doing it by hand is how one panel ends up
+    over-bracketed by a tick.
 
     It also makes panels disagree with each other for no reason a reader can see: one whose stack
     happens to clear a round number carries an extra rule and its neighbour does not. That is the
