@@ -33,7 +33,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
-from matplotlib.collections import Collection
+from matplotlib.collections import Collection, PathCollection
 from matplotlib.colors import to_rgba
 from matplotlib.image import AxesImage
 from matplotlib.lines import Line2D
@@ -147,8 +147,21 @@ def point_offsets(collection: Collection) -> NDArray[np.float64] | None:
 
     Two callers asked it with two different conditions before this existed, which is worse than
     duplication: they could disagree about the same collection.
+
+    A SINGLE point is still a cloud, and the count is the wrong way to ask. The test was "more than
+    one offset", because a filled body carries matplotlib's default `[[0, 0]]` and would otherwise
+    have read as a one-point cloud — so an n=1 scatter fell through to the body branch and was
+    tested at the ORIGIN rather than where it was drawn: a missed collision where the point is, and
+    a phantom one where it is not. A group of one is ordinary in the figures this draws. The type
+    answers it exactly — `scatter` returns a `PathCollection` and nothing else here does — so the
+    count no longer has to stand in for it, and an EMPTY scatter comes back as an empty cloud
+    rather than as a body with a marker outline at the origin.
     """
     offsets = np.asarray(collection.get_offsets(), dtype=float)
+    if offsets.ndim != 2 or offsets.shape[1] != 2:
+        return None
+    if isinstance(collection, PathCollection) and len(collection.get_paths()) <= 1:
+        return offsets
     if offsets.shape[0] > 1 and len(collection.get_paths()) <= 1:
         return offsets
     return None
@@ -245,11 +258,19 @@ def data_points(ax: Axes) -> list[MarkCloud]:
     "sits on 2 mark(s)" — five confident complaints about a figure with nothing overlapping. The
     same flaw was latent for every scatter, where a dense jitter cloud hid it: the zigzag through
     the dots happens to cover roughly the area the dots do.
+
+    A LINE THAT IS BOTH STROKED AND MARKED has both, and its markers were skipped. The test was
+    `_stroked(line) or not _marked(line)`, which excused the ordinary `ax.plot(x, y, marker="o")`
+    outright: `_line_paths` yielded the polyline and nothing measured the markers, although its own
+    docstring said they came through here. A label sitting on a marker but in the gap BETWEEN two
+    segments — which is most of a marker, since a marker is drawn wider than its line — read as
+    clear. The two halves are different ink and neither double-counts the other: the stroke is a
+    path, the markers are a cloud.
     """
     skip = decoration_ids(ax)
     clouds: list[MarkCloud] = []
     for line in ax.lines:
-        if id(line) in skip or not line.get_visible() or _stroked(line) or not _marked(line):
+        if id(line) in skip or not line.get_visible() or not _marked(line):
             continue
         points = np.column_stack(
             [np.asarray(line.get_xdata(), dtype=float), np.asarray(line.get_ydata(), dtype=float)]
@@ -288,7 +309,8 @@ def _line_paths(line: Line2D) -> Iterator[tuple[Path, bool]]:
     """A line's stroke, when it has one. Its markers are a cloud and go through `data_points`.
 
     `get_path` is the polyline through the points whether or not that polyline is drawn, and a
-    marker-only line draws none of it.
+    marker-only line draws none of it. A line carrying BOTH contributes here and there — which is
+    what the second sentence always claimed and what `data_points` now actually does.
     """
     if _stroked(line):
         yield line.get_path().transformed(line.get_transform()), False
@@ -644,7 +666,17 @@ def annotate_clear(
 
 
 def _default_prefer(ax: Axes, xy: tuple[float, float]) -> tuple[float, float]:
-    """A starting spot up and right of the anchor, sized to the axes rather than to the units."""
-    low_x, high_x = ax.get_xlim()
-    low_y, high_y = ax.get_ylim()
-    return (xy[0] + 0.06 * (high_x - low_x), xy[1] + 0.10 * (high_y - low_y))
+    """A starting spot up and right of the anchor, sized to the axes rather than to the units.
+
+    Measured on the PANEL and converted back, not taken as a fraction of `get_xlim`. The two agree
+    exactly on a linear axis — 6% of the span is 6% of the width — and disagree wildly on a log
+    one, where the limits are decade endpoints: 6% of `high - low` is most of the panel near the
+    low end and invisible near the high end. A spectrum, a survival curve and a learning curve are
+    all normally drawn on a log axis, so the default placement was worst on the figures that most
+    need a callout.
+    """
+    anchor = ax.transData.transform(xy)
+    box = ax.get_window_extent()
+    moved = (anchor[0] + 0.06 * box.width, anchor[1] + 0.10 * box.height)
+    start = ax.transData.inverted().transform(moved)
+    return (float(start[0]), float(start[1]))

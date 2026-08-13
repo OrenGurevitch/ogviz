@@ -151,8 +151,12 @@ def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
     for collection in ax.collections:
         offsets = point_offsets(collection)
         if offsets is not None:
-            lows.append(float(offsets[:, 1].min()))
-            highs.append(float(offsets[:, 1].max()))
+            # An EMPTY cloud reaches nothing. `point_offsets` used to answer None for one, because
+            # it identified a cloud by having more than one offset; it answers by type now, so a
+            # `scatter` with no data comes back here as an empty array and `.min()` would raise.
+            if offsets.size:
+                lows.append(float(offsets[:, 1].min()))
+                highs.append(float(offsets[:, 1].max()))
             continue
         for path in collection.get_paths():
             vertices = np.asarray(path.vertices, dtype=float)

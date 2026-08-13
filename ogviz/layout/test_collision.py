@@ -5,6 +5,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 from matplotlib.transforms import Bbox
 
 from ogviz.layout.collision import (
@@ -145,3 +146,62 @@ def test_a_round_marker_still_measures_square() -> None:
     fig.canvas.draw()
     (cloud,) = data_points(ax)
     assert abs(cloud.width_px - cloud.height_px) < 0.01, (cloud.width_px, cloud.height_px)
+
+
+def test_a_label_between_two_segments_still_sits_on_the_marker() -> None:
+    """`ax.plot(x, y, marker="o")` has both, and only the polyline was being measured.
+
+    A marker is drawn wider than the line joining it, so the ink a label most easily lands on is
+    the part the stroke does not cover. The premise is asserted first: the same label placed in
+    genuinely empty space draws nothing, or this would pass on a check that reports everything.
+    """
+    from ogviz.layout.collision import hits_data, text_box
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    ax.plot([0.0, 1.0, 2.0], [0.0, 0.0, 0.0], marker="o", markersize=26, linewidth=0.6)
+    ax.set_xlim(-0.5, 2.5)
+    ax.set_ylim(-1.0, 1.0)
+    on_the_dot = ax.text(1.0, 0.0, "x", ha="center", va="center", fontsize=6)
+    clear = ax.text(1.0, 0.8, "x", ha="center", va="center", fontsize=6)
+    fig.canvas.draw()
+
+    assert not hits_data(ax, text_box(clear)), "the harness reports empty space as empty"
+    assert hits_data(ax, text_box(on_the_dot)), "a label on a marker is on the data"
+
+
+def test_a_one_point_scatter_is_found_where_it_was_drawn() -> None:
+    """It fell through to the filled-body branch and was tested at the origin.
+
+    Which is both a missed collision where the point is and a phantom one where it is not. A
+    group of one is ordinary, and the panel here puts the origin far from the point on purpose.
+    """
+    from ogviz.layout.collision import data_paths, data_points
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    ax.scatter([40.0], [40.0], s=200)
+    ax.set_xlim(0.0, 50.0)
+    ax.set_ylim(0.0, 50.0)
+    fig.canvas.draw()
+
+    (cloud,) = data_points(ax)
+    where = ax.transData.inverted().transform(cloud.positions[0])
+    assert where[0] == pytest.approx(40.0, abs=0.01)
+    assert where[1] == pytest.approx(40.0, abs=0.01)
+    assert not data_paths(ax), "and it is not ALSO claimed as a body at the origin"
+
+
+def test_the_default_annotation_start_is_a_panel_fraction_on_a_log_axis() -> None:
+    """6% of `high - low` is most of a log panel at the low end and nothing at the high end."""
+    from ogviz.layout.collision import _default_prefer
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    ax.set_xscale("log")
+    ax.set_xlim(0.1, 1000.0)
+    ax.set_ylim(0.0, 1.0)
+    fig.canvas.draw()
+
+    to_px = ax.transData.transform
+    near = to_px(_default_prefer(ax, (0.2, 0.5)))[0] - to_px((0.2, 0.5))[0]
+    far = to_px(_default_prefer(ax, (500.0, 0.5)))[0] - to_px((500.0, 0.5))[0]
+    assert near == pytest.approx(far, rel=0.02), "the same step on the page at either end"
+    assert near == pytest.approx(0.06 * ax.get_window_extent().width, rel=0.02)
