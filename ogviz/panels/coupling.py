@@ -67,6 +67,18 @@ STRIP_TICKS = 5  # before pruning the two end ticks
 # 17 px off the canvas, where a plain save crops them and a tight save silently grows the page.
 # `text_off_canvas` is the check that catches it.
 STAR_COLUMN = 1.015
+# A column star is smaller than a bracket star, and this is how much. Measured 2026-08-13 on the
+# default three-column layout at 12.8 in, with `label_for` producing the widest realistic label
+# (`q=0.001 ***`), which is the case that decides it — a bare `***` clears the 73 px gutter at
+# every size tried. Past the RIGHT-HAND edge of the canvas, for the rightmost column:
+#
+#     x STAR_SIZE   0.50   0.62   0.75   1.00
+#     clearance    +52px  +37px  +15px  -22px   <- runs off the page at full size
+#
+# So the ceiling is between 0.75 and 1.00, and 0.62 is one step inside it. The star also has to
+# read as smaller than a bracket star, because a bracket star marks a COMPARISON between two
+# positions and this marks a row; at 0.75 the two are close enough to be mistaken for each other.
+COLUMN_STAR = 0.62
 STRIP_PAD = 1.12  # the shared estimate scale reaches this far past the widest interval
 SCATTER_TO_STRIP = (3.0, 1.15)  # how the height of one column is split
 
@@ -143,6 +155,12 @@ def trend_line(
     if int(np.count_nonzero(finite)) < MINIMUM_FOR_A_TREND:
         return None
     x_fit, y_fit = x[finite], y[finite]
+    # A least-squares line needs the x values to differ. Given points stacked on one x, `polyfit`
+    # returns a meaningless slope with a RankWarning — and `strict` promotes only DeprecationWarning
+    # to an error, so it passed the gate and the panel drew a confident guide through a column of
+    # points. Nothing to fit is not a fit; the caller gets the same None as too few points.
+    if float(np.ptp(x_fit)) == 0.0:
+        return None
     slope, intercept = (float(v) for v in np.polyfit(x_fit, y_fit, 1))
     ends = np.array([x_fit.min(), x_fit.max()], dtype=float)
     line_width = width if width is not None else (POOLED_WIDTH if dashed else TREND_WIDTH)
@@ -247,7 +265,7 @@ def _star_column(
             transform=ax.get_yaxis_transform(),
             ha="left",
             va="center",
-            fontsize=STAR_SIZE * 0.62,
+            fontsize=STAR_SIZE * COLUMN_STAR,
             fontweight="bold",
             color=estimate.color,
             zorder=6,
@@ -341,17 +359,26 @@ def estimate_strip(
     ax.spines["bottom"].set(linewidth=1.6, color=INK)
 
 
-def shared_limits(legs: Sequence[Leg], *, pad: float = STRIP_PAD) -> tuple[float, float]:
-    """One scale wide enough for every interval in the figure, centred on zero.
+def shared_limits(
+    legs: Sequence[Leg], *, pad: float = STRIP_PAD, reference: float | None = 0.0
+) -> tuple[float, float]:
+    """One scale wide enough for every interval in the figure, centred on the reference.
 
     Centred rather than fitted to the data, because a strip whose reference line sits off-centre
     reads as though the estimates lean one way before any of them has been looked at.
+
+    `reference` is what "no relationship" is on this quantity, and it was hardcoded to zero — the
+    same number `estimate_strip` takes as an argument and documents passing something else for. A
+    ratio has its null at 1.0, and the composed figure centred it on zero regardless, so the case
+    the standalone function supports was the case the composed one silently could not draw. None
+    centres on zero, since a quantity with no null has no other centre to prefer.
     """
+    middle = reference or 0.0
     reach = max(
-        (abs(bound) for leg in legs for e in leg.estimates for bound in e.interval),
+        (abs(bound - middle) for leg in legs for e in leg.estimates for bound in e.interval),
         default=1.0,
     )
-    return (-pad * reach, pad * reach)
+    return (middle - pad * reach, middle + pad * reach)
 
 
 def coupling_panels(
@@ -365,20 +392,31 @@ def coupling_panels(
     width_space: float = 0.26,
     height_space: float = 0.42,
     label_for: Callable[[float], str] | None = None,
+    reference: float | None = 0.0,
 ) -> None:
     """One column per pair: the scatter above, its estimates below, all strips on one scale.
 
     Row labels are printed on the leftmost strip only. Repeating them under every column costs the
     width the panels need and tells the reader nothing they did not learn from the first.
+
+    `reference` is where "no relationship" sits, passed to every strip AND to the shared scale so
+    the two agree. There was no way to say it here: the strips took the default zero and the scale
+    was centred on zero regardless, so a ratio-valued estimate — null at 1.0 — could not be drawn
+    by this function although `estimate_strip` supports it directly.
+
+    A LEG WITH NO ESTIMATES gets a scatter spanning both rows rather than a hole under it. The
+    lower cell was simply never filled, and an empty gridspec cell in a finished figure reads as a
+    rendering failure. `panel_grid` treats exactly this as worth reporting; here it said nothing.
     """
     require(
         legs,
         "coupling_panels needs at least one leg",
     )
     grid = fig.add_gridspec(2, len(legs), height_ratios=height_ratios)
-    scale = limits if limits is not None else shared_limits(legs)
+    scale = limits if limits is not None else shared_limits(legs, reference=reference)
     for column, leg in enumerate(legs):
-        scatter_panel(fig.add_subplot(grid[0, column]), leg, pooled_color=pooled_color)
+        cell = grid[0, column] if leg.estimates else grid[:, column]
+        scatter_panel(fig.add_subplot(cell), leg, pooled_color=pooled_color)
         if leg.estimates:
             estimate_strip(
                 fig.add_subplot(grid[1, column]),
@@ -386,6 +424,7 @@ def coupling_panels(
                 limits=scale,
                 name_the_rows=column == 0,
                 label_for=label_for,
+                reference=reference,
             )
     if estimate_axis_label is not None:
         fig.supxlabel(estimate_axis_label, fontsize=AXIS_LABEL_SIZE)

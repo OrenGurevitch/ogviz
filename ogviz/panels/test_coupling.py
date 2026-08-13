@@ -91,3 +91,49 @@ def test_a_strip_with_no_estimates_is_refused() -> None:
     _fig, ax = plt.subplots()
     with pytest.raises(AssertionError, match="no estimates"):
         estimate_strip(ax, (), limits=(-1.0, 1.0))
+
+
+def test_points_stacked_on_one_x_get_no_trend_line() -> None:
+    """`polyfit` returns a meaningless slope for them, with a warning `strict` does not catch.
+
+    So the panel drew a confident guide through a column of points and the gate passed it.
+    """
+    _fig, ax = plt.subplots()
+    before = len(ax.lines)
+    stacked = np.array([2.0, 2.0, 2.0, 2.0])
+    assert trend_line(ax, stacked, np.array([1.0, 2.0, 3.0, 4.0]), color="#000000") is None
+    assert len(ax.lines) == before, "and nothing was drawn on the way to deciding that"
+
+
+def test_a_ratio_scaled_figure_can_say_where_its_null_is() -> None:
+    """`estimate_strip` took a `reference` and `coupling_panels` had no way to pass one.
+
+    The shared scale was centred on zero regardless, so a quantity whose null is 1.0 — an odds
+    ratio, a hazard ratio — was drawn with its rule in the wrong place and its scale off-centre.
+    """
+    rows = (Estimate("pooled", 1.4, (1.1, 1.7), "#000000"),)
+    low, high = shared_limits((_leg(*rows),), reference=1.0)
+    assert (low + high) / 2 == pytest.approx(1.0), "the scale is centred on the null"
+    assert low < 1.1 and high > 1.7, "and still holds the interval"
+
+    fig = plt.figure(figsize=(9, 6))
+    coupling_panels(fig, (_leg(*rows),), reference=1.0)
+    (strip,) = [ax for ax in fig.axes if ax.get_ylim()[0] == pytest.approx(-0.7)]
+    rules = [line.get_xdata()[0] for line in strip.lines if len(set(line.get_xdata())) == 1]
+    assert any(value == pytest.approx(1.0) for value in rules), rules
+
+
+def test_a_leg_without_estimates_leaves_no_hole_under_it() -> None:
+    """An unfilled gridspec cell in a finished figure reads as a rendering failure."""
+    rows = (Estimate("pooled", 0.2, (0.1, 0.3), "#000000"),)
+    fig = plt.figure(figsize=(12, 6))
+    with_rows, without = _leg(*rows), _leg()
+    coupling_panels(fig, (with_rows, without))
+    fig.canvas.draw()
+
+    scatters = [ax for ax in fig.axes if ax.get_ylim()[0] != pytest.approx(-0.7)]
+    tall = max(scatters, key=lambda ax: ax.get_window_extent().height)
+    short = min(scatters, key=lambda ax: ax.get_window_extent().height)
+    assert tall.get_window_extent().height > short.get_window_extent().height * 1.5, (
+        "the scatter with no strip under it takes the whole column"
+    )
