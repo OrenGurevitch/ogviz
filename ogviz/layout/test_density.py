@@ -126,3 +126,29 @@ def test_trimming_one_wasteful_side_does_not_shrink_a_tight_one() -> None:
     assert fig.subplotpars.left < 0.45, "the wasteful side is what it was asked to reclaim"
     for side, was in tight.items():
         assert getattr(fig.subplotpars, side) >= was, f"{side} was pulled in"
+
+
+def test_a_panel_on_a_shared_scale_is_not_told_to_tighten_it() -> None:
+    """The one figure where tightening the limit is the wrong action.
+
+    A short panel beside a tall one is empty at the top BY CONSTRUCTION — the tall one set the
+    scale — and acting on the note is what stops the grid being comparable. Both premises are
+    asserted: the same panel drawn alone still gets the plain "generous limit" advice.
+    """
+    from ogviz.panels.grid import share_value_limits
+
+    def note_for(share: bool) -> str:
+        fig, axes = plt.subplots(1, 2, figsize=(10.0, 5.0))
+        for ax, top in zip(axes, (1.0, 8.0), strict=True):
+            _curve(ax)
+            ax.set_ylim(0.0, top)
+        if share:
+            share_value_limits(axes, label_edge=False)
+        notes = [n for n in dead_space(fig) if n.startswith("axes 0:") and " top " in n]
+        assert notes, "the premise: the short panel reports an empty top either way"
+        return notes[0]
+
+    assert "limit is generous" in note_for(share=False)
+    shared = note_for(share=True)
+    assert "shares a value scale with 2 panels" in shared
+    assert "limit is generous" not in shared

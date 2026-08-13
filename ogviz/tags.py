@@ -50,6 +50,11 @@ Tag = Literal[
     "position",
     # Which way a panel runs, recorded by the panel that was told.
     "orientation",
+    # How many panels this one shares a value scale with, set by `share_value_limits`. A panel is
+    # often empty at one end BECAUSE a taller neighbour set the scale, and that wants a different
+    # action from a panel whose limits are simply loose — `dead_space` reported both in the same
+    # words, so the note read as "tighten this" on the one figure where tightening is wrong.
+    "shared_scale",
     # Set on the FIGURE when `tight_layout` declined to lay it out.
     "layout_refused",
     # Set on the FIGURE by `panel_grid`: the shape it built and the page it was sized for, so

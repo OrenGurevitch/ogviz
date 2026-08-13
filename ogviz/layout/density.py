@@ -31,6 +31,7 @@ import numpy as np
 
 from ogviz.layout.raster import INK_TOLERANCE, frame_rgb, ink_of
 from ogviz.require import require
+from ogviz.tags import value_of
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -178,11 +179,19 @@ def dead_space(fig: Figure) -> list[str]:
             notes.append(f"{unused:.0f} px of the canvas past the {side} edge of the ink is unused")
     for index, ax in enumerate(fig.axes):
         panel = panel_emptiness(fig, ax)
+        shared = value_of(ax, "shared_scale")
         for side in ("left", "right", "top", "bottom"):
             if panel[side] > GENEROUS_BAND:
+                where = f"axes {index}: the {side} {panel[side]:.0%} of the panel is empty"
+                # A panel on a SHARED scale is empty at one end by construction — the tallest panel
+                # in the grid set the limit. Reported in the same words as a loose limit, the note
+                # told a reader to tighten the one axis that must not be tightened, since doing so
+                # is what stops the grid being comparable at all.
                 notes.append(
-                    f"axes {index}: the {side} {panel[side]:.0%} of the panel is empty — the "
-                    f"{_axis_along(ax, side)} limit is generous"
+                    f"{where} — it shares a value scale with {shared} panels, so this is the "
+                    "tallest panel's headroom rather than a loose limit"
+                    if shared and _axis_along(ax, side) == "value"
+                    else f"{where} — the {_axis_along(ax, side)} limit is generous"
                 )
     return notes
 

@@ -19,7 +19,7 @@ import numpy as np
 
 from ogviz.layout import drawn_value_extent
 from ogviz.require import require
-from ogviz.tags import marked
+from ogviz.tags import mark, marked
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -47,6 +47,12 @@ def share_value_limits(
     `label_edge` prints the value numbers once, on the panels at the grid's edge. Pass False to keep
     them under every panel.
 
+    Each panel is TAGGED with how many it shares the scale with, because the consequence shows up
+    somewhere else: a short panel beside a tall one is empty at the top by construction, and
+    `dead_space` reported that in the same words as a panel whose limits are merely loose. The two
+    want opposite actions — the second wants tightening and the first must not be tightened, or the
+    grid stops being comparable — and the note could not tell them apart without being told.
+
     Returns the shared (low, high).
     """
     panels = list(axes)
@@ -63,6 +69,7 @@ def share_value_limits(
             ax.set_ylim(low, high)
         else:
             ax.set_xlim(low, high)
+        mark(ax, "shared_scale", len(panels))
     if orientation == "vertical":
         # Both ends of the panel. A shared scale that leaves the brackets at six heights and the
         # printed means at six others is a shared scale in name only.
