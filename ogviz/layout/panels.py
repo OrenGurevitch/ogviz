@@ -9,13 +9,19 @@ The caption lives in its own gridspec row — an invisible axes below the panel 
 at a chosen `fig.text` y-coordinate, which overlaps eventually, gets nudged, and overlaps again
 at a different figure size.
 
-KNOWN LIMIT, measured not assumed: the reserved row is sized from the caption's own line count,
-so an axes whose decorations grow DOWNWARD past their allotment can still reach it. A two-line
-x-label does, and `test_a_two_line_x_label_still_reaches_the_caption_row` holds that case as an
-xfail. `constrained` layout reserves for decorations correctly but then ignores the row height
-ratios and pushes the caption back up into the tick labels, so it is not the fix either. Until
-this is solved, keep x-labels to one line under a caption, and let `save`'s overlap check catch
-it if you do not.
+THE ROW CANNOT BE SIZED CORRECTLY WHEN IT IS CREATED, and that is the shape of the whole problem:
+it is sized from the caption's own line count, at a moment when the caller has not plotted yet, so
+the x-label that grows down into it does not exist. A multi-line x-label therefore reaches the
+caption on any slack the row is given — measured, clearing it would take about four times the
+current `CAPTION_ROW_SLACK`, since growing the row grows the figure and the panels take most of
+that back. `constrained` layout reserves for decorations correctly but then ignores the row height
+ratios and pushes the caption back up into the tick labels, so it is not the fix either.
+
+`settle_caption` is: it runs AFTER the render, takes the lowest ink of every panel including its
+decorations, and drops the caption below it. `save` calls it, so a figure written the normal way
+never has to know. `test_a_two_line_x_label_no_longer_reaches_the_caption_row` is that case, and
+it was an xfail for as long as the row was the only mechanism. Hand-rolling a `savefig` is what
+skips it — `guard()` is the way to keep it.
 
 Captions default off. A manuscript figure carries its title, axes and legend, and what the marks
 mean belongs in the project's README. A reproducibility document is the case that wants the
@@ -49,6 +55,22 @@ if TYPE_CHECKING:
 CAPTION_SIZE = 8.0
 CAPTION_CLEARANCE_PX = 6.0  # between the lowest panel decoration and the caption's first line
 CAPTION_LINE_SPACING = 1.45
+# Inches of page the caption row gets BEYOND its own lines, for the x-axis decorations the panels
+# hang into it. It sat inline as a bare `+ 0.32` with nothing said about it, and what the
+# measurement shows is that it does much less than its size suggests. Measured 2026-08-13 on a
+# two-panel row at 12.8 in: the clearance between the lowest panel decoration and the top of the
+# caption, NEGATIVE meaning the caption is printed into the panel's own label.
+#
+#     slack               0.00    0.16    0.32    0.48
+#     one-line x-label   +15px   +17px   +20px   +22px
+#     two-line x-label   -16px   -14px   -12px    -9px
+#
+# Two things follow. The ordinary case clears at every slack including zero, so this is headroom
+# rather than the thing holding the caption off the panels. And it buys only about 1.4 px per 0.1
+# in, because growing the row grows the FIGURE with it and the panels take most of that back — so
+# a multi-line x-label cannot be bought off here at any sane value: it would take roughly 1.2 in,
+# four times this. `settle_caption` is what actually solves that case, after the render.
+CAPTION_ROW_SLACK = 0.32
 LEFT_MARGIN = 0.055
 TOP_MARGIN = 0.88  # above this is the suptitle band
 LEGEND_RIGHT = 0.80  # panels end here when a right-hand legend is reserved
@@ -273,7 +295,9 @@ def panel_row(
     if caption:
         panel_width_points = units.inches_to_points(width * (right - LEFT_MARGIN))
         lines = wrap_to_width(caption, panel_width_points, caption_size)
-        caption_height = (caption_size * CAPTION_LINE_SPACING / 72.0) * len(lines) + 0.32
+        caption_height = (caption_size * CAPTION_LINE_SPACING / 72.0) * len(
+            lines
+        ) + CAPTION_ROW_SLACK
 
     figure = plt.figure(figsize=(width, panel_height + caption_height))
     rows = 2 if caption else 1
