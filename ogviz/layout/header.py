@@ -17,6 +17,7 @@ from ogviz.tags import mark, marked
 from ogviz.theme import INK, MUTED_INK, SUBTITLE_SIZE, TITLE_SIZE
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
     from matplotlib.figure import Figure
 
 TITLE_CLEARANCE = 1.35  # an axes title needs its own height plus the pad under it
@@ -125,10 +126,17 @@ def fit_under_header(
     title — 92 px on a 680 px figure, which reads as a mistake rather than as breathing room. Doing
     the layout and then pinning the top closes it.
 
-    Returns whether `tight_layout` actually ran. It refuses, with a warning and no effect, when the
-    axis decorations cannot fit the rect — a two-line x tick label is enough to cause it
-    — and the figure then keeps default margins. Usually fine, never silent: a caller that needs
-    the layout to have happened can check.
+    RETURNS WHETHER THE PANELS WERE ACTUALLY LAID OUT, and there are two ways for that to be False.
+    matplotlib refuses, with a warning and no effect, when the axis decorations cannot fit the rect
+    — a two-line x tick label is enough. And it silently skips every axes whose gridspec pins any
+    parameter of its own, which is what `panel_row` and `panel_grid` both do, so on a figure built
+    by either of them the layout never ran at all. That second case returned True for as long as
+    this function existed: the warning matplotlib raises for it is worded differently from the one
+    being matched, and nothing else was asked. It is detected from the gridspec now, before the
+    call, and the pointless call is skipped rather than made — a consumer's build log carried that
+    UserWarning on every figure.
+
+    Either way the top pin still applies, and the checks still measure what was actually drawn.
 
     `gap` is the only free number left, and it is the space BETWEEN the subtitle and the panels
     rather than a guess at where the header ends; `titled` measures that and returns it.
@@ -139,16 +147,26 @@ def fit_under_header(
     font size, because a title that wrapped to two lines needs twice the room and says so only once
     it has been laid out.
     """
-    # matplotlib warns and then does nothing when the decorations will not fit the rect, leaving
-    # the figure on default margins. That is survivable — the top pin below is applied either way,
-    # and the overlap checks still run on whatever came out — but it must not be mistaken for a
-    # layout that succeeded. Caught so it cannot be lost in a build log, and reported through the
-    # return value so a caller can act on it.
+    # ASKED STRUCTURALLY FIRST, because the answer is knowable without running anything and the
+    # figures this package builds are the ones it applies to. `tight_layout` silently ignores every
+    # axes whose gridspec set any of its own parameters — `locally_modified_subplot_params()` — and
+    # BOTH `panel_row` (which pins left/right/top/bottom) and `panel_grid` (which sets hspace and
+    # wspace) do exactly that. So on an ogviz-built figure the call moved nothing, warned about it
+    # in words this function did not recognise, and returned True.
+    pinned = _pinned_axes(fig)
+    if pinned and len(pinned) == len(fig.axes):
+        # Not calling it at all. It is a no-op here by construction, and the only thing it produced
+        # was a UserWarning in every consumer's build log about a figure that is laid out on
+        # purpose. The pinned margins stand; the top pin below still applies.
+        mark(fig, "layout_refused", "")
+        _pin_top(fig, header_bottom, gap)
+        return False
+
     applied = True
     with warnings.catch_warnings(record=True) as raised:
         warnings.simplefilter("always", UserWarning)
         fig.tight_layout(rect=(0.0, bottom, 1.0, header_bottom))
-        refused = [one for one in raised if "Tight layout not applied" in str(one.message)]
+        refused = [one for one in raised if _is_a_refusal(str(one.message))]
         applied = not refused
     # Everything else matplotlib said goes back out. Recording warnings SWALLOWS them, and this
     # consumed the whole batch to read one message — so any other complaint raised during the
@@ -158,8 +176,52 @@ def fit_under_header(
         if other not in refused:
             warnings.warn_explicit(other.message, other.category, other.filename, other.lineno)
     # Recorded on the figure as well as returned, because the return value went unread for a week
-    # and the whole point was that this should not pass unnoticed.
-    mark(fig, "layout_refused", not applied)
+    # and the whole point was that this should not pass unnoticed. A REASON rather than a flag, so
+    # the gate can say which of the two happened; `marked()` still reads it as the boolean it was.
+    mark(fig, "layout_refused", str(refused[0].message) if refused else "")
+    _pin_top(fig, header_bottom, gap)
+    return applied
+
+
+# matplotlib's whole refusal vocabulary, from `_tight_layout.py`. It was matched against ONE of
+# these, spelled with a capital T, so the lowercase `tight_layout not applied: number of rows...`
+# went unrecognised as well as the incompatible-axes one. Matched case-insensitively and by the
+# stem, because the rest of each message is the specific complaint.
+_REFUSALS = ("tight layout not applied", "tight_layout not applied", "not compatible with")
+
+
+def _is_a_refusal(message: str) -> bool:
+    lowered = message.lower()
+    return any(phrase in lowered for phrase in _REFUSALS)
+
+
+def _pinned_axes(fig: Figure) -> list[Axes]:
+    """Axes `tight_layout` will not move, because their gridspec pins parameters of its own.
+
+    Asked of the gridspec rather than inferred from a warning: matplotlib may reword a message at
+    any release, and this one it will not, since `locally_modified_subplot_params` is the same
+    condition `get_subplotspec_list` tests to decide what to skip.
+    """
+    pinned: list[Axes] = []
+    for ax in fig.axes:
+        spec = ax.get_subplotspec()
+        if spec is None:
+            pinned.append(ax)  # tight_layout skips these outright
+            continue
+        grid = spec.get_topmost_subplotspec().get_gridspec()
+        # `getattr`, and not because the stubs put the method on `GridSpec` and not on
+        # `GridSpecBase`. A NESTED gridspec really is a different class — `GridSpecFromSubplotSpec`
+        # — which does not define it at all, so spelling this as a plain attribute is an
+        # `AttributeError` on any figure built with `add_gridspec(...)[0].subgridspec(...)`.
+        # Absent means "nothing pinned here", which is also what matplotlib assumes of it.
+        locally_modified = getattr(grid, "locally_modified_subplot_params", None)
+        if callable(locally_modified) and locally_modified():
+            pinned.append(ax)
+    return pinned
+
+
+def _pin_top(fig: Figure, header_bottom: float, gap: float) -> None:
+    """Put the panels' top just under the header, reserving for any axes titles above them."""
     fig.canvas.draw()
     figure_px = fig.get_figheight() * fig.dpi
     titles_px = max(
@@ -168,7 +230,6 @@ def fit_under_header(
     )
     reserved = titles_px / figure_px * TITLE_CLEARANCE
     fig.subplots_adjust(top=max(0.05, header_bottom - gap - reserved))
-    return applied
 
 
 def room_below(fig: Figure, bottom: float, *, keep_panels: bool = True) -> float:

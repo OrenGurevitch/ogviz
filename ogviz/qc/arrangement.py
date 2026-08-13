@@ -106,6 +106,13 @@ def layout_not_applied(fig: Figure) -> list[str]:
     Not fatal on its own: default margins are usually survivable and the rest of the checks still
     measure what was actually drawn. It is here because "nobody laid this out" should be a sentence
     someone reads, not a warning swallowed by a build log.
+
+    A figure whose gridspec PINS its own margins is deliberately NOT reported, and telling the two
+    apart is why the tag carries a reason rather than a flag. `panel_row` and `panel_grid` both
+    pin, `tight_layout` skips every axes when they do, and that is the arrangement working as
+    intended — a complaint would fire on every figure either of them builds. Whether those pinned
+    margins are wide ENOUGH is a different question, and `text_off_canvas` and `clipped_artists`
+    are the ones that ask it.
     """
     if marked(fig, "layout_refused"):
         return [

@@ -2,6 +2,7 @@ from ogviz.marks import error_bars
 from ogviz.panels.bars import (
     Series,
     bar_panel,
+    rounded_free_end,
     value_labels,
 )
 from ogviz.panels.coupling import (
@@ -77,6 +78,7 @@ __all__ = [
     "null_distance",
     "printed_means",
     "reference_line",
+    "rounded_free_end",
     "scatter_panel",
     "series_colors",
     "share_value_limits",

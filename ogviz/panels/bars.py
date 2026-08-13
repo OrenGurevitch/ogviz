@@ -80,7 +80,7 @@ _ROUND_END = [
 ]
 
 
-def _rounded_free_end(fraction: float, *, along: Literal["x", "y"] = "y"):
+def rounded_free_end(fraction: float, *, along: Literal["x", "y"] = "y"):
     """A boxstyle rounding the end AWAY from zero and leaving the base square.
 
     `boxstyle="round"` rounds all four corners, so a rounded bar curved away from its own baseline:
@@ -98,6 +98,14 @@ def _rounded_free_end(fraction: float, *, along: Literal["x", "y"] = "y"):
     rather than nothing at all. And the radius arrives as a FRACTION of the bar's own thickness,
     worked out from the box this is handed: stated as an absolute it would have to be converted
     through `mutation_aspect` by the caller, in the one direction where that scaling applies.
+
+    PUBLIC because drawing your own bars is a legitimate reason not to use `bar_panel` — per-bar
+    tints, an outlined leader — and that caller still wants the corner. It was private, and a
+    project needing it copied the body instead, with a note saying reaching for a private name was
+    the more fragile of the two. The copy had already drifted: it approximates each corner with a
+    QUADRATIC, where a quarter circle needs a cubic and the constant below. Which is the argument
+    for exporting it rather than for the copier having been careless — a private function that
+    others need is a copy that diverges silently.
     """
 
     def boxstyle(x0: float, y0: float, width: float, height: float, mutation_size: float) -> Path:
@@ -202,7 +210,7 @@ def _rounded_bars(
                 # them rather than a doubt about the call. Registering a `BoxStyle` subclass instead
                 # would mean subclassing `BoxStyle._Base`, which is private and which matplotlib
                 # deprecated in favour of exactly this.
-                boxstyle=_rounded_free_end(BAR_ROUNDING, along="y" if upright else "x"),  # type: ignore[arg-type]
+                boxstyle=rounded_free_end(BAR_ROUNDING, along="y" if upright else "x"),  # type: ignore[arg-type]
                 facecolor=color,
                 alpha=BAR_ALPHA,
                 edgecolor="none",
