@@ -212,3 +212,108 @@ def test_a_rounded_bar_still_meets_its_baseline_square() -> None:
         "the feet are rounded and the bar does not meet zero"
     )
     plt.close(fig)
+
+
+def test_a_horizontal_bar_is_rounded_too_and_at_its_free_end() -> None:
+    """`rounded` was tested together with `upright`, so a sideways panel silently got square bars.
+
+    The same two measurements as the upright case, transposed: the bar is narrower along its
+    thickness at the free END than at mid length, and NOT narrower at the foot.
+    """
+    import numpy as np
+
+    from ogviz.layout.raster import frame_rgb, ink_of
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    bar_panel(
+        ax,
+        [Series("v", np.array([0.9]), "#5B7FB9")],
+        ["a"],
+        rounded=True,
+        orientation="horizontal",
+        show_values=False,
+    )
+    fig.canvas.draw()
+    ink = ink_of(frame_rgb(fig), tolerance=8)
+
+    def column_at(value: float) -> int:
+        return int(ink[:, round(ax.transData.transform((value, 0.0))[0])].sum())
+
+    at_foot, at_middle, at_tip = column_at(0.02), column_at(0.45), column_at(0.885)
+    assert at_middle > 0, "the premise: there is a bar in the column being measured"
+    assert at_tip < at_middle, f"the free end is not softened ({at_tip} px vs {at_middle} px)"
+    assert at_foot >= at_middle, f"the foot is rounded ({at_foot} px vs {at_middle} px)"
+    plt.close(fig)
+
+
+def test_a_rounded_bar_carries_the_same_opacity_as_a_plain_one() -> None:
+    """`ax.bar` has always been passed BAR_ALPHA and the FancyBboxPatch path was not.
+
+    So the same hex rendered at two opacities depending on `rounded` — a shape option quietly
+    deciding a colour. Measured as the RGB the page ends up with, which is what a reader and the
+    colour-vision check both see.
+    """
+    import numpy as np
+
+    from ogviz.layout.raster import frame_rgb
+
+    def bar_rgb(rounded: bool) -> tuple[int, int, int]:
+        fig, ax = plt.subplots(figsize=(6.0, 4.0))
+        bar_panel(
+            ax,
+            [Series("v", np.array([0.9]), "#5B7FB9")],
+            ["a"],
+            rounded=rounded,
+            show_values=False,
+        )
+        fig.canvas.draw()
+        frame = frame_rgb(fig)
+        x = round(ax.transData.transform((0.0, 0.0))[0])
+        y = frame.shape[0] - round(ax.transData.transform((0.0, 0.45))[1])
+        plt.close(fig)
+        return tuple(int(channel) for channel in frame[y, x])  # type: ignore[return-value]
+
+    assert bar_rgb(rounded=True) == bar_rgb(rounded=False)
+
+
+def test_emphasis_names_one_bar_on_a_grouped_panel() -> None:
+    """It was passed into each series unchanged, so it emphasised one bar PER series.
+
+    And the series it was not in had to be told so explicitly — passing None there means "every
+    label is one to read", which would have left that whole series bold beside the muted one.
+    """
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(9.0, 5.0))
+    bar_panel(
+        ax,
+        [
+            Series("first", np.array([0.4, 0.5, 0.6]), "#7C9A6E"),
+            Series("second", np.array([0.3, 0.7, 0.5]), "#E8A838"),
+        ],
+        ["a", "b", "c"],
+        emphasis=(1, 2),
+    )
+    bold = [text for text in ax.texts if text.get_fontweight() == "bold"]
+    assert len(bold) == 1, [text.get_text() for text in bold]
+    assert bold[0].get_text() == "0.500", bold[0].get_text()
+    plt.close(fig)
+
+
+def test_a_category_emphasis_still_marks_that_category_in_every_series() -> None:
+    """The reading "look at this one" for a grouped panel, and what the int has always done."""
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(9.0, 5.0))
+    bar_panel(
+        ax,
+        [
+            Series("first", np.array([0.4, 0.5, 0.6]), "#7C9A6E"),
+            Series("second", np.array([0.3, 0.7, 0.5]), "#E8A838"),
+        ],
+        ["a", "b", "c"],
+        emphasis=1,
+    )
+    bold = sorted(text.get_text() for text in ax.texts if text.get_fontweight() == "bold")
+    assert bold == ["0.500", "0.700"], bold
+    plt.close(fig)
