@@ -67,3 +67,49 @@ def test_a_legend_of_one_series_says_nothing() -> None:
     fig.canvas.draw()
     assert not series_confusable_under_cvd(fig)
     plt.close(fig)
+
+
+def test_the_set_comes_off_the_figure_so_a_caller_never_assembles_it() -> None:
+    """The end-to-end path: a rendered figure in, a colour safe against it out.
+
+    Assembling the set by hand is the failure this pair exists to prevent — too small and the
+    winner collides with something the palette constant does not contain, too large and nothing
+    clears the threshold at all.
+    """
+    import matplotlib.pyplot as plt
+
+    from ogviz.color import separated_from, worst_separation
+    from ogviz.qc import legend_colors, series_confusable_under_cvd
+
+    fig, ax = plt.subplots()
+    for color, label in (("#2E7CE0", "control"), ("#EFA607", "treated")):
+        ax.plot([0.0, 1.0], [0.0, 1.0], color=color, label=label)
+    ax.legend()
+    fig.canvas.draw()
+
+    taken = legend_colors(fig)
+    assert set(taken) == {"control", "treated"}, taken
+
+    picked = separated_from(taken.values())
+    assert worst_separation(picked, taken.values()) >= 0.18
+
+    ax.plot([0.0, 1.0], [1.0, 0.0], color=picked, label="third")
+    ax.legend()
+    fig.canvas.draw()
+    assert series_confusable_under_cvd(fig) == [], "the check that named the set now passes it"
+    plt.close(fig)
+
+
+def test_a_figure_level_legend_is_read_too() -> None:
+    """`ax.get_legend()` never returns one, which is how the check missed them for a while."""
+    import matplotlib.pyplot as plt
+
+    from ogviz.qc import legend_colors
+
+    fig, ax = plt.subplots()
+    for color, label in (("#2E7CE0", "a"), ("#EFA607", "b")):
+        ax.plot([0.0, 1.0], [0.0, 1.0], color=color, label=label)
+    fig.legend()
+    fig.canvas.draw()
+    assert set(legend_colors(fig)) == {"a", "b"}
+    plt.close(fig)

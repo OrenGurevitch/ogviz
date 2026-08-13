@@ -149,8 +149,10 @@ this file. `uv run just ci` is the read-only subset CI runs, on matplotlib 3.10 
 ogviz
 ├── color
 │   ├── indistinguishable_series(colors: dict[str, str], *, threshold: float) -> list[str]
+│   ├── separated_from(taken: Iterable[str], *, threshold: float, near: str | None) -> str
 │   ├── separation(first: str, second: str, deficiency: Deficiency | None) -> float
-│   └── simulate(...) -> ...
+│   ├── simulate(...) -> ...
+│   └── worst_separation(color: str, taken: Iterable[str]) -> float
 ├── guard
 │   ├── FigureQuality(*args, **kwargs)
 │   ├── FigureRejectedError(*args, **kwargs)
@@ -353,6 +355,7 @@ ogviz
 │   │   ├── rows_outside_their_panel(fig: Figure) -> list[str]
 │   │   └── ticks_in_the_headroom(fig: Figure) -> list[str]
 │   ├── color
+│   │   ├── legend_colors(fig: Figure) -> dict[str, str]
 │   │   └── series_confusable_under_cvd(fig: Figure) -> list[str]
 │   ├── ink
 │   │   ├── colliding_ink(fig: Figure) -> list[str]

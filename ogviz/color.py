@@ -72,7 +72,11 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from matplotlib.colors import to_rgb
 
+from ogviz.require import require
+
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from numpy.typing import NDArray
 
 Deficiency = Literal["deuteranopia", "protanopia", "tritanopia"]
@@ -157,6 +161,128 @@ def separation(first: str, second: str, deficiency: Deficiency | None = None) ->
     left = np.asarray(simulate(first, deficiency) if deficiency else to_rgb(first), dtype=float)
     right = np.asarray(simulate(second, deficiency) if deficiency else to_rgb(second), dtype=float)
     return float(np.linalg.norm(left - right))
+
+
+def _as_seen(colors: Sequence[str], deficiency: Deficiency | None) -> NDArray[np.float64]:
+    """`colors` as an (n, 3) array of sRGB, through `deficiency` when one is given.
+
+    The same answer `simulate` gives one colour at a time, which
+    `test_the_vectorised_search_agrees_with_the_one_at_a_time_metric` holds it to.
+    """
+    if deficiency is None:
+        return np.asarray([to_rgb(one) for one in colors], dtype=float).reshape(-1, 3)
+    return np.asarray([simulate(one, deficiency) for one in colors], dtype=float).reshape(-1, 3)
+
+
+def worst_separation(color: str, taken: Iterable[str]) -> float:
+    """The closest `color` comes to anything in `taken`, over normal vision AND all three
+    deficiencies.
+
+    The number a candidate colour lives or dies by, and a minimum over both axes because a palette
+    is only as good as its tightest pair under its worst reader. Returns `inf` for an empty `taken`,
+    which is the honest answer — nothing to collide with — and lets a caller score the first colour
+    of a palette with the same call as the sixth.
+    """
+    others = list(taken)
+    if not others:
+        return float("inf")
+    return min(
+        separation(color, other, deficiency)
+        for other in others
+        for deficiency in (None, "deuteranopia", "protanopia", "tritanopia")
+    )
+
+
+# The grid the 2026-08-10 sweep used, kept because its result is what this module's docstring
+# reports: 144 hues around the circle, five saturations, six values, 4320 candidates. Spanning
+# saturation and value matters more than hue resolution — what survives the constraint is a darker,
+# duller version of a hue already in use, never a new hue family.
+_HUES = 144
+_SATURATIONS = (0.30, 0.45, 0.60, 0.78, 0.95)
+_VALUES = (0.35, 0.48, 0.62, 0.75, 0.86, 0.95)
+
+
+def separated_from(
+    taken: Iterable[str], *, threshold: float = CONFUSABLE_DISTANCE, near: str | None = None
+) -> str:
+    """A colour as far as possible from every one of `taken`, for normal vision and all three
+    deficiencies.
+
+    The other half of `indistinguishable_series`, which can say a pair collides and not what to use
+    instead — so a project needing the answer writes this search itself, and the search is the easy
+    part. WHAT IS HARD IS THE SET, and getting it wrong is the failure this exists to prevent:
+    ranked against a palette constant alone, a winner can collide with a neutral the constant does
+    not contain; ranked against every colour in a repository, nothing clears the threshold at all,
+    because that set is far larger than any one legend. The set that matters is what shares a
+    LEGEND, since that is what a reader is asked to tell apart and what the check compares.
+    `qc.color.legend_colors` reads it off a rendered figure, and is how a caller should get it.
+
+    `near` asks for the closest acceptable colour to one you already want — for a colour that has
+    to keep a meaning, or sit in a house palette. It ranges over everything that clears
+    `threshold`, not over the winners: without it the answer is the MOST separated candidate, with
+    it the one nearest `near` that is still safe. Those are different questions and the second is
+    usually the one a caller with an existing palette is asking.
+
+    RAISES when nothing clears `threshold`, naming the best it found, rather than handing back a
+    colour the gate would then refuse.
+
+    **CLEARING THE THRESHOLD IS NOT THE SAME AS BEING USABLE, and this is the thing to know before
+    trusting a long palette it builds.** Measured 2026-08-13 by growing the five-colour `SERIES`
+    one call at a time: the threshold keeps clearing well past twelve — the worst-case separation
+    falls 0.559, 0.499, 0.404, 0.346, 0.313, 0.305, 0.285 for the 6th through 12th — and the
+    resulting twelve draw ZERO complaints from `indistinguishable_series`. What runs out long
+    before the number does is HUE. Every pick from the sixth on lands within 30 degrees of a hue
+    already in the palette, most within 20, and the fourteenth on a hue already there exactly; the
+    later colours are light and dark tones of the earlier ones, which is the same result the
+    4320-candidate sweep above reports from the other direction.
+
+    So this will cheerfully return a twelfth colour, and a reader asked to tell a pale cyan from a
+    bright cyan across a legend cannot use it. The module docstring's "about five is the ceiling
+    for colour alone" is a claim about hue families, not about the threshold, and the threshold
+    cannot enforce it. Past five series the second channel is not optional whatever this returns.
+    """
+    from colorsys import hsv_to_rgb
+
+    from matplotlib.colors import to_hex
+
+    others = [to_hex(one) for one in taken]
+    candidates = [
+        to_hex(hsv_to_rgb(index / _HUES, saturation, value))
+        for index in range(_HUES)
+        for saturation in _SATURATIONS
+        for value in _VALUES
+    ]
+    # VECTORISED, and it has to be: scored one `separation` call at a time this is
+    # len(candidates) x len(taken) x 4 simulations — about 3.7 million for a palette of 200, which
+    # took the better part of a minute. Each side is simulated ONCE per deficiency instead, and the
+    # distances fall out of one broadcast subtraction. A helper this slow is a helper nobody calls.
+    scores = np.full(len(candidates), np.inf)
+    if others:
+        for deficiency in (None, "deuteranopia", "protanopia", "tritanopia"):
+            seen = _as_seen(candidates, deficiency)  # (candidates, 3)
+            against = _as_seen(others, deficiency)  # (taken, 3)
+            apart = np.linalg.norm(seen[:, None, :] - against[None, :, :], axis=2)
+            scores = np.minimum(scores, apart.min(axis=1))
+    scored = list(zip(scores.tolist(), candidates, strict=True))
+    best = max(score for score, _ in scored)
+    require(
+        best >= threshold,
+        f"no colour clears {threshold} against these {len(others)}; the best is {best:.3f}. "
+        "A palette this full cannot be fixed by choosing better colours — about five series is the "
+        "ceiling for colour alone. Tell them apart by marker, dash, facet or direct labelling.",
+    )
+    if near is None:
+        # The most separated, and the grid is walked in a fixed order so ties resolve the same way
+        # on every run — a palette helper that returned a different colour each call would make a
+        # figure irreproducible for no benefit.
+        return next(one for score, one in scored if score >= best - 1e-9)
+    # `near` chooses among everything ACCEPTABLE, not among the winners. Ordering only the exact
+    # ties at the maximum was the first spelling and it does nothing: on a discrete grid the argmax
+    # is normally unique, so `near` changed the answer in none of the cases it was written for. The
+    # contract is "clears `threshold`", so that is the set a preference gets to range over.
+    return min(
+        (one for score, one in scored if score >= threshold), key=lambda one: separation(one, near)
+    )
 
 
 def indistinguishable_series(

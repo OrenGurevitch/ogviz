@@ -57,6 +57,47 @@ def _handle_color(handle) -> str | None:
     return None
 
 
+def legend_colors(fig: Figure) -> dict[str, str]:
+    """Every colour this figure asks a reader to tell apart, by the name its legend gives it.
+
+    THE SET, and it exists as its own function because assembling it is the part callers get wrong.
+    `color.separated_from` needs one to rank a candidate against, and a project choosing a new
+    colour by hand has to guess what belongs in it: guess too small — a palette constant, say — and
+    the winner collides with a neutral that constant does not contain; guess too large, every hex
+    in a repository, and nothing clears the threshold at all, because that set is far wider than
+    any one legend. Neither failure is visible until the figure is rebuilt.
+
+    What belongs in it is what shares a LEGEND, since that is what a reader is asked to distinguish
+    and exactly what `series_confusable_under_cvd` compares. Merged across every legend on the
+    figure, axes-level and figure-level alike: a colour used in two of them has to clear both.
+
+    Rendering first is the caller's job — the handles do not exist until the legend is built.
+    """
+    entries: dict[str, str] = {}
+    for legend in _legends(fig):
+        entries.update(_entries(legend))
+    return entries
+
+
+def _legends(fig: Figure) -> list:
+    """Axes-level and figure-level. `ax.get_legend()` never returns the latter."""
+    found = [legend for ax in fig.axes if (legend := ax.get_legend()) is not None]
+    found.extend(fig.legends)
+    return found
+
+
+def _entries(legend) -> dict[str, str]:
+    entries: dict[str, str] = {}
+    # NOT `strict=True`. The two are the same length for every legend matplotlib builds, but a
+    # checker that raises where it meant to report turns a colour question into a crashed build,
+    # and a custom handler is the caller's business rather than a defect in the figure.
+    for text, handle in zip(legend.get_texts(), legend.legend_handles, strict=False):
+        color = _handle_color(handle)
+        if color is not None:
+            entries[text.get_text()] = color
+    return entries
+
+
 def series_confusable_under_cvd(fig: Figure) -> list[str]:
     """Legend entries that separate for normal vision and merge under colour-vision deficiency.
 
@@ -74,17 +115,11 @@ def series_confusable_under_cvd(fig: Figure) -> list[str]:
     drew "0.16 apart under deuteranopia" through an axes legend and NOTHING through a figure one.
     """
     complaints: list[str] = []
-    legends = [legend for ax in fig.axes if (legend := ax.get_legend()) is not None]
-    legends.extend(fig.legends)
-    for legend in legends:
-        entries: dict[str, str] = {}
-        # NOT `strict=True`. The two are the same length for every legend matplotlib builds, but a
-        # checker that raises where it meant to report turns a colour question into a crashed
-        # build, and a custom handler is the caller's business rather than a defect in the figure.
-        for text, handle in zip(legend.get_texts(), legend.legend_handles, strict=False):
-            color = _handle_color(handle)
-            if color is not None:
-                entries[text.get_text()] = color
+    # PER LEGEND, not against the merged set `legend_colors` returns: two colours that never appear
+    # in the same legend are never put to a reader as a pair, and reporting them would be the
+    # too-large-set mistake this module warns a caller about, made here.
+    for legend in _legends(fig):
+        entries = _entries(legend)
         if len(entries) > 1:
             complaints.extend(indistinguishable_series(entries))
     return complaints

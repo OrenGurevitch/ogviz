@@ -37,7 +37,7 @@ from ogviz.qc.arrangement import (
     rows_outside_their_panel,
     ticks_in_the_headroom,
 )
-from ogviz.qc.color import series_confusable_under_cvd
+from ogviz.qc.color import legend_colors, series_confusable_under_cvd
 from ogviz.qc.ink import colliding_ink, drawn_but_invisible
 from ogviz.qc.marks import buried_baselines, dots_off_the_marks
 from ogviz.qc.reading import (
@@ -78,6 +78,7 @@ __all__ = [
     "is_excused",
     "knocked_out_over",
     "layout_not_applied",
+    "legend_colors",
     "mean_rows_unaligned",
     "one_minus_sign",
     "one_render",

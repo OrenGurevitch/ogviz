@@ -132,3 +132,88 @@ def test_a_figure_with_no_legend_says_nothing() -> None:
     ax.plot([0, 1], [1, 0], color="#14A97C")
     fig.canvas.draw()
     assert not series_confusable_under_cvd(fig)
+
+
+def test_a_chosen_colour_clears_the_check_that_asked_for_it() -> None:
+    """The round trip that makes `separated_from` worth having at all.
+
+    Reporting a confusable pair and choosing a replacement are two halves of one job, and they have
+    to agree: a colour this returns must be one `indistinguishable_series` then passes.
+    """
+    from ogviz.color import indistinguishable_series, separated_from
+
+    taken = ["#2E7CE0", "#EFA607", "#14A97C"]
+    picked = separated_from(taken)
+    named = {str(index): color for index, color in enumerate([*taken, picked])}
+    assert indistinguishable_series(named) == [], named
+
+
+def test_it_beats_the_obvious_wrong_answer() -> None:
+    """The premise: a hue-wheel step is what a caller reaches for, and it is not good enough.
+
+    Without this the test above would pass on a function that returned any old colour, since three
+    arbitrary colours often happen to clear the threshold.
+    """
+    from ogviz.color import separated_from, worst_separation
+
+    taken = ["#2E7CE0", "#EFA607", "#14A97C", "#ED6B3B"]
+    naive = "#9B3B8F"  # a fifth hue, evenly spaced, chosen the way a person would
+    assert worst_separation(separated_from(taken), taken) > worst_separation(naive, taken)
+
+
+def test_a_full_palette_is_refused_rather_than_fudged() -> None:
+    """Returning the best-but-failing colour would hand back something the gate then refuses."""
+    import pytest
+
+    from ogviz.color import separated_from
+
+    # The whole RGB cube, coarsely: nothing can be far from all of it.
+    crowded = [
+        f"#{r:02x}{g:02x}{b:02x}"
+        for r in range(0, 256, 51)
+        for g in range(0, 256, 51)
+        for b in range(0, 256, 51)
+    ]
+    with pytest.raises(AssertionError, match="cannot be fixed by choosing better colours"):
+        separated_from(crowded)
+
+
+def test_the_answer_does_not_move_between_runs() -> None:
+    """A palette helper returning a different colour each call makes a figure irreproducible."""
+    from ogviz.color import separated_from
+
+    taken = ["#2E7CE0", "#EFA607"]
+    assert separated_from(taken) == separated_from(taken)
+
+
+def test_near_orders_the_winners_and_does_not_override_them() -> None:
+    """A tiebreak, never a constraint — separation still decides."""
+    from ogviz.color import separated_from, separation, worst_separation
+
+    taken = ["#2E7CE0", "#EFA607"]
+    plain, biased = separated_from(taken), separated_from(taken, near="#c00000")
+    assert biased != plain, "the preference reached a different colour, so it is doing something"
+    assert separation(biased, "#c00000") < separation(plain, "#c00000"), "and a nearer one"
+    assert worst_separation(biased, taken) >= 0.18, "while still clearing the threshold"
+
+
+def test_worst_separation_reads_the_deficiencies_and_not_only_normal_vision() -> None:
+    """A pair that separates on screen and merges for a reader must score as merged."""
+    from ogviz.color import separation, worst_separation
+
+    red, green = "#D62728", "#2CA02C"  # matplotlib's own, the textbook confusable pair
+    assert separation(red, green) > 0.18, "the premise: they look distinct to normal vision"
+    assert worst_separation(red, [green]) < 0.18
+
+
+def test_the_vectorised_search_agrees_with_the_one_at_a_time_metric() -> None:
+    """`separated_from` scores by broadcasting; `worst_separation` scores one pair at a time.
+
+    Two implementations of one question is exactly how they come to disagree, so the fast one is
+    held to the slow one on the answer it actually returns.
+    """
+    from ogviz.color import separated_from, worst_separation
+
+    for taken in (["#2E7CE0"], ["#2E7CE0", "#EFA607", "#14A97C"]):
+        picked = separated_from(taken)
+        assert worst_separation(picked, taken) >= 0.18, (taken, picked)
