@@ -621,3 +621,32 @@ def test_the_gallery_uses_every_name_its_data_module_exports() -> None:
     assert not orphans, (
         f"nothing in the gallery draws these, and nothing else in data.py uses them: {orphans}"
     )
+
+
+def test_every_rendered_figure_is_shown_once_and_labelled_once() -> None:
+    """The gallery labels panels 1A, 3E and so on, so one can be asked for by name.
+
+    Which only works if the labels and the figures stay in step, and they are maintained in two
+    different files by hand. Three figures were replaced in two days while this was being written;
+    each time the caption beside the new one still described the old, and once a figure was left
+    referenced after its file was deleted. None of that fails anything on its own.
+
+    Checks the three ways it can go wrong: a rendered figure nobody shows, a reference to a figure
+    that is not rendered, and a label used twice or missing.
+    """
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent.parent
+    source = (root / "README.md.in").read_text()
+    shown = re.findall(r"examples/out/(\d\d_[a-z_]+)\.png", source)
+    rendered = sorted(path.stem for path in (root / "examples" / "out").glob("*.png"))
+
+    assert sorted(set(shown)) == rendered, (
+        f"shown but not rendered: {sorted(set(shown) - set(rendered))}; "
+        f"rendered but not shown: {sorted(set(rendered) - set(shown))}"
+    )
+    assert len(shown) == len(set(shown)), "a figure is shown twice"
+    labels = re.findall(r"<b>(\d[A-E]?)</b>", source)
+    assert len(labels) == len(rendered), f"{len(labels)} labels for {len(rendered)} figures"
+    assert len(labels) == len(set(labels)), f"a label is used twice: {labels}"

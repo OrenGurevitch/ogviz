@@ -43,75 +43,69 @@ the measurement behind it. Requires Python ≥ 3.12 and matplotlib ≥ 3.10.
 ## Figures
 
 `uv run just figures` renders these from invented data with fixed seeds. The source,
-`examples/__main__.py`, is the specification rather than an illustration.
+`examples/__main__.py`, is the specification rather than an illustration. Each panel is labelled,
+so one can be asked for by name — 3E, 1C.
 
-They are grouped by what each one is FOR, and paired so the two figures in a row are the same
-height.
-
-### Distributions
+### 1 · Distributions
 
 <table>
 <tr>
-<td width="43%"><img src="examples/out/01_two_group_violin.png" width="100%"><br><sub><code>group_violins</code> — the whole panel in one call</sub></td>
-<td width="57%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub>four panels, each on its own scale — dots coloured by subject</sub></td>
+<td width="43%"><img src="examples/out/01_two_group_violin.png" width="100%"><br><sub><b>1A</b> <code>group_violins</code></sub></td>
+<td width="57%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub><b>1B</b> four panels, each on its own scale</sub></td>
 </tr>
 <tr>
-<td width="48%" rowspan="2"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub>a condition grid — six measures, each keeping its own scale</sub></td>
-<td width="52%"><img src="examples/out/02_display_units.png" width="100%"><br><sub><code>display_scale</code> — held in ppm, drawn in ppb</sub></td>
+<td width="48%" rowspan="2"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub><b>1C</b> a condition grid</sub></td>
+<td width="52%"><img src="examples/out/02_display_units.png" width="100%"><br><sub><b>1D</b> <code>display_scale</code></sub></td>
 </tr>
 <tr>
-<td width="52%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><code>split_violins</code> — one quantity measured two ways</sub></td>
+<td width="52%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><b>1E</b> <code>split_violins</code></sub></td>
 </tr>
 </table>
 
-### Spectra
+### 2 · Spectra
 
 <table>
 <tr>
-<td width="46%"><img src="examples/out/06_power_spectrum.png" width="100%"><br><sub>a power spectrum — log-log, named bands, a 95% CI</sub></td>
-<td width="54%"><img src="examples/out/18_stft_spectrogram.png" width="100%"><br><sub><code>spectrogram</code> — an STFT, with the scale that makes it a measurement</sub></td>
+<td width="46%"><img src="examples/out/06_power_spectrum.png" width="100%"><br><sub><b>2A</b> a power spectrum</sub></td>
+<td width="54%"><img src="examples/out/18_stft_spectrogram.png" width="100%"><br><sub><b>2B</b> <code>spectrogram</code></sub></td>
 </tr>
 </table>
 
-### Bars
+### 3 · Bars
 
 <table>
 <tr>
-<td width="47%"><img src="examples/out/07_bars_with_reference.png" width="100%"><br><sub><code>bar_panel</code> — asymmetric CI, a threshold over the bars</sub></td>
-<td width="53%"><img src="examples/out/17_controlled_comparison.png" width="100%"><br><sub>one bar that is not comparable, said on the axis</sub></td>
+<td width="47%"><img src="examples/out/07_bars_with_reference.png" width="100%"><br><sub><b>3A</b> <code>bar_panel</code></sub></td>
+<td width="53%"><img src="examples/out/17_controlled_comparison.png" width="100%"><br><sub><b>3B</b> one bar that does not compare</sub></td>
 </tr>
 <tr>
-<td width="39%"><img src="examples/out/08_grouped_bars.png" width="100%"><br><sub>two series, sign-aware labels</sub></td>
-<td width="61%"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><code>orientation="horizontal"</code>, for long names</sub></td>
+<td width="39%"><img src="examples/out/08_grouped_bars.png" width="100%"><br><sub><b>3C</b> two series, sign-aware labels</sub></td>
+<td width="61%"><img src="examples/out/10_horizontal.png" width="100%"><br><sub><b>3D</b> <code>orientation="horizontal"</code></sub></td>
 </tr>
 </table>
 
 ![](examples/out/09_metric_grid.png)
 
-<sub>a benchmark table as panels — each system keeps its hue across the grid and the panel's leader
-is that hue at full strength, so who won reads before any number does. Two panels are errors, where
-the leader is the shortest bar</sub>
+<sub><b>3E</b> a metric grid</sub>
 
-### Curves, coupling and change
+### 4 · Curves, coupling and change
 
 <table>
 <tr>
-<td width="55%"><img src="examples/out/11_effort_curves.png" width="100%"><br><sub><code>line_panel</code> — log axis, <code>broken_zero</code></sub></td>
-<td width="45%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><code>slopegraph</code> — even stages, spread as a band</sub></td>
+<td width="55%"><img src="examples/out/11_effort_curves.png" width="100%"><br><sub><b>4A</b> <code>line_panel</code></sub></td>
+<td width="45%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><b>4B</b> <code>slopegraph</code></sub></td>
 </tr>
 <tr>
-<td colspan="2"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><code>coupling_panels</code> — scatters over forest plots</sub></td>
+<td colspan="2"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><b>4C</b> <code>coupling_panels</code>; its lower half is <code>estimate_strip</code>, which works standalone</sub></td>
 </tr>
 </table>
 
-The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, which works standalone.
-
-### Matrices and tables
+### 5 · Matrices and tables
 
 <table>
 <tr>
-<td width="46%"><img src="examples/out/14_effect_heatmap.png" width="100%"><br><sub><code>effect_heatmap</code> — diverging, stars, missing cells</sub></td>
-<td width="54%"><img src="examples/out/16_comparison_table.png" width="100%"><br><sub><code>table_panel</code> — highlighted row or column, cell tone</sub></td>
+<td width="46%"><img src="examples/out/14_effect_heatmap.png" width="100%"><br><sub><b>5A</b> <code>effect_heatmap</code></sub></td>
+<td width="54%"><img src="examples/out/16_comparison_table.png" width="100%"><br><sub><b>5B</b> <code>table_panel</code></sub></td>
 </tr>
 </table>
 
@@ -119,7 +113,7 @@ The lower half of `coupling_panels` is `estimate_strip`, a **forest plot**, whic
 
 ![](examples/out/13_the_gate.png)
 
-<sub>every word on the right comes from <code>audit</code></sub>
+<sub><b>6</b> every word on the right comes from <code>audit</code></sub>
 
 `save` runs it. `guard()` extends it to every `fig.savefig`, whoever called it; `OGVIZ_GUARD=1` does
 the same with no code change. Both also refuse a tofu box — text with no glyph in the resolved font.
