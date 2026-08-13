@@ -31,6 +31,7 @@ from ogviz.layout.overlap import (
 from ogviz.layout.panels import grid_warnings
 from ogviz.layout.render import ensure_rendered, one_render
 from ogviz.qc.arrangement import (
+    header_crowds_the_panels,
     layout_not_applied,
     mean_rows_unaligned,
     panels_disagree_about_ticks,
@@ -74,6 +75,7 @@ __all__ = [
     "drawn_but_invisible",
     "ensure_rendered",
     "grid_warnings",
+    "header_crowds_the_panels",
     "is_backdrop",
     "is_excused",
     "knocked_out_over",

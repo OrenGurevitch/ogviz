@@ -76,6 +76,7 @@ def _complaints(fig: Figure, *, mode: Mode, min_gap: float, advise: bool) -> lis
     found = audit(fig, min_gap=min_gap)
     if advise:
         from ogviz.layout.density import dead_space
+        from ogviz.qc.arrangement import header_crowds_the_panels
         from ogviz.qc.typography import type_too_small
 
         # Advisory, and kept separate on purpose: a deliberately airy figure is a real choice and a
@@ -85,7 +86,7 @@ def _complaints(fig: Figure, *, mode: Mode, min_gap: float, advise: bool) -> lis
         # `type_too_small` is here rather than in `CHECKS` for the same reason and one of its own:
         # the figure it was written for and the densest figure this package ships are 1.3x apart on
         # the measurement, which is not a margin to fail a build on. See its own note.
-        notes = dead_space(fig) + type_too_small(fig)
+        notes = dead_space(fig) + type_too_small(fig) + header_crowds_the_panels(fig)
         found = found + [f"(advisory) {note}" for note in notes]
     return found
 

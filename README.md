@@ -350,6 +350,7 @@ ogviz
 │   ├── __main__
 │   │   └── main(argv: Sequence[str] | None) -> int
 │   ├── arrangement
+│   │   ├── header_crowds_the_panels(fig: Figure, *, floor: float) -> list[str]
 │   │   ├── layout_not_applied(fig: Figure) -> list[str]
 │   │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
 │   │   ├── panels_disagree_about_ticks(fig: Figure) -> list[str]

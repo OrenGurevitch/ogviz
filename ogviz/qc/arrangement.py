@@ -207,3 +207,57 @@ def ticks_in_the_headroom(fig: Figure) -> list[str]:
                 f"(one bracketing tick at {stray[0]:g} is expected)"
             )
     return complaints
+
+
+# A header clearing the panels by less than this reads as crowded rather than as deliberate.
+# ADVISORY, and the number is this package's own — importing the one it was borrowed from would
+# have been wrong. Measured 2026-08-13 across the gallery, header bottom against the highest panel
+# text below it: the tightest shipped figure clears by 17.6 px, the next by 18.3, then 26.6 and
+# 36.4, with a median of 52. The idea came from a project whose tightest was 66 px and which set
+# its floor at 32 — and 32 here would complain about two figures that ship and are correct. So the
+# floor sits below everything shipped, as a regression guard rather than a target: a figure that
+# drops under 12 px has changed for a reason worth looking at.
+CROWDED_HEADER_PX = 12.0
+
+
+def _visible(texts) -> list:
+    return [text for text in texts if text.get_text().strip() and text.get_visible()]
+
+
+def header_crowds_the_panels(fig: Figure, *, floor: float = CROWDED_HEADER_PX) -> list[str]:
+    """A figure header sitting closer to the panels' own text than reads as deliberate.
+
+    The one pair of labels no overlap rule catches, because they are positioned by two mechanisms
+    that do not know about each other: a header is laid out against the CANVAS and a panel title
+    against its AXES. `text_overlaps` fires when they touch, and a figure is uncomfortable well
+    before that — several rounds of "this is too tight" have been caught by eye here and by nothing
+    else, which is what makes it worth a number.
+
+    ONLY WHEN THE GAP IS POSITIVE, and that is not a detail. Measured naively — the lowest figure
+    text against the highest panel text anywhere — two gallery figures come back hundreds of pixels
+    NEGATIVE: a table panel's top row of cells and a coupling grid's upper scatter legitimately sit
+    above where the header ends, and neither is crowding anything. A negative gap means either a
+    real overlap, which `text_overlaps` owns and reports properly, or text that is not in the
+    header's band at all. So this speaks only about the case it can actually judge — clear, but
+    not clear enough — and stays silent on the rest rather than inventing a complaint.
+
+    Advisory. It is a judgement about comfort, and `guard` reports it beside `dead_space` rather
+    than failing a build on it.
+    """
+    ensure_rendered(fig)
+    header = _visible(fig.texts)
+    panel = _visible([text for ax in fig.axes for text in ax.texts])
+    panel += [ax.title for ax in fig.axes if ax.get_title().strip()]
+    if not header or not panel:
+        return []
+    lowest = min(text.get_window_extent().y0 for text in header)
+    below = [text for text in panel if text.get_window_extent().y1 <= lowest]
+    if not below:
+        return []
+    gap = lowest - max(text.get_window_extent().y1 for text in below)
+    if gap >= floor:
+        return []
+    return [
+        f"the header clears the panels' own text by {gap:.0f} px, under the {floor:.0f} px that "
+        "reads as deliberate — lower the panels, or shorten the subtitle"
+    ]
