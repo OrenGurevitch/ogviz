@@ -55,6 +55,10 @@ Tag = Literal[
     # Set on the FIGURE by `panel_grid`: the shape it built and the page it was sized for, so
     # `grid_warnings` can say what that shape will cost without being told again.
     "grid_page",
+    # Set by `panel_grid` on each axes it created. `grid_warnings` counted every axes carrying a
+    # subplotspec instead, which a colourbar also does — so one colourbar made the empty-slot
+    # arithmetic go NEGATIVE and the warning read "leaves -1 slot(s) empty".
+    "grid_cell",
 ]
 
 PREFIX = "ogviz_"

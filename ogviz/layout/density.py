@@ -144,7 +144,11 @@ def panel_emptiness(fig: Figure, ax: Axes) -> dict[str, float]:
     y0, y1 = int(max(height - box.y1, 0)), int(min(height - box.y0, height))
     inside = mask[y0:y1, x0:x1]
     if not inside.size:
-        return {"coverage": 0.0, "left": 0.0, "right": 0.0, "top": 0.0, "bottom": 0.0}
+        # The axes does not land on the canvas at all. It used to report every edge as 0.0 empty,
+        # which is the answer a perfectly FULL panel gives — so the one panel that is genuinely
+        # broken was the one `dead_space` had nothing to say about. Empty throughout is both the
+        # honest reading and the one that gets reported.
+        return {"coverage": 0.0, "left": 1.0, "right": 1.0, "top": 1.0, "bottom": 1.0}
     bounds = _ink_bounds(inside)
     if bounds is None:
         return {"coverage": 0.0, "left": 1.0, "right": 1.0, "top": 1.0, "bottom": 1.0}
@@ -178,9 +182,28 @@ def dead_space(fig: Figure) -> list[str]:
             if panel[side] > GENEROUS_BAND:
                 notes.append(
                     f"axes {index}: the {side} {panel[side]:.0%} of the panel is empty — the "
-                    f"{'value' if side in ('top', 'bottom') else 'category'} limit is generous"
+                    f"{_axis_along(ax, side)} limit is generous"
                 )
     return notes
+
+
+def _axis_along(ax: Axes, side: str) -> str:
+    """Which axis a given EDGE of this panel belongs to — the value one, or the category one.
+
+    Read from the orientation the panel recorded rather than assumed. Written out as
+    `'value' if side in ('top', 'bottom') else 'category'`, the note named the wrong axis on every
+    horizontal panel: `bar_panel(orientation="horizontal")` runs its categories down the left, so
+    an empty band at the TOP is a generous category limit and one at the RIGHT is the value limit.
+    A reader told to tighten the wrong limit tightens the one carrying the comparison.
+
+    `None` for axes this package did not draw, where the vertical convention is the better guess
+    and is all that can be said.
+    """
+    from ogviz.orientation import read_orientation
+
+    upright = read_orientation(ax) != "horizontal"
+    vertical_edge = side in ("top", "bottom")
+    return "value" if vertical_edge == upright else "category"
 
 
 def trim_margins(fig: Figure, *, pad_px: float = 6.0) -> bool:
@@ -200,11 +223,20 @@ def trim_margins(fig: Figure, *, pad_px: float = 6.0) -> bool:
         return False
     width, height = fig.get_size_inches() * fig.dpi
     current = fig.subplotpars
+
+    # GROW ONLY, per side. Each side moves by its own unused margin less `pad_px`, and that
+    # difference is NEGATIVE on a side whose ink already reaches within `pad_px` of the edge — so
+    # the axes was pulled inward there. The gate above tests only the WIDEST side, which meant one
+    # wasteful side licensed a shrink on the other three: a figure with 40 px spare on the left and
+    # 2 px on the right had its right edge moved IN by 4 px, undoing part of what the trim was for.
+    def gain(unused: float, extent: float) -> float:
+        return max(0.0, (unused - pad_px) / extent)
+
     moved = {
-        "left": max(0.0, current.left - (before.left - pad_px) / width),
-        "right": min(1.0, current.right + (before.right - pad_px) / width),
-        "bottom": max(0.0, current.bottom - (before.bottom - pad_px) / height),
-        "top": min(1.0, current.top + (before.top - pad_px) / height),
+        "left": max(0.0, current.left - gain(before.left, width)),
+        "right": min(1.0, current.right + gain(before.right, width)),
+        "bottom": max(0.0, current.bottom - gain(before.bottom, height)),
+        "top": min(1.0, current.top + gain(before.top, height)),
     }
     if moved["left"] >= moved["right"] or moved["bottom"] >= moved["top"]:
         return False  # the trim would invert the axes; leave it alone

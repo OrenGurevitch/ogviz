@@ -79,11 +79,22 @@ def _line_width_points(line: str, fontsize: float) -> float:
 
 
 def wrap_to_width(text: str, width_points: float, fontsize: float) -> list[str]:
-    """Greedy word wrap against measured glyph width, so no line exceeds `width_points`.
+    """Greedy word wrap against measured glyph width. Every line fits `width_points` — see below.
 
     A newline the caller wrote is a HARD break and survives: each side is wrapped on its own.
     `text.split()` alone collapses them, so a two-line heading came back as one long line and the
-    author's own layout was silently discarded.
+    author's own layout was silently discarded. A BLANK paragraph is the same promise kept — it
+    comes back as a blank line, because the caller's own layout is what survives a hard break.
+
+    THE ONE EXCEPTION, and it is not fixable here: a single word wider than `width_points` is
+    emitted on its own line and overflows, because the alternative is hyphenating or dropping it.
+    The docstring used to end at "so no line exceeds `width_points`", which is a promise this
+    cannot keep and which a caller sizing a figure from `len(lines)` believed —
+    `examples/__main__.py` had to measure around it rather than being told.
+
+    `layout.caption.longest_unbreakable` is the question to ask BEFORE wrapping: it returns the
+    width of the widest single word, which is the narrowest column this can honestly fill.
+    `test_a_single_unbreakable_word_still_yields_a_line` pins the behaviour.
     """
     lines: list[str] = []
     for paragraph in text.split("\n"):
@@ -187,6 +198,8 @@ def panel_grid(
     figure = plt.figure(figsize=(width, cell_height * rows))
     grid = figure.add_gridspec(rows, columns, hspace=hspace, wspace=wspace)
     axes = [figure.add_subplot(grid[index // columns, index % columns]) for index in range(count)]
+    for ax in axes:
+        mark(ax, "grid_cell")
     mark(figure, "grid_page", (columns, rows, width, cell_aspect, column_width, page_height))
     return figure, axes
 
@@ -207,10 +220,13 @@ def grid_warnings(fig: Figure) -> list[str]:
     if page is None:
         return []
     columns, rows, width, cell_aspect, column_width, page_height = page
-    drawn = len([ax for ax in fig.axes if ax.get_subplotspec() is not None])
+    # The grid's OWN cells, by tag. It counted every axes carrying a subplotspec, and a colourbar
+    # carries one — so `fig.colorbar` on a full grid made `empty` negative, and `if empty:` is true
+    # for a negative number: "leaves -1 slot(s) empty", about a grid with no hole in it.
+    drawn = len([ax for ax in fig.axes if marked(ax, "grid_cell")])
     complaints: list[str] = []
     empty = columns * rows - drawn
-    if empty:
+    if empty > 0:
         complaints.append(
             f"{drawn} panels on a {rows}x{columns} grid leaves {empty} slot(s) empty — "
             "another column count, or another panel, closes it"

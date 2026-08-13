@@ -66,3 +66,63 @@ def test_dead_space_is_quiet_on_a_well_packed_figure() -> None:
     ax.set_ylim(0.38, 0.62)
     fig.tight_layout(pad=0.05)
     assert not dead_space(fig)
+
+
+def test_an_axes_off_the_canvas_is_not_reported_as_a_full_panel() -> None:
+    """The silent default: no slice to measure used to come back as every edge 0% empty.
+
+    Which is the answer a perfectly packed panel gives, so the one panel that is actually broken
+    was the one `dead_space` had nothing to say about.
+    """
+    fig = plt.figure(figsize=(6.0, 4.0))
+    off = fig.add_axes((1.6, 0.1, 0.3, 0.3))
+    panel = panel_emptiness(fig, off)
+    assert panel["top"] == 1.0 and panel["left"] == 1.0
+    assert any("axes" in note for note in dead_space(fig))
+
+
+def test_a_horizontal_panel_is_told_which_limit_is_generous() -> None:
+    """Top and bottom are the CATEGORY axis when the panel runs horizontally.
+
+    The note hardcoded the vertical convention, so it sent a reader to tighten the axis carrying
+    the comparison. Asserted against a vertical panel too, or the mapping could be inverted and
+    only the wording would look right.
+    """
+    from ogviz.panels.bars import Series, bar_panel
+
+    def named_axis(orientation: str, side: str) -> str:
+        fig, ax = plt.subplots(figsize=(8.0, 5.0))
+        bar_panel(
+            ax,
+            [Series("only", [0.30, 0.34, 0.31], "#7C9A6E")],
+            ["a", "b", "c"],
+            orientation=orientation,  # type: ignore[arg-type]
+            show_values=False,
+        )
+        span = ax.set_xlim if orientation == "horizontal" else ax.set_ylim
+        span(0.0, 4.0)  # a generous VALUE limit, whichever way the panel runs
+        for note in dead_space(fig):
+            if note.startswith("axes") and f"the {side} " in note:
+                return note.rsplit("— the ", 1)[1]
+        raise AssertionError(f"no note about the {side} of a {orientation} panel")
+
+    # The same generous VALUE limit, twice, on the edge it leaves empty each way round.
+    assert named_axis("vertical", "top") == "value limit is generous"
+    assert named_axis("horizontal", "right") == "value limit is generous"
+
+
+def test_trimming_one_wasteful_side_does_not_shrink_a_tight_one() -> None:
+    """`trim_margins` grows; the per-side arithmetic could also un-grow.
+
+    A side whose ink already reaches within `pad_px` of the edge contributed a negative gain, and
+    the gate tests only the widest side — so one wasteful side licensed a shrink on the rest.
+    """
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    _curve(ax)
+    fig.subplots_adjust(left=0.45, right=0.999, top=0.999, bottom=0.999 - 0.55)
+    fig.canvas.draw()
+    tight = {side: getattr(fig.subplotpars, side) for side in ("right", "top")}
+    assert trim_margins(fig) is True
+    assert fig.subplotpars.left < 0.45, "the wasteful side is what it was asked to reclaim"
+    for side, was in tight.items():
+        assert getattr(fig.subplotpars, side) >= was, f"{side} was pulled in"

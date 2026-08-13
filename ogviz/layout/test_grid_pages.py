@@ -65,3 +65,23 @@ def test_a_figure_that_is_not_a_grid_is_not_judged_as_one() -> None:
     """`grid_warnings` is in the gate, so it must be silent about every other figure."""
     fig, _ax = plt.subplots()
     assert not grid_warnings(fig)
+
+
+def test_a_colourbar_does_not_make_a_full_grid_report_a_negative_hole() -> None:
+    """It counted every axes carrying a subplotspec, and a colourbar carries one.
+
+    `if empty:` is true for a negative number, so a grid with no hole in it reported
+    "leaves -1 slot(s) empty" — a complaint that cannot be acted on because it is not true.
+    """
+    fig, axes = panel_grid(4, ncol=2)
+    image = axes[0].imshow([[0.0, 1.0], [1.0, 0.0]])
+    fig.colorbar(image, ax=axes[0])
+    complaints = grid_warnings(fig)
+    assert not any("slot(s) empty" in complaint for complaint in complaints), complaints
+
+
+def test_the_empty_slot_count_still_reads_the_grid_and_not_the_axes_list() -> None:
+    """The premise of the fix above: a real hole is still reported once the count is by tag."""
+    fig, axes = panel_grid(7, ncol=2)
+    fig.colorbar(axes[0].imshow([[0.0, 1.0]]), ax=axes[0])
+    assert any("leaves 1 slot(s) empty" in complaint for complaint in grid_warnings(fig))
