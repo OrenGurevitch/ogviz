@@ -40,7 +40,7 @@ from ogviz.orientation import (
     stamp_orientation,
     value_span,
 )
-from ogviz.panels.reference import reference_line, slide_label_clear
+from ogviz.panels.reference import reference_band, reference_line, slide_label_clear
 from ogviz.require import require
 from ogviz.tags import mark
 from ogviz.theme import (
@@ -65,6 +65,10 @@ LABEL_PAD_FRACTION = 0.02  # of the value span, between the whisker cap and the 
 CATEGORY_MARGIN = 0.22  # slack past the outermost bar on the value axis
 HIGHLIGHT_FILL = "#EFEDE4"  # the shaded column behind a highlighted category
 BAR_ROUNDING = 0.16  # corner radius, as a fraction of the BAR'S OWN WIDTH
+
+# `bar_panel` takes a `reference_band` ARGUMENT, which shadows the function inside its body. The
+# alias is how the panel reaches the one implementation without either public name changing.
+_draw_reference_band = reference_band
 
 
 K = 0.5523  # the circle-to-bezier constant, for a quarter turn
@@ -454,6 +458,7 @@ def bar_panel(
     value_format: str | None = None,
     show_values: bool = True,
     reference: tuple[float, str] | None = None,
+    reference_band: tuple[float, float, str] | None = None,
     reference_side: Literal["left", "right"] = "left",
     positions: Sequence[float] | None = None,
     grid: bool = True,
@@ -466,7 +471,9 @@ def bar_panel(
 
     `series` carries its own colour and errors; `categories` labels the x axis. Grouped series
     divide `width` between them, so two series stay inside the space one series would occupy.
-    `reference` is (value, label) for a dashed comparison level.
+    `reference` is (value, label) for a dashed comparison level, and `reference_band` is
+    (low, high, label) for one that is a RANGE — a published agreement interval, a tolerance, an
+    acceptance window. A level and a range are different claims and a figure may carry both.
 
     `highlight` shades one category's column, to say which one the figure is about without
     claiming it won. `rounded` softens each bar's free end, and works either way round.
@@ -591,6 +598,13 @@ def bar_panel(
         threshold_label = reference_line(
             ax, *reference, orientation=orientation, label_side=reference_side
         )
+    if reference_band is not None:
+        # Delegated, not repeated. This drew its own band until 2026-07-31 — solid fill, label
+        # centred INSIDE it — which is the design `reference_band` was written to replace, and it
+        # stayed reachable through this argument. Two implementations of one mark in one file is
+        # how a caller gets the rejected design by picking the other door.
+        low_edge, high_edge, band_label = reference_band
+        _draw_reference_band(ax, low_edge, high_edge, band_label, orientation=orientation)
 
     # Labels last: placement reads ax.get_ylim(), which margins and the reference line both move.
     if show_values:

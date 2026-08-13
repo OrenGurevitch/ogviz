@@ -13,15 +13,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+from matplotlib.transforms import offset_copy
+
 from ogviz.marks import Z_ERROR
 from ogviz.orientation import (
     constant_value_line,
+    is_vertical,
     place_many,
     value_transform,
 )
 from ogviz.require import require
 from ogviz.tags import mark, value_of
-from ogviz.theme import MUTED_INK, VALUE_LABEL_SIZE
+from ogviz.theme import CANVAS, MUTED_INK, VALUE_LABEL_SIZE
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -87,6 +90,87 @@ def reference_line(
     # on is a real defect and has to be reported.
     mark(drawn, "anchored")
     mark(drawn, "anchor", threshold)
+    return drawn
+
+
+def reference_band(
+    ax: Axes,
+    low: float,
+    high: float,
+    label: str,
+    *,
+    orientation: Orientation = "vertical",
+    label_side: Literal["left", "right"] = "left",
+    color: str | None = None,
+):
+    """A comparison RANGE — the band analogue of `reference_line`, for a benchmark with a spread.
+
+    A published human-agreement interval, a tolerance, an acceptance window: things that are a
+    region rather than a level. Drawn recessive — a reference is context, the bars are the point.
+
+    **Why not a filled block.** A solid span reads as data — it competes with the bars, and its
+    label has to sit somewhere inside it. As soon as a bar climbs near the band, that label and the
+    value labels fight for one rectangle, and the usual fix (a knockout box behind the text) just
+    stacks two opaque shapes over the plot. Here the fill is faint enough to read as a zone, the two
+    dashed EDGES carry the precision, and the label sits clear of the band entirely.
+
+    The label goes just ABOVE the band, where a value label cannot follow it: value labels sit on
+    bar tops, and a bar tall enough to reach here would be inside the band, not above it. That is
+    what stops the design degrading as the bars improve — the failure it replaces.
+    """
+    tone = color or MUTED_INK
+    fill = ax.axhspan if is_vertical(orientation) else ax.axvspan
+    # Faint: a reference the eye can find without the eye going there first. Drawn UNDER the frame
+    # and the bars — at Z_REFERENCE it washed over the left spine, which `buried_baselines` reported
+    # and a reader sees as a frame that changes colour halfway up. Only the EDGES need to be above
+    # the marks, since they are what carries the band's precision against a tall bar.
+    patch = fill(low, high, color=tone, alpha=0.10, zorder=Z_BAND_FILL, linewidth=0)
+    mark(patch, "reference")
+    # And it is a BACKDROP: a shaded region a label may sit on, not a mark a label must avoid.
+    # `bar_panel`'s own band had always said so, and the two disagreeing meant a value label over
+    # one of them was a complaint and over the other was the design.
+    mark(patch, "backdrop")
+    edges = [
+        constant_value_line(
+            ax, orientation, edge, ls="--", color=tone, lw=1.1, alpha=0.55, zorder=Z_REFERENCE
+        )
+        for edge in (low, high)
+    ]
+    for edge in edges:
+        mark(edge, "reference")
+
+    at_left = label_side == "left"
+    along, across = place_many(orientation, 0.012 if at_left else 0.988, high)
+    # LIFTED clear of the upper edge, in POINTS so it holds at any figure size. Sitting the label on
+    # the line meant its knockout box masked the very edge the band is defined by. The box stays --
+    # a gridline may still run behind the text -- but the offset keeps it wholly above the dashed
+    # edge, so the edge draws unbroken.
+    figure = ax.get_figure(root=True)
+    lifted = offset_copy(
+        value_transform(ax, orientation),
+        # The ROOT figure: `ax.figure` is a SubFigure when the axes is in one, and the dpi that
+        # turns points into pixels lives on the figure the canvas belongs to.
+        fig=figure,
+        **({"y": 5} if is_vertical(orientation) else {"x": 5}),
+        units="points",
+    )
+    drawn = ax.text(
+        along,
+        across,
+        label,
+        transform=lifted,
+        ha="left" if at_left else "right",
+        va="bottom",  # sits ABOVE the band's upper edge, never inside it
+        fontsize=VALUE_LABEL_SIZE * 0.8,
+        color=tone,
+        zorder=2,
+        # Knockout box, the device `value_labels` uses: the label sits just above the band's upper
+        # edge, exactly where a gridline is likely to run. A glyph stroke would fringe the letters;
+        # an opaque box behind them keeps the type clean and hides only what it covers.
+        bbox={"facecolor": CANVAS, "edgecolor": "none", "pad": 1.6},
+    )
+    mark(drawn, "anchored")
+    mark(drawn, "anchor", edges[1])
     return drawn
 
 

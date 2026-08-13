@@ -37,6 +37,7 @@ from ogviz.panels.multiplicity import (
     multiplicity_ladder,
 )
 from ogviz.panels.reference import (
+    reference_band,
     reference_line,
     slide_label_clear,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "multiplicity_ladder",
     "null_distance",
     "printed_means",
+    "reference_band",
     "reference_line",
     "rounded_free_end",
     "scatter_panel",

@@ -320,6 +320,7 @@ ogviz
 │   │   ├── bonferroni_threshold(count: int, *, alpha: float) -> float
 │   │   └── multiplicity_ladder(...) -> ...
 │   ├── reference
+│   │   ├── reference_band(...)
 │   │   ├── reference_line(...)
 │   │   └── slide_label_clear(ax: Axes, label: Text) -> None
 │   ├── slopegraph

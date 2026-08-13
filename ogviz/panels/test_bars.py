@@ -317,3 +317,99 @@ def test_a_category_emphasis_still_marks_that_category_in_every_series() -> None
     bold = sorted(text.get_text() for text in ax.texts if text.get_fontweight() == "bold")
     assert bold == ["0.500", "0.700"], bold
     plt.close(fig)
+
+
+def test_a_bar_panel_and_a_direct_call_draw_one_and_the_same_band() -> None:
+    """`bar_panel(reference_band=...)` drew its own until 2026-07-31, and drew the OLD design.
+
+    Solid fill with the label centred inside it, which is what `reference_band` was written to
+    replace — and it stayed reachable through the argument, so a caller got the rejected design by
+    picking the other door.
+    """
+    from ogviz import bar_panel, reference_band
+    from ogviz.panels.bars import Series
+
+    def band_of(fig, ax) -> tuple[float, bool, float]:
+        fig.canvas.draw()
+        patch = next(p for p in ax.patches if marked(p, "reference"))
+        label = next(t for t in ax.texts if "agreement" in t.get_text())
+        bottom = ax.transData.inverted().transform((0.0, label.get_window_extent().y0))[1]
+        return patch.get_zorder(), marked(patch, "backdrop"), float(bottom)
+
+    series = [Series("arm", [0.62, 0.71, 0.78], "#7C9A6E")]
+    direct_fig, direct_ax = plt.subplots(figsize=(8.0, 5.0))
+    bar_panel(direct_ax, series, ["A", "B", "C"])
+    reference_band(direct_ax, 0.80, 0.88, "human agreement")
+
+    panel_fig, panel_ax = plt.subplots(figsize=(8.0, 5.0))
+    bar_panel(panel_ax, series, ["A", "B", "C"], reference_band=(0.80, 0.88, "human agreement"))
+
+    assert band_of(direct_fig, direct_ax) == band_of(panel_fig, panel_ax)
+    _zorder, _backdrop, label_bottom = band_of(panel_fig, panel_ax)
+    assert label_bottom >= 0.88, "the label sits above the band, never inside it"
+
+
+def test_a_bands_fill_stays_under_the_frame() -> None:
+    """At `Z_REFERENCE` it washed over the left spine — a frame that changes colour halfway up."""
+    from ogviz import bar_panel, reference_band
+    from ogviz.panels.bars import Series
+    from ogviz.qc import buried_baselines
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    bar_panel(ax, [Series("arm", [0.62, 0.71, 0.78], "#7C9A6E")], ["A", "B", "C"])
+    reference_band(ax, 0.80, 0.88, "human agreement")
+    fig.canvas.draw()
+    patch = next(p for p in ax.patches if marked(p, "reference"))
+    assert patch.get_zorder() < ax.spines["left"].get_zorder()
+    assert not buried_baselines(fig)
+
+
+def test_a_reference_band_runs_the_right_way_on_a_horizontal_panel() -> None:
+    """The axis nothing was exercising. `rounded` was silently dropped there for the same reason.
+
+    On a horizontal panel the value axis is x, so the band is a vertical span and its label is
+    lifted along x — checked by where the ink actually landed, not by which branch was taken.
+    """
+    from ogviz import bar_panel, reference_band
+    from ogviz.panels.bars import Series
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    bar_panel(
+        ax,
+        [Series("arm", np.array([0.62, 0.71, 0.78]), "#7C9A6E")],
+        ["A", "B", "C"],
+        orientation="horizontal",
+        show_values=False,
+    )
+    reference_band(ax, 0.80, 0.88, "human agreement", orientation="horizontal")
+    fig.canvas.draw()
+
+    patch = next(p for p in ax.patches if marked(p, "reference"))
+    box = patch.get_window_extent()
+    panel = ax.get_window_extent()
+    assert box.height >= panel.height * 0.99, "a horizontal panel's band spans the CATEGORY axis"
+    assert box.width < panel.width * 0.5, "and is bounded on the value axis"
+
+    label = next(t for t in ax.texts if "agreement" in t.get_text())
+    left = ax.transData.inverted().transform((label.get_window_extent().x0, 0.0))[0]
+    assert left >= 0.88, "the label sits beyond the band's far edge, never inside it"
+    plt.close(fig)
+
+
+def test_a_band_a_label_names_is_not_reported_as_data_under_the_label() -> None:
+    """Untagged, every value label reaching into the band is reported as sitting on the marks.
+
+    The band is a region a reader looks THROUGH, so it carries `backdrop` as well as `reference` —
+    and `text_over_data` has to agree, since it is the check that would otherwise fire.
+    """
+    from ogviz import bar_panel, reference_band
+    from ogviz.layout.collision import text_over_data
+    from ogviz.panels.bars import Series
+
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    bar_panel(ax, [Series("arm", np.array([0.78, 0.82, 0.86]), "#7C9A6E")], ["A", "B", "C"])
+    reference_band(ax, 0.80, 0.92, "human agreement")
+    fig.canvas.draw()
+    on_the_band = [one for one in text_over_data(fig) if "sits on" in one]
+    assert on_the_band == [], on_the_band
+    plt.close(fig)
