@@ -506,7 +506,25 @@ def metric_grid_figure() -> None:
         # fraction rather than a bounded score, and crushed it into the bottom quarter of an axis
         # it has no reason to share. Nothing about a number says which kind it is.
         if not lower_is_better:
-            ax.set_ylim(0.0, 1.06)
+            # 1.02, and the 0.02 is the whole of what the labels need. It was 1.06, which put a
+            # band of empty axis above the 1.0 tick doing nothing — the ceiling is the point, the
+            # padding above it is not. MEASURED by rendering every bounded panel at candidate
+            # ceilings and asking where the tallest value label lands: a label's height is fixed in
+            # PIXELS, so as the span shrinks it occupies MORE data units and the answer cannot be
+            # reasoned out. Precision is the binding panel, and its label clears
+            #
+            #     ceiling   1.005   1.010   1.020   1.030   1.060
+            #     to spare  0.0001  0.0049  0.0145  0.0240  0.0527
+            #
+            # so anything from about 1.01 fits. 1.02 keeps roughly 1.4% of the span in hand, which
+            # is a few pixels at this panel size, without spending 6% of every panel on nothing.
+            ax.set_ylim(0.0, 1.02)
+        else:
+            # The two error panels have no bound to show, so nothing argues for keeping room above
+            # their tallest label — `bar_panel`'s 22% slack is sized to hold a label, not to leave
+            # a band of empty grid. Fitted to what was actually drawn, which is the same answer the
+            # bounded panels get by argument rather than by measurement.
+            _fit_above_the_labels(ax)
         # A FULL BOX, which the house style does not normally draw. Eight panels side by side
         # need their own edges: with only two spines the eye reads the grid as one field of bars
         # and a value near the top of a short panel looks taller than one near the top of a tall
@@ -526,6 +544,34 @@ def metric_grid_figure() -> None:
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "09_metric_grid")
+
+
+def _fit_above_the_labels(ax, *, pad: float = 0.04) -> None:
+    """Bring the value axis down to just above the highest value label, leaving `pad` of the span.
+
+    Iterated rather than solved. A label sits at its bar's value plus a fraction of the SPAN, and
+    carries a height fixed in pixels — so moving the ceiling moves the label, and the label's reach
+    in data units grows as the span shrinks. One pass overshoots; two settle it, and the loop stops
+    early when a pass changes nothing.
+
+    `pad` is a fraction of the span left above the tallest label. Below about 0.02 the label's ink
+    touches the panel's top spine, which the grid draws.
+    """
+    for _ in range(4):
+        ax.figure.canvas.draw()
+        low, high = ax.get_ylim()
+        inverse = ax.transData.inverted()
+        tops = [
+            float(inverse.transform((0.0, text.get_window_extent().y1))[1])
+            for text in ax.texts
+            if text.get_text().strip() and text.get_visible()
+        ]
+        if not tops:
+            return
+        wanted = low + (max(tops) - low) / (1.0 - pad)
+        if abs(wanted - high) < (high - low) * 0.005:
+            return
+        ax.set_ylim(low, wanted)
 
 
 def _mark_the_leader(ax, best: int, *, count: int, label_size: float) -> None:
