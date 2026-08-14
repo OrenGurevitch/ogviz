@@ -293,6 +293,11 @@ def value_label_off_its_marks(fig: Figure, *, floor: float = LABEL_OFF_ITS_MARKS
     `save` runs `settle_axis_labels` and this stays quiet for anything written through it. What it
     catches is a figure saved another way, or a label a caller placed by hand — and `repair` fixes
     it, so `--fix` closes it without a decision.
+
+    `guard()` REPORTS this and does not repair it, which is deliberate: guard polices somebody
+    else's `savefig` and has never moved an artist on them. So a project that guards rather than
+    saves will see it newly, and the complaint names the one call that closes it rather than
+    leaving them to find it.
     """
     from ogviz.layout.axis import marks_span_px
 
@@ -320,6 +325,7 @@ def value_label_off_its_marks(fig: Figure, *, floor: float = LABEL_OFF_ITS_MARKS
             complaints.append(
                 f"axes {index}: the {name}-label {label.get_text()[:40]!r} sits {abs(off):.0f} px "
                 f"{way} of the middle of the marks it names — it is centred on the axes box, "
-                "which is not where the data is"
+                "which is not where the data is. `settle_axis_labels(fig)` moves it; `save` and "
+                "`repair` already do"
             )
     return complaints
