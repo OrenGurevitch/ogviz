@@ -110,6 +110,7 @@ _COLLAPSE = {
 # The previous 0.12 was set against the ENCODED distances and let matplotlib's red/green through —
 # the open question of 2026-07-31, which measurement in the right space now answers.
 CONFUSABLE_DISTANCE = 0.18
+NEAR_HEADROOM = 1.5
 
 
 def _to_linear(channels: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -200,6 +201,11 @@ def worst_separation(color: str, taken: Iterable[str]) -> float:
 _HUES = 144
 _SATURATIONS = (0.30, 0.45, 0.60, 0.78, 0.95)
 _VALUES = (0.35, 0.48, 0.62, 0.75, 0.86, 0.95)
+# How far past `threshold` a `near=` answer has to clear before it counts as a recommendation.
+# 1.5x, because the threshold is a screening line rather than a cliff — `separation` catches 88.1%
+# of the pairs Brettel calls confusable, so a colour clearing by a thousandth is inside the
+# metric's own error and looks identical to the one it replaced. Measured: asked for the nearest
+# safe colour to matplotlib's green, the bare threshold returns 0.181 and this returns 0.276.
 
 
 def separated_from(
@@ -218,10 +224,18 @@ def separated_from(
     `qc.color.legend_colors` reads it off a rendered figure, and is how a caller should get it.
 
     `near` asks for the closest acceptable colour to one you already want — for a colour that has
-    to keep a meaning, or sit in a house palette. It ranges over everything that clears
-    `threshold`, not over the winners: without it the answer is the MOST separated candidate, with
-    it the one nearest `near` that is still safe. Those are different questions and the second is
-    usually the one a caller with an existing palette is asking.
+    to keep a meaning, or sit in a house palette. It ranges over everything that clears the
+    threshold WITH HEADROOM, not over the winners: without it the answer is the MOST separated
+    candidate, with it the one nearest `near` that is still safe. Those are different questions and
+    the second is usually the one a caller with an existing palette is asking.
+
+    The headroom is `NEAR_HEADROOM` and it is the difference between a recommendation and a
+    restatement. Asked for the nearest safe colour to matplotlib's green, the bare threshold
+    returned one scoring 0.181 against a 0.18 line — which simulates to something a reader cannot
+    tell from the colour it replaced, so the "fixed" figure looked exactly like the broken one. At
+    1.5x it returns 0.276, which is a visible change. The margin is not caution for its own sake:
+    this metric catches 88.1% of the pairs Brettel calls confusable, so clearing by a thousandth is
+    inside its own measured error.
 
     RAISES when nothing clears `threshold`, naming the best it found, rather than handing back a
     colour the gate would then refuse.
@@ -276,13 +290,22 @@ def separated_from(
         # on every run — a palette helper that returned a different colour each call would make a
         # figure irreproducible for no benefit.
         return next(one for score, one in scored if score >= best - 1e-9)
-    # `near` chooses among everything ACCEPTABLE, not among the winners. Ordering only the exact
-    # ties at the maximum was the first spelling and it does nothing: on a discrete grid the argmax
-    # is normally unique, so `near` changed the answer in none of the cases it was written for. The
-    # contract is "clears `threshold`", so that is the set a preference gets to range over.
-    return min(
-        (one for score, one in scored if score >= threshold), key=lambda one: separation(one, near)
-    )
+    # `near` chooses among everything COMFORTABLY acceptable, not among the winners. Ordering only
+    # the exact ties at the maximum was the first spelling and it does nothing: on a discrete grid
+    # the argmax is normally unique, so `near` changed the answer in none of the cases it was
+    # written for.
+    #
+    # And "acceptable" here is the threshold WITH HEADROOM, which the second spelling did not do.
+    # Asked for the nearest safe colour to matplotlib's green, it returned one scoring 0.181
+    # against a 0.18 threshold — clearing by 0.001, and indistinguishable from the colour it
+    # replaced once simulated. That is not a recommendation, it is the same figure. The margin has
+    # to exist because the metric is a SCREENING one and says so: measured against Brettel (1997)
+    # it catches 88.1% of confusable pairs, so a colour scraping the line is inside its own error.
+    safe = threshold * NEAR_HEADROOM
+    acceptable = [one for score, one in scored if score >= safe]
+    if not acceptable:  # nothing clears the margin; the plain threshold is still a true answer
+        acceptable = [one for score, one in scored if score >= threshold]
+    return min(acceptable, key=lambda one: separation(one, near))
 
 
 def indistinguishable_series(

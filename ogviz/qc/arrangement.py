@@ -319,12 +319,12 @@ def value_label_off_its_marks(fig: Figure, *, floor: float = LABEL_OFF_ITS_MARKS
             # The direction in the words a reader of THIS axis uses. It said above/below for both,
             # so an x-label was reported as sitting "above" the marks when it had moved sideways.
             if name == "x":
-                way = "right" if off > 0 else "left"
+                way = "right of" if off > 0 else "left of"
             else:
                 way = "above" if off > 0 else "below"
             complaints.append(
                 f"axes {index}: the {name}-label {label.get_text()[:40]!r} sits {abs(off):.0f} px "
-                f"{way} of the middle of the marks it names — it is centred on the axes box, "
+                f"{way} the middle of the marks it names — it is centred on the axes box, "
                 "which is not where the data is. `settle_axis_labels(fig)` moves it; `save` and "
                 "`repair` already do"
             )

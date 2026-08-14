@@ -217,3 +217,19 @@ def test_the_vectorised_search_agrees_with_the_one_at_a_time_metric() -> None:
     for taken in (["#2E7CE0"], ["#2E7CE0", "#EFA607", "#14A97C"]):
         picked = separated_from(taken)
         assert worst_separation(picked, taken) >= 0.18, (taken, picked)
+
+
+def test_near_clears_the_threshold_with_room_rather_than_scraping_it() -> None:
+    """A colour clearing by a thousandth is not a recommendation, it is the same figure.
+
+    Asked for the nearest safe colour to matplotlib's green, the bare threshold returned 0.181
+    against a 0.18 line — which simulates to something indistinguishable from the green it
+    replaced. The metric catches 88.1% of the pairs Brettel calls confusable, so scraping the line
+    is inside its own measured error.
+    """
+    from ogviz.color import CONFUSABLE_DISTANCE, NEAR_HEADROOM, separated_from, worst_separation
+
+    red, green = "#D62728", "#2CA02C"
+    assert worst_separation(green, [red]) < CONFUSABLE_DISTANCE, "the premise: this pair is caught"
+    picked = separated_from([red], near=green)
+    assert worst_separation(picked, [red]) >= CONFUSABLE_DISTANCE * NEAR_HEADROOM

@@ -650,3 +650,37 @@ def test_every_rendered_figure_is_shown_once_and_labelled_once() -> None:
     labels = re.findall(r"<b>(\d[A-E]?)</b>", source)
     assert len(labels) == len(rendered), f"{len(labels)} labels for {len(rendered)} figures"
     assert len(labels) == len(set(labels)), f"a label is used twice: {labels}"
+
+
+def test_a_buried_threshold_is_named_on_a_panel_ogviz_did_not_draw() -> None:
+    """The complaint has to name the level, and the panel's orientation cannot be trusted for it.
+
+    Every panel this package draws is STAMPED with the orientation it was told, so reading the
+    value off the stamped axis was right for all of them. On a plain `ax.bar` grid the orientation
+    is INFERRED and comes back "horizontal" — so the complaint read the line's x data and reported
+    a threshold at 0.52 as "the reference line at 0", which is a level a reader cannot find.
+
+    The README promises these checks work on any matplotlib figure, and that is the case they were
+    silently wrong in.
+    """
+    import numpy as np
+
+    from ogviz.panels.reference import reference_line
+    from ogviz.qc.marks import buried_baselines
+    from ogviz.qc.reading import orientation_of
+
+    fig, ax = plt.subplots(figsize=(5.0, 4.0))
+    ax.bar(range(4), np.array([0.34, 0.48, 0.56, 0.61]), color="#7C9A6E", width=0.84, zorder=3)
+    reference_line(ax, 0.52, "target")
+    for line in ax.lines:
+        line.set_zorder(1)  # under the bars, which is the defect
+    ax.set_ylim(0.0, 0.78)
+    fig.canvas.draw()
+
+    assert orientation_of(ax) == "horizontal", (
+        "the premise: an untagged bar panel is inferred the wrong way round, which is what made "
+        "the complaint name the wrong number"
+    )
+    named = [one for one in buried_baselines(fig) if "reference line" in one]
+    assert named and "at 0.52" in named[0], named
+    plt.close(fig)

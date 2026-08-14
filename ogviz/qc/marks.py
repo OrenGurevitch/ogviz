@@ -121,14 +121,34 @@ def buried_baselines(fig: Figure) -> list[str]:
                 and patch.get_window_extent().overlaps(line_box)
             ] + filled_marks_over(ax, line_box, line.get_zorder())
             if over:
-                # Along the VALUE axis, which is x on a horizontal panel. Read from y regardless,
-                # the complaint named the category coordinate: measured, a threshold at 2.5 under
-                # the bars of a horizontal panel was reported as "the reference line at 0", sending
-                # a reader to look for a line that is not there.
-                along = line.get_ydata() if upright else line.get_xdata()
-                value = float(np.asarray(along, dtype=float)[0])
+                value = _level_of(line, upright=upright)
                 complaints.append(
                     f"the reference line at {value:g} is behind {len(over)} mark(s) — "
                     "a threshold has to stay readable across the panel"
                 )
     return complaints
+
+
+def _level_of(line, *, upright: bool) -> float:
+    """The value a reference line sits at, asked of the LINE rather than of the panel.
+
+    A rule is constant along one axis by construction, and that is knowable from its own data — so
+    the panel's orientation is a fallback here, not the answer. It used to be the answer, and read
+    y whenever the panel was upright: right for every panel this package draws, because those are
+    STAMPED with the orientation they were told.
+
+    On a panel ogviz did not draw, the orientation is INFERRED, and the inference gets a plain
+    `ax.bar` grid wrong — measured, a vertical bar panel with an `axhline` at 0.52 was read as
+    horizontal, so the complaint named the line's x data and reported "the reference line at 0",
+    sending a reader to look for a line that is not there. That is the exact failure the previous
+    comment here recorded as fixed; it was fixed only for the panels that carry a tag, and the
+    README's promise is that these checks work on any matplotlib figure, from any project.
+    """
+    horizontal = np.asarray(line.get_ydata(), dtype=float)
+    vertical = np.asarray(line.get_xdata(), dtype=float)
+    if horizontal.size and np.ptp(horizontal) == 0.0 and np.ptp(vertical) != 0.0:
+        return float(horizontal[0])  # a rule drawn across the panel: its level is y
+    if vertical.size and np.ptp(vertical) == 0.0 and np.ptp(horizontal) != 0.0:
+        return float(vertical[0])  # a rule drawn up the panel: its level is x
+    along = horizontal if upright else vertical  # degenerate both ways; fall back to the panel
+    return float(along[0]) if along.size else 0.0
