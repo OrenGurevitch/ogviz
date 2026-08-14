@@ -628,10 +628,18 @@ def the_gate() -> None:
     the count in the subtitle is their length, so the figure cannot claim a defect the checks did
     not find, and cannot go stale when a message is reworded.
 
+    WHAT THE PANEL EXHIBITS, and each is there because nothing else on the card shows it: a
+    threshold drawn UNDER the bars it is read against; value labels standing on the marks; an axis
+    title centred on the box, which on a panel with headroom means it names room no bar can reach;
+    and a red/green pair named in a legend, which is the one defect an author cannot check by
+    looking. The last two were added after a reader found the axis title on a real figure.
+
     THE LEFT PANEL IS SUPPOSED TO FAIL, which is why this uses `fig.savefig` where every other
     example uses `save` — `save` runs the gate and refuses, correctly, since it cannot know the
-    panel is an exhibit. The bypass is asserted rather than trusted: `_assert_shows_the_defect`
-    rebuilds that panel alone and fails the build if it has stopped being refused. It keeps the
+    panel is an exhibit. `save` would also SETTLE the axis title, which is why the defect survives
+    here and nowhere else in the gallery. The bypass is asserted rather than trusted:
+    `_assert_shows_the_defect` rebuilds that panel alone and fails the build if it has stopped
+    being refused. It keeps the
     GLYPH check, though, because that one costs nothing and a tofu box here would be embarrassing.
     """
     import textwrap
@@ -643,8 +651,20 @@ def the_gate() -> None:
     values = np.array([0.341, 0.478, 0.559, 0.612, 0.646])
     threshold = 0.52
 
+    # The textbook confusable pair, and the reason it is here rather than a nicer one: a reader
+    # with deuteranomaly cannot tell these two apart, and the author cannot see that by looking.
+    baseline_red, variant_green = "#D62728", "#2CA02C"
+
     def build(ax) -> None:
-        ax.bar(range(len(values)), values, color=series_colors(3)[2], width=0.86, zorder=3)
+        from matplotlib.patches import Patch
+
+        ax.bar(
+            range(len(values)),
+            values,
+            color=[baseline_red, *[variant_green] * (len(values) - 1)],
+            width=0.86,
+            zorder=3,
+        )
         ax.axhline(threshold, color=INK, lw=2.4, zorder=1)  # UNDER the bars, which is the defect
         for index, value in enumerate(values):
             ax.text(
@@ -661,6 +681,19 @@ def the_gate() -> None:
         ax.set_xticks(range(len(values)))
         ax.set_xticklabels([*ARM_LABELS, "variant D"], fontsize=12)
         ax.set_ylim(0.0, 0.80)
+        # The axis title, and the panel is 0.15 of its own height taller than the bars reach — so
+        # matplotlib centres this on the box and it ends up naming room no bar can occupy. The
+        # defect a reader reported on a real figure, and the one nothing else on this card catches.
+        ax.set_ylabel("cost per task (USD)", fontsize=13, fontweight="bold")
+        ax.legend(
+            handles=[
+                Patch(color=baseline_red, label="baseline"),
+                Patch(color=variant_green, label="variants"),
+            ],
+            loc="upper left",
+            fontsize=11,
+            frameon=False,
+        )
         hairline_grid(ax, axis="y")
         for side in ("top", "right"):
             ax.spines[side].set_visible(False)
@@ -701,18 +734,28 @@ def the_gate() -> None:
     # MEASURED, not guessed. The first version truncated each complaint at 59 characters and the
     # longest still ran past the card — a figure about a layout checker with text out of its own
     # box. Narrow the wrap until every line fits the card it is drawn on, and refuse if none does.
+    #
+    # BOTH DIMENSIONS, because only the width was fitted and the height was assumed. The rows are
+    # spread over a fixed 0.88 of the card, so each new complaint tightens the spacing while the
+    # type stays 12 pt — and once two more subjects were added the lines overlapped each other, on
+    # a figure whose whole subject is text that overlaps. The size now comes from the room a row
+    # actually gets, which is the same measurement `save` would make of it.
     drawn: list = []
     for width in range(72, 28, -2):
         for text in drawn:
             text.remove()
         lines = card(width)
+        step = 0.88 / max(len(lines), 1)
+        room = report.get_window_extent()
+        # 1.32 is the leading a monospace row needs before its descenders reach the next ascender.
+        size = min(12.0, to_points(room.height * step, fig=fig) / 1.32)
         drawn = [
             report.text(
                 0.035,
-                0.94 - index * (0.88 / max(len(lines), 1)),
+                0.94 - index * step,
                 line,
                 family="monospace",
-                fontsize=12,
+                fontsize=size,
                 color="#B3402F" if line.lstrip().startswith(("AssertionError", "-")) else MUTED_INK,
                 fontweight="bold" if line.startswith("AssertionError") else "normal",
                 va="top",
