@@ -163,7 +163,9 @@ ogviz
 │   └── unguard() -> None
 ├── layout
 │   ├── axis
-│   │   ├── drawn_value_extent(ax: Axes) -> tuple[float, float] | None
+│   │   ├── drawn_value_extent(...) -> ...
+│   │   ├── marks_span_px(ax: Axes, *, along: int) -> tuple[float, float] | None
+│   │   ├── settle_axis_labels(fig: Figure, *, drift: float) -> list[str]
 │   │   └── ticks_over_data(...) -> ...
 │   ├── bounds
 │   │   ├── figure_text(...) -> ...
@@ -355,7 +357,8 @@ ogviz
 │   │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
 │   │   ├── panels_disagree_about_ticks(fig: Figure) -> list[str]
 │   │   ├── rows_outside_their_panel(fig: Figure) -> list[str]
-│   │   └── ticks_in_the_headroom(fig: Figure) -> list[str]
+│   │   ├── ticks_in_the_headroom(fig: Figure) -> list[str]
+│   │   └── value_label_off_its_marks(fig: Figure, *, floor: float) -> list[str]
 │   ├── color
 │   │   ├── legend_colors(fig: Figure) -> dict[str, str]
 │   │   └── series_confusable_under_cvd(fig: Figure) -> list[str]

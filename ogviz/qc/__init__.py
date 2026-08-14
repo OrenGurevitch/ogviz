@@ -37,6 +37,7 @@ from ogviz.qc.arrangement import (
     panels_disagree_about_ticks,
     rows_outside_their_panel,
     ticks_in_the_headroom,
+    value_label_off_its_marks,
 )
 from ogviz.qc.color import legend_colors, series_confusable_under_cvd
 from ogviz.qc.ink import colliding_ink, drawn_but_invisible
@@ -99,6 +100,7 @@ __all__ = [
     "ticks_in_the_headroom",
     "type_too_small",
     "ungrouped_thousands",
+    "value_label_off_its_marks",
 ]
 
 
@@ -106,6 +108,7 @@ CHECKS = (
     text_overlaps,
     panels_disagree_about_ticks,
     layout_not_applied,
+    value_label_off_its_marks,
     series_confusable_under_cvd,
     rows_outside_their_panel,
     mean_rows_unaligned,

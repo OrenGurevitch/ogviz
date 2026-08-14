@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 
+from ogviz.layout.axis import settle_axis_labels
 from ogviz.layout.header import settle_header
 from ogviz.layout.panels import settle_caption
 from ogviz.require import require
@@ -96,6 +97,11 @@ def save(
     # After the caption, and before the checks: a bracket label's gap to its bracket is set in
     # pixels, and anything that rescaled the value axis since then has changed it.
     settle_bracket_labels(fig)
+    # Last of the settles, because it reads the ticks where they FINALLY are: anything above that
+    # rescaled a value axis moved them. matplotlib centres an axis label on the axes box, and this
+    # package pads a panel asymmetrically on purpose — bracket headroom above, a mean lane below —
+    # so the box's middle is not where the ticks are.
+    settle_axis_labels(fig)
     directory.mkdir(parents=True, exist_ok=True)
     if check_overlap:
         from ogviz.qc import assert_clean

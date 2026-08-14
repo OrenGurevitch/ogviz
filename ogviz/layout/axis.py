@@ -16,6 +16,7 @@ from ogviz.tags import marked
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
     from ogviz.orientation import Orientation
 
@@ -128,7 +129,9 @@ def _is_furniture(artist) -> bool:
     return any(marked(artist, tag) for tag in ("bracket", "reference", "backdrop"))
 
 
-def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
+def drawn_value_extent(
+    ax: Axes, *, orientation: Orientation = "vertical"
+) -> tuple[float, float] | None:
     """The lowest and highest value any MARK reaches, in data units, or None if nothing is drawn.
 
     Reading `collection.get_paths()` is the trap, and it cost a panel its layout. For a filled body
@@ -145,7 +148,13 @@ def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
     `ticks_over_data`, so a bar panel kept its ticks in the room held open for brackets;
     `align_mean_rows`; and `rows_outside_their_panel`. Right for the panels it was written against
     and silently absent everywhere else, which is the worst way for a check to be wrong.
+
+    `orientation` picks WHICH coordinate is the value one. It reads y by default, which is what
+    every caller written before `settle_axis_labels` wants and what a vertical panel means by "how
+    far do the marks reach"; a horizontal panel's value axis is x, and asking about y there returns
+    the category positions, which is a number with no meaning.
     """
+    axis = 1 if orientation == "vertical" else 0
     lows: list[float] = []
     highs: list[float] = []
     for collection in ax.collections:
@@ -155,18 +164,18 @@ def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
             # it identified a cloud by having more than one offset; it answers by type now, so a
             # `scatter` with no data comes back here as an empty array and `.min()` would raise.
             if offsets.size:
-                lows.append(float(offsets[:, 1].min()))
-                highs.append(float(offsets[:, 1].max()))
+                lows.append(float(offsets[:, axis].min()))
+                highs.append(float(offsets[:, axis].max()))
             continue
         for path in collection.get_paths():
             vertices = np.asarray(path.vertices, dtype=float)
             if vertices.size:
-                lows.append(float(vertices[:, 1].min()))
-                highs.append(float(vertices[:, 1].max()))
+                lows.append(float(vertices[:, axis].min()))
+                highs.append(float(vertices[:, axis].max()))
     for line in ax.lines:
         if _is_furniture(line):
             continue
-        values = np.asarray(line.get_ydata(), dtype=float)
+        values = np.asarray(line.get_ydata() if axis else line.get_xdata(), dtype=float)
         values = values[np.isfinite(values)]
         if values.size:
             lows.append(float(values.min()))
@@ -175,10 +184,112 @@ def drawn_value_extent(ax: Axes) -> tuple[float, float] | None:
         if _is_furniture(patch):
             continue
         vertices = np.asarray(patch.get_path().transformed(patch.get_patch_transform()).vertices)
-        finite = vertices[np.isfinite(vertices[:, 1]), 1]
+        finite = vertices[np.isfinite(vertices[:, axis]), axis]
         if finite.size:
             lows.append(float(finite.min()))
             highs.append(float(finite.max()))
     if not lows:
         return None
     return min(lows), max(highs)
+
+
+def marks_span_px(ax: Axes, *, along: int) -> tuple[float, float] | None:
+    """Where the marks reach along one axis, in display pixels, or None if that cannot be said.
+
+    CLAMPED TO THE VIEW before it is transformed, and that is not tidiness. `drawn_value_extent`
+    answers in data units and a mark may sit outside the limits — a line reaching zero on a LOG
+    axis is the ordinary case, and `transData` maps zero there to minus infinity. Unclamped, a log
+    panel in the gallery put its y-label 419443 px off the page, which `text_off_canvas` caught on
+    the very next save. Clamping asks the question that was meant anyway: the label names the marks
+    a reader can SEE, and one off the bottom of the axis is not among them.
+    """
+    orientation = "vertical" if along else "horizontal"
+    extent = drawn_value_extent(ax, orientation=orientation)
+    if extent is None:
+        return None
+    low, high = sorted((ax.yaxis if along else ax.xaxis).get_view_interval())
+    inside = (max(extent[0], low), min(extent[1], high))
+    if not inside[0] <= inside[1]:
+        return None  # every mark is outside the view; there is nothing on screen to centre on
+    ends = [
+        ax.transData.transform((0.0, value) if along else (value, 0.0))[along] for value in inside
+    ]
+    if not all(np.isfinite(end) for end in ends):
+        return None
+    return min(ends), max(ends)
+
+
+# Below this the move is not worth making: a couple of pixels is inside the width of the glyphs
+# being centred, and re-placing a label every save for it is churn in the rendered file.
+LABEL_DRIFT_PX = 2.0
+
+
+def settle_axis_labels(fig: Figure, *, drift: float = LABEL_DRIFT_PX) -> list[str]:
+    """Centre each axis label on the MARKS it names, rather than on the axes box.
+
+    matplotlib centres an axis label on the axes rectangle, which is right for a panel whose data
+    fills it and wrong for every panel this package pads asymmetrically — and padding asymmetrically
+    is something ogviz does on purpose. A violin panel grows its top to hold a bracket stack;
+    `central_clearance` reserves a lane at the bottom for a printed mean. `ticks_over_data` then
+    drops the ticks that would sit in the headroom, exactly because nothing can be measured up
+    there. So the marks end up low in the box, the label stays at the box's middle, and it names
+    reserved space with nothing in it.
+
+    THE REFERENCE IS THE MARKS, and getting that right took two wrong answers worth recording,
+    because each looked like it described what a reader sees:
+
+    the SPINE — it spans the whole axes box, so its middle IS the box's middle, and asking whether
+    the label is centred on it can only ever answer yes. That check passes on the broken figure;
+
+    the TICK BLOCK — better, and still wrong. A locator that happens to place no tick near the top
+    of an ordinary, unpadded axis puts the block's middle well below the box's, so centring on it
+    moves a label that was never wrong. Measured across five figure sizes and three tick counts,
+    the tick block called an unpadded panel up to 65 px out of true.
+
+    Against `drawn_value_extent` — the reach of the marks, with brackets, references and backdrops
+    excluded as furniture — the same panels measure **0.00 px at every size and tick count**, and a
+    panel with headroom for a bracket stack measures 154. That is the signal cleanly separated from
+    the noise, which is what a threshold needs before it is worth having.
+
+    ONLY THE ALONG-AXIS COORDINATE IS SET, and that is what makes this safe rather than a fight
+    with the layout engine. `YAxis._update_label_position` recomputes the label's x from the tick
+    boxes on every draw and passes its y through untouched — `x, y = self.label.get_position()`
+    and then `set_position((bbox.x0 - pad, y))`. `XAxis` is the mirror. So writing the along-axis
+    coordinate leaves the perpendicular placement to matplotlib, which is the half that has to keep
+    negotiating with the tick labels' width. `set_label_coords` would freeze both and is the wrong
+    tool: it sets `_autolabelpos` False and the label stops following its own ticks.
+
+    Called by `save` alongside the other `settle_*` passes, and for the same reason — nothing is in
+    its final place until the figure has been laid out and drawn.
+    """
+    from ogviz.layout.render import ensure_rendered
+
+    ensure_rendered(fig)
+    moved: list[str] = []
+    for index, ax in enumerate(fig.axes):
+        for axis, along in ((ax.xaxis, 0), (ax.yaxis, 1)):
+            label = axis.label
+            if not label.get_text().strip() or not label.get_visible():
+                continue
+            span = marks_span_px(ax, along=along)
+            if span is None:  # nothing drawn, or nothing visible; no data to centre on
+                continue
+            box = ax.get_window_extent()
+            reach = box.height if along else box.width
+            if not reach:
+                continue
+            edge = box.y0 if along else box.x0
+            middle = (span[0] + span[1]) / 2.0
+            current = label.get_position()
+            at = edge + current[along] * reach
+            if abs(at - middle) < drift:
+                continue
+            target = (middle - edge) / reach
+            # The OTHER coordinate is handed back exactly as it was found. matplotlib overwrites it
+            # on the next draw anyway; passing it through unchanged is what keeps that true.
+            label.set_position((current[0], target) if along else (target, current[1]))
+            moved.append(
+                f"axes {index}: centred {label.get_text()[:40]!r} on the marks, "
+                f"{at - middle:+.0f} px from where the axes box put it"
+            )
+    return moved

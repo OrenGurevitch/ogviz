@@ -192,7 +192,12 @@ def repair(fig: Figure) -> list[str]:
     The "which labels sit on the marks" sweep is done ONCE and handed to both halves. It is the
     expensive one — a `hits_data` probe per label per panel — and the two repairs that need it ran
     it independently, so every call paid for it twice.
+
+    `settle_axis_labels` is here because an axis label centred on the axes box rather than on its
+    own ticks has exactly one right answer, which is what makes a repair a repair. `save` already
+    runs it; this is the path for a figure that arrived some other way.
     """
+    from ogviz.layout.axis import settle_axis_labels
     from ogviz.layout.collision import labels_on_the_marks
 
     struck = labels_on_the_marks(fig)
@@ -201,4 +206,5 @@ def repair(fig: Figure) -> list[str]:
         *move_labels_off_the_marks(fig, on_the_marks=struck),
         *knock_out_labels_over_rules(fig, on_the_marks=ids),
         *raise_buried_lines(fig),
+        *settle_axis_labels(fig),
     ]

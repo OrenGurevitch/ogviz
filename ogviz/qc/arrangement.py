@@ -261,3 +261,65 @@ def header_crowds_the_panels(fig: Figure, *, floor: float = CROWDED_HEADER_PX) -
         f"the header clears the panels' own text by {gap:.0f} px, under the {floor:.0f} px that "
         "reads as deliberate — lower the panels, or shorten the subtitle"
     ]
+
+
+# A label further than this from the middle of the marks it names is not naming them. Measured
+# 2026-08-13: an ordinary unpadded panel sits at 0.00 px against this reference at every figure
+# size and tick count tried, and a panel holding bracket headroom at 154 — so signal and noise are
+# cleanly separated and the floor only has to sit between them. It is not a comfort judgement like
+# `header_crowds_the_panels`: a label centred on reserved headroom names empty space.
+LABEL_OFF_ITS_MARKS_PX = 8.0
+
+
+def value_label_off_its_marks(fig: Figure, *, floor: float = LABEL_OFF_ITS_MARKS_PX) -> list[str]:
+    """An axis label centred on the axes box rather than on the marks it names.
+
+    matplotlib centres an axis label on the axes rectangle, which is correct for a panel whose data
+    fills it. This package pads panels asymmetrically ON PURPOSE — a violin panel grows its top for
+    a bracket stack, `central_clearance` holds a lane at the bottom for a printed mean — and
+    `ticks_over_data` then drops the ticks that would sit in that headroom, because nothing can be
+    measured there. The marks end up low in the box and the label stays at the box's middle,
+    floating in the reserved space with nothing beside it.
+
+    So the panel is mislabelled in a way no overlap or clipping rule can see: nothing collides,
+    nothing leaves the canvas, and the label simply names a part of the axis that carries no data.
+    It was found by a reader looking at a figure, which is the definition of a defect this package
+    should have caught.
+
+    Measured against the MARKS, not the ticks and not the spine — `settle_axis_labels` records what
+    each of those two wrong references cost, and both of them pass on the broken figure or fire on
+    a correct one.
+
+    `save` runs `settle_axis_labels` and this stays quiet for anything written through it. What it
+    catches is a figure saved another way, or a label a caller placed by hand — and `repair` fixes
+    it, so `--fix` closes it without a decision.
+    """
+    from ogviz.layout.axis import marks_span_px
+
+    ensure_rendered(fig)
+    complaints: list[str] = []
+    for index, ax in enumerate(fig.axes):
+        for axis, along, name in ((ax.xaxis, 0, "x"), (ax.yaxis, 1, "y")):
+            label = axis.label
+            if not label.get_text().strip() or not label.get_visible():
+                continue
+            span = marks_span_px(ax, along=along)
+            if span is None:
+                continue
+            drawn = label.get_window_extent()
+            middle = (drawn.y0 + drawn.y1) / 2 if along else (drawn.x0 + drawn.x1) / 2
+            off = middle - (span[0] + span[1]) / 2.0
+            if abs(off) < floor:
+                continue
+            # The direction in the words a reader of THIS axis uses. It said above/below for both,
+            # so an x-label was reported as sitting "above" the marks when it had moved sideways.
+            if name == "x":
+                way = "right" if off > 0 else "left"
+            else:
+                way = "above" if off > 0 else "below"
+            complaints.append(
+                f"axes {index}: the {name}-label {label.get_text()[:40]!r} sits {abs(off):.0f} px "
+                f"{way} of the middle of the marks it names — it is centred on the axes box, "
+                "which is not where the data is"
+            )
+    return complaints

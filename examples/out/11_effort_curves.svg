@@ -138,7 +138,7 @@ L 806.621691 73.2528
      <g id="line2d_20"/>
     </g>
     <g id="text_9">
-     <text style="font-weight: 700; font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="450.813125" y="402.75886" transform="rotate(-0 450.813125 402.75886)">Cost per task (USD, log scale)</text>
+     <text style="font-weight: 700; font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="410.264408" y="402.75886" transform="rotate(-0 410.264408 402.75886)">Cost per task (USD, log scale)</text>
     </g>
    </g>
    <g id="matplotlib.axis_2">
@@ -218,7 +218,7 @@ L -4 0
      </g>
     </g>
     <g id="text_17">
-     <text style="font-weight: 700; font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="18.848438" y="220.494267" transform="rotate(-90 18.848438 220.494267)">Pass rate (%)</text>
+     <text style="font-weight: 700; font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="18.848438" y="226.388642" transform="rotate(-90 18.848438 226.388642)">Pass rate (%)</text>
     </g>
    </g>
    <g id="line2d_28">

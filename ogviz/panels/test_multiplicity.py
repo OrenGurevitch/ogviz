@@ -66,6 +66,7 @@ def test_the_ladder_refuses_a_value_that_is_not_a_p_value() -> None:
 
 def test_a_labelled_family_does_not_collide_with_itself() -> None:
     """Twelve ordinary names at 45 degrees produced eight complaints on the first render."""
+    from ogviz.layout.axis import settle_axis_labels
     from ogviz.qc import audit
 
     names = [f"trial {index}" for index in range(12)]
@@ -73,6 +74,9 @@ def test_a_labelled_family_does_not_collide_with_itself() -> None:
     fig, ax = plt.subplots(figsize=(9.0, 5.6))
     multiplicity_ladder(ax, p, labels=names)
     fig.tight_layout()
+    # What `save` does, and this figure is never saved: the ladder reserves room above its marks
+    # for the rotated names, so the axis labels start centred on that headroom.
+    settle_axis_labels(fig)
     fig.canvas.draw()
     assert not audit(fig)
 

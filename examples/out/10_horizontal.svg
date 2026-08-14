@@ -60,7 +60,7 @@ L 187.138185 80.928
      </g>
     </g>
     <g id="text_3">
-     <text style="font-weight: 700; font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="284.976976" y="414.612062" transform="rotate(-0 284.976976 414.612062)">Measurement (units)</text>
+     <text style="font-weight: 700; font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="270.367417" y="414.612062" transform="rotate(-0 270.367417 414.612062)">Measurement (units)</text>
     </g>
    </g>
    <g id="matplotlib.axis_2">
@@ -767,7 +767,7 @@ L 1212.471237 80.928
      </g>
     </g>
     <g id="text_13">
-     <text style="font-weight: 700; font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="1038.830211" y="414.612062" transform="rotate(-0 1038.830211 414.612062)">Domain score (z)</text>
+     <text style="font-weight: 700; font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="1078.096323" y="414.612062" transform="rotate(-0 1078.096323 414.612062)">Domain score (z)</text>
     </g>
    </g>
    <g id="matplotlib.axis_4">
