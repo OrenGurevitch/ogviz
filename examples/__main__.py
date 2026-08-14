@@ -665,11 +665,16 @@ def the_gate() -> None:
             width=0.86,
             zorder=3,
         )
-        ax.axhline(threshold, color=INK, lw=2.4, zorder=1)  # UNDER the bars, which is the defect
+        # THICK, so the breaks the bars cut in it are the thing a reader notices. At 2.4 pt the
+        # defect was real and nearly invisible, which is the wrong way round for an exhibit.
+        ax.axhline(threshold, color=INK, lw=5.0, zorder=1)  # UNDER the bars, which is the defect
         for index, value in enumerate(values):
             ax.text(
                 index,
-                value + 0.012,
+                # INSIDE the bar rather than a hair above it. Placed at `value + 0.012` the label
+                # cleared the fill by a pixel or two: the gate reported it, correctly, and nobody
+                # looking at the figure could see what it was complaining about.
+                value - 0.045,
                 f"{value:.3f} units",
                 ha="center",
                 va="bottom",
@@ -680,10 +685,10 @@ def the_gate() -> None:
             )
         ax.set_xticks(range(len(values)))
         ax.set_xticklabels([*ARM_LABELS, "variant D"], fontsize=12)
-        ax.set_ylim(0.0, 0.80)
-        # The axis title, and the panel is 0.15 of its own height taller than the bars reach — so
-        # matplotlib centres this on the box and it ends up naming room no bar can occupy. The
-        # defect a reader reported on a real figure, and the one nothing else on this card catches.
+        # HEADROOM THE DATA NEVER REACHES — the bars stop at 0.646 and the axis runs to 1.5, so
+        # better than half this panel is empty. That is what makes the axis title's placement
+        # visible: matplotlib centres it on the box, which lands it in the empty half.
+        ax.set_ylim(0.0, 1.5)
         ax.set_ylabel("cost per task (USD)", fontsize=13, fontweight="bold")
         ax.legend(
             handles=[
