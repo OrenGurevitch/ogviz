@@ -130,7 +130,7 @@ def _is_furniture(artist) -> bool:
 
 
 def drawn_value_extent(
-    ax: Axes, *, orientation: Orientation = "vertical"
+    ax: Axes, *, orientation: Orientation = "vertical", include_furniture: bool = False
 ) -> tuple[float, float] | None:
     """The lowest and highest value any MARK reaches, in data units, or None if nothing is drawn.
 
@@ -148,6 +148,12 @@ def drawn_value_extent(
     `ticks_over_data`, so a bar panel kept its ticks in the room held open for brackets;
     `align_mean_rows`; and `rows_outside_their_panel`. Right for the panels it was written against
     and silently absent everywhere else, which is the worst way for a check to be wrong.
+
+    `include_furniture` keeps the brackets, reference levels and backdrops that are otherwise
+    excluded. Two different questions are being asked of the same walk: "how far do the MARKS
+    reach", which is what a tick trim or a label centring needs, and "is there anything up there at
+    all", which is what deciding whether an axis runs past its content needs. A bracket occupies
+    the headroom it was given, so for the second question it counts.
 
     `orientation` picks WHICH coordinate is the value one. It reads y by default, which is what
     every caller written before `settle_axis_labels` wants and what a vertical panel means by "how
@@ -173,7 +179,7 @@ def drawn_value_extent(
                 lows.append(float(vertices[:, axis].min()))
                 highs.append(float(vertices[:, axis].max()))
     for line in ax.lines:
-        if _is_furniture(line):
+        if _is_furniture(line) and not include_furniture:
             continue
         values = np.asarray(line.get_ydata() if axis else line.get_xdata(), dtype=float)
         values = values[np.isfinite(values)]
@@ -181,7 +187,7 @@ def drawn_value_extent(
             lows.append(float(values.min()))
             highs.append(float(values.max()))
     for patch in ax.patches:
-        if _is_furniture(patch):
+        if _is_furniture(patch) and not include_furniture:
             continue
         vertices = np.asarray(patch.get_path().transformed(patch.get_patch_transform()).vertices)
         finite = vertices[np.isfinite(vertices[:, axis]), axis]

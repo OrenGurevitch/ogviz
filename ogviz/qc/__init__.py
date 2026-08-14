@@ -37,6 +37,7 @@ from ogviz.qc.arrangement import (
     panels_disagree_about_ticks,
     rows_outside_their_panel,
     ticks_in_the_headroom,
+    unused_value_headroom,
     value_label_off_its_marks,
 )
 from ogviz.qc.color import legend_colors, series_confusable_under_cvd
@@ -100,6 +101,7 @@ __all__ = [
     "ticks_in_the_headroom",
     "type_too_small",
     "ungrouped_thousands",
+    "unused_value_headroom",
     "value_label_off_its_marks",
 ]
 
@@ -109,6 +111,7 @@ CHECKS = (
     panels_disagree_about_ticks,
     layout_not_applied,
     value_label_off_its_marks,
+    unused_value_headroom,
     series_confusable_under_cvd,
     rows_outside_their_panel,
     mean_rows_unaligned,

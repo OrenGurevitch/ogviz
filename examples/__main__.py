@@ -781,11 +781,12 @@ def the_gate() -> None:
     header_bottom = titled(
         fig,
         "It refuses to write, and says why",
-        # "8 complaints on 7 subjects" was the first wording and it explained nothing: SUBJECT is
-        # this package's word for what `group_by_subject` keys on, and a reader has no way to know
-        # that — or why the two numbers differ. Both are now readable off the card itself: seven
-        # bullets, one of which carries two complaints about the same label.
-        subtitle=f"the {len(found)} complaints it raised, one line per thing they name",
+        # THE NUMBER A READER CAN COUNT, and only that. Two earlier wordings named `len(found)` —
+        # the raw complaint count — beside a card showing `len(complaints)` grouped lines, so the
+        # subtitle asserted a total nothing on the page adds up to. "8 complaints on 7 subjects"
+        # explained the gap with this package's own jargon; "the 15 complaints it raised" simply
+        # dropped it. The card has one line per thing named, so that is what gets counted.
+        subtitle=f"{len(complaints)} things wrong with it, in the words it refused them in",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     _assert_shows_the_defect(build)

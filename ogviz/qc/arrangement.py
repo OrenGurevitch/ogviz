@@ -329,3 +329,66 @@ def value_label_off_its_marks(fig: Figure, *, floor: float = LABEL_OFF_ITS_MARKS
                 "`repair` already do"
             )
     return complaints
+
+
+# How much of the value axis may sit above everything drawn before it reads as a mistake. Measured
+# 2026-08-13 across the gallery, against the reach of every artist INCLUDING brackets, reference
+# levels and in-panel text — so headroom a bracket stack occupies is headroom that is being used:
+#
+#     the worst shipped panel   27.7%   a log spectrum, deliberately airy at the top
+#     the next four             20-23%  metric-grid cells and coupling scatters
+#     the median                 ~8%
+#
+# 0.40 sits well clear of the worst correct figure, which is what a gate threshold has to do — this
+# is not a taste question like `header_crowds_the_panels`, but it is next to one, and a figure that
+# is merely generous must not be refused. Only the TOP is judged. A floor at zero is a deliberate
+# and often required choice for bars, so empty space at the BOTTOM has an innocent explanation that
+# empty space at the top does not.
+EMPTY_HEADROOM = 0.40
+
+
+def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list[str]:
+    """A value axis running well past everything on the panel, with nothing using the room.
+
+    `ticks_in_the_headroom` covers the case where the space IS spoken for — a bracket stack was
+    given room and the locator put ticks in it — and it returns early when the panel has no
+    brackets. So the plainer failure went unreported: an axis simply set too tall, leaving a band of
+    empty grid above the data with no marks, no brackets and no reference in it. The reader is shown
+    ticks and gridlines for values nothing reaches, and every mark is squashed into what is left.
+
+    Everything drawn counts as using the space, brackets and reference levels included, because
+    they are what headroom is normally FOR. What is reported is room nobody asked for.
+    """
+    from ogviz.layout.axis import drawn_value_extent
+
+    ensure_rendered(fig)
+    complaints: list[str] = []
+    for index, ax in enumerate(fig.axes):
+        if not ax.axison:
+            continue
+        extent = drawn_value_extent(ax, include_furniture=True)
+        if extent is None:
+            continue
+        # In-panel TEXT occupies the axis as surely as a mark does — a printed mean, a bracket's
+        # star, an annotation. Left out, a panel whose top band holds a row of labels and nothing
+        # else was reported as empty, which is the shape `dead_space` gets wrong for a table.
+        tops = [extent[1]]
+        tops += [
+            float(text.get_position()[1])
+            for text in ax.texts
+            if text.get_visible()
+            and text.get_text().strip()
+            and text.get_transform() is ax.transData
+        ]
+        low, high = ax.get_ylim()
+        if high <= low:
+            continue
+        share = (high - max(tops)) / (high - low)
+        if share < floor:
+            continue
+        complaints.append(
+            f"axes {index}: {share:.0%} of the value axis is empty above everything drawn — it "
+            f"runs to {high:g} and nothing reaches past {max(tops):g}. Tighten the limit, or give "
+            "the room to something (a bracket stack, a reference level)"
+        )
+    return complaints

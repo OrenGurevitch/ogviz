@@ -119,9 +119,10 @@ so one can be asked for by name — 3E, 1C.
 the same with no code change. Both also refuse a tofu box — text with no glyph in the resolved font.
 
 It catches colliding text, labels sitting on the marks, an axis title centred on room the data
-never reaches, clipped ink, buried spines and thresholds, stars at uneven distances, dots on the
-mean line, ungrouped thousands, mixed minus signs, and two legend series that merge under
-colour-vision deficiency. `--list-checks` prints the current set.
+never reaches, an axis run so far past the data that nothing uses the space, clipped ink, buried
+spines and thresholds, stars at uneven distances, dots on the mean line, ungrouped thousands, mixed
+minus signs, and two legend series that merge under colour-vision deficiency. `--list-checks`
+prints the current set.
 
 Where a linter reads a chart specification, these read the RENDERED figure — so they work on any
 matplotlib figure, from any project:
@@ -359,6 +360,7 @@ ogviz
 │   │   ├── panels_disagree_about_ticks(fig: Figure) -> list[str]
 │   │   ├── rows_outside_their_panel(fig: Figure) -> list[str]
 │   │   ├── ticks_in_the_headroom(fig: Figure) -> list[str]
+│   │   ├── unused_value_headroom(fig: Figure, *, floor: float) -> list[str]
 │   │   └── value_label_off_its_marks(fig: Figure, *, floor: float) -> list[str]
 │   ├── color
 │   │   ├── legend_colors(fig: Figure) -> dict[str, str]

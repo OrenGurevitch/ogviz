@@ -83,3 +83,85 @@ def test_no_gallery_figure_is_reported_as_crowded() -> None:
         "the tightest shipped gallery figure clears by 17.6 px; a floor at or above that "
         "reports a figure that is correct"
     )
+
+
+def test_an_axis_run_far_past_the_data_is_reported() -> None:
+    """Ticks and gridlines for values nothing reaches, and the marks squashed into what is left."""
+    from ogviz.qc.arrangement import unused_value_headroom
+
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    ax.bar([0, 1, 2], [0.34, 0.48, 0.65])
+    ax.set_ylim(0.0, 1.5)
+    found = unused_value_headroom(fig)
+    assert found and "empty above everything drawn" in found[0], found
+    assert "1.5" in found[0] and "0.65" in found[0], "it names both ends of the gap"
+    plt.close(fig)
+
+
+def test_a_fitted_axis_says_nothing() -> None:
+    """The premise for the test above, and the thing a threshold has to get right."""
+    from ogviz.qc.arrangement import unused_value_headroom
+
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    ax.bar([0, 1, 2], [0.34, 0.48, 0.65])
+    ax.set_ylim(0.0, 0.72)
+    assert unused_value_headroom(fig) == []
+    plt.close(fig)
+
+
+def test_headroom_a_bracket_occupies_is_headroom_in_use() -> None:
+    """The whole point of the distinction: reserved space is not wasted space.
+
+    `ticks_in_the_headroom` covers the case where the room is spoken for. This must not report the
+    same panel a second time, in different words, for having the room at all.
+    """
+    from ogviz.qc.arrangement import unused_value_headroom
+    from ogviz.tags import mark
+
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    ax.bar([0, 1, 2], [0.34, 0.48, 0.65])
+    ax.set_ylim(0.0, 1.5)
+    assert unused_value_headroom(fig), "the premise: empty, this panel is reported"
+
+    bracket = ax.plot([0, 2], [1.35, 1.35], color="#333")[0]
+    mark(bracket, "bracket")
+    assert unused_value_headroom(fig) == [], "a bracket in the room is the room being used"
+    plt.close(fig)
+
+
+def test_in_panel_text_counts_as_using_the_room() -> None:
+    """A printed mean or an annotation occupies the axis as surely as a mark does."""
+    from ogviz.qc.arrangement import unused_value_headroom
+
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    ax.bar([0, 1, 2], [0.34, 0.48, 0.65])
+    ax.set_ylim(0.0, 1.5)
+    assert unused_value_headroom(fig), "the premise"
+    ax.text(1.0, 1.35, "n = 40", ha="center")
+    assert unused_value_headroom(fig) == []
+    plt.close(fig)
+
+
+def test_an_empty_bottom_is_not_reported() -> None:
+    """A floor at zero is a deliberate and often required choice for bars.
+
+    Empty space below the data has an innocent explanation that empty space above it does not, so
+    only the top is judged.
+    """
+    from ogviz.qc.arrangement import unused_value_headroom
+
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    ax.bar([0, 1, 2], [1.30, 1.42, 1.48])  # every bar starts at zero; the lower axis is empty
+    ax.set_ylim(0.0, 1.5)
+    assert unused_value_headroom(fig) == []
+    plt.close(fig)
+
+
+def test_no_gallery_figure_is_reported_as_over_tall() -> None:
+    """The floor is set clear of the worst correct figure, not fitted to the broken one."""
+    from ogviz.qc.arrangement import EMPTY_HEADROOM
+
+    assert EMPTY_HEADROOM > 0.277, (
+        "the airiest shipped panel leaves 27.7% of its axis empty above everything drawn; "
+        "a floor at or below that refuses a figure that is correct"
+    )
