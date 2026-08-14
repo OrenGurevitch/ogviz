@@ -385,7 +385,7 @@ z
    <text style="font-weight: 700; font-size: 27px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="504" y="28.296738" transform="rotate(-0 504 28.296738)">It refuses to write, and says why</text>
   </g>
   <g id="text_45">
-   <text style="font-size: 19px; font-family: 'Georgia', 'DejaVu Serif', serif; text-anchor: middle; fill: #5c5b57" x="504" y="56.760605" transform="rotate(-0 504 56.760605)">8 complaints on 7 subjects — grouped the way `python -m ogviz.qc` reports them</text>
+   <text style="font-size: 19px; font-family: 'Georgia', 'DejaVu Serif', serif; text-anchor: middle; fill: #5c5b57" x="504" y="56.760605" transform="rotate(-0 504 56.760605)">the 8 complaints it raised, one line per thing they name</text>
   </g>
  </g>
  <defs>

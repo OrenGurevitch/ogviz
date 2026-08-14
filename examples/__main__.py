@@ -776,10 +776,11 @@ def the_gate() -> None:
     header_bottom = titled(
         fig,
         "It refuses to write, and says why",
-        subtitle=(
-            f"{len(found)} complaints on {len(complaints)} subjects — grouped the way "
-            "`python -m ogviz.qc` reports them"
-        ),
+        # "8 complaints on 7 subjects" was the first wording and it explained nothing: SUBJECT is
+        # this package's word for what `group_by_subject` keys on, and a reader has no way to know
+        # that — or why the two numbers differ. Both are now readable off the card itself: seven
+        # bullets, one of which carries two complaints about the same label.
+        subtitle=f"the {len(found)} complaints it raised, one line per thing they name",
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     _assert_shows_the_defect(build)
