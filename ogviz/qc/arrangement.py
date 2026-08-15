@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ogviz.layout.axis import drawn_value_extent
 from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
     bracket_tops_px,
@@ -347,6 +348,30 @@ def value_label_off_its_marks(fig: Figure, *, floor: float = LABEL_OFF_ITS_MARKS
 EMPTY_HEADROOM = 0.40
 
 
+def _same_scale(other: Axes, ax: Axes) -> bool:
+    """Whether `other` is on the same value scale as `ax`, and drawing something."""
+    if not other.axison or drawn_value_extent(other, include_furniture=True) is None:
+        return False
+    return tuple(round(v, 9) for v in other.get_ylim()) == tuple(round(v, 9) for v in ax.get_ylim())
+
+
+def _highest_drawn(ax: Axes) -> float:
+    """The highest value anything in this panel occupies, marks and in-panel text alike.
+
+    In-panel TEXT counts as surely as a mark does — a printed mean, a bracket's star, an
+    annotation. Left out, a panel whose top band holds a row of labels and nothing else read as
+    empty, which is the shape `dead_space` gets wrong for a table.
+    """
+    extent = drawn_value_extent(ax, include_furniture=True)
+    tops = [extent[1]] if extent is not None else []
+    tops += [
+        float(text.get_position()[1])
+        for text in ax.texts
+        if text.get_visible() and text.get_text().strip() and text.get_transform() is ax.transData
+    ]
+    return max(tops) if tops else float(ax.get_ylim()[0])
+
+
 def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list[str]:
     """A value axis running well past everything on the panel, with nothing using the room.
 
@@ -359,8 +384,6 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
     Everything drawn counts as using the space, brackets and reference levels included, because
     they are what headroom is normally FOR. What is reported is room nobody asked for.
     """
-    from ogviz.layout.axis import drawn_value_extent
-
     ensure_rendered(fig)
     complaints: list[str] = []
     for index, ax in enumerate(fig.axes):
@@ -372,18 +395,22 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
         # In-panel TEXT occupies the axis as surely as a mark does — a printed mean, a bracket's
         # star, an annotation. Left out, a panel whose top band holds a row of labels and nothing
         # else was reported as empty, which is the shape `dead_space` gets wrong for a table.
-        tops = [extent[1]]
-        tops += [
-            float(text.get_position()[1])
-            for text in ax.texts
-            if text.get_visible()
-            and text.get_text().strip()
-            and text.get_transform() is ax.transData
-        ]
+        tops = [_highest_drawn(ax)]
         low, high = ax.get_ylim()
         if high <= low:
             continue
-        share = (high - max(tops)) / (high - low)
+        # ON A SHARED SCALE, THE ROOM BELONGS TO THE TALLEST PANEL. A short panel beside a tall one
+        # is empty at the top by construction, and tightening it is the one action that would stop
+        # the grid being comparable — the same distinction `dead_space` was taught to make, and
+        # this check shipped without it. Measured against every panel on the same scale, so the
+        # question becomes "does anything in this GROUP use the room", which is the honest one.
+        reach = max(tops)
+        if marked(ax, "shared_scale"):
+            reach = max(
+                (_highest_drawn(other) for other in fig.axes if _same_scale(other, ax)),
+                default=reach,
+            )
+        share = (high - reach) / (high - low)
         if share < floor:
             continue
         complaints.append(

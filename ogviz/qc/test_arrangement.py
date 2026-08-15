@@ -165,3 +165,38 @@ def test_no_gallery_figure_is_reported_as_over_tall() -> None:
         "the airiest shipped panel leaves 27.7% of its axis empty above everything drawn; "
         "a floor at or below that refuses a figure that is correct"
     )
+
+
+def test_a_shared_scale_is_not_reported_as_unused_headroom() -> None:
+    """The room belongs to the tallest panel in the group, not to the one being measured.
+
+    A short panel beside a tall one is empty at the top BY CONSTRUCTION, and tightening it is the
+    one action that stops the grid being comparable. This is a GATE check, so getting it wrong
+    refuses a correct figure — the same distinction `dead_space` was taught to make.
+    """
+    import numpy as np
+
+    from ogviz import Series, bar_panel
+    from ogviz.panels.grid import share_value_limits
+    from ogviz.qc.arrangement import unused_value_headroom
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 5.0))
+    bar_panel(
+        axes[0],
+        [Series("a", np.array([0.9, 0.5, 0.4]), "#7C9A6E", np.array([0.30, 0.05, 0.05]))],
+        list("abc"),
+    )
+    bar_panel(
+        axes[1],
+        [Series("b", np.array([0.3, 0.2, 0.25]), "#E8A838", np.array([0.03, 0.03, 0.03]))],
+        list("abc"),
+    )
+    fig.canvas.draw()
+    assert unused_value_headroom(fig) == [], "the premise: neither panel is over-tall on its own"
+
+    share_value_limits(axes, label_edge=False)
+    fig.canvas.draw()
+    empty = (axes[1].get_ylim()[1] - 0.35) / axes[1].get_ylim()[1]
+    assert empty > 0.40, f"the premise: the short panel is now {empty:.0%} empty and would fire"
+    assert unused_value_headroom(fig) == []
+    plt.close(fig)
