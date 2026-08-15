@@ -1,4 +1,9 @@
-"""Whether an axis label is centred on the marks it names, or on the box that contains them.
+"""`layout/axis.py`: what the value axis shows, and where its label belongs.
+
+Named for the module rather than for the defect, so the "modules with no test file" predictor
+counts it — it was `test_axis_labels.py`, which covers the same ground and matched nothing.
+
+Whether an axis label is centred on the marks it names, or on the box that contains them.
 
 The defect this module exists for was found by a reader looking at a figure, not by a check — and
 the first attempt to verify it asked whether the label was centred on the SPINE, which for a padded

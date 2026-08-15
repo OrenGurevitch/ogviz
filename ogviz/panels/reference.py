@@ -11,6 +11,7 @@ bar module for one is how `heatmap` came to import its string formatter from `pa
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Literal
 
 from matplotlib.transforms import offset_copy
@@ -59,6 +60,11 @@ def reference_line(
     collision against. A panel whose bars ascend to the right wants `label_side="right"`, and the
     overlap check will say so if the wrong one is picked.
     """
+    require(
+        math.isfinite(value),
+        f"a reference level of {value} draws nothing, and the figure then makes a comparison "
+        "against a line that is not there. Give a finite level, or leave the reference out.",
+    )
     if span is None:
         threshold = constant_value_line(
             ax, orientation, value, ls="--", color=MUTED_INK, lw=1.4, zorder=Z_REFERENCE
@@ -118,6 +124,15 @@ def reference_band(
     bar tops, and a bar tall enough to reach here would be inside the band, not above it. That is
     what stops the design degrading as the bars improve — the failure it replaces.
     """
+    require(
+        math.isfinite(low) and math.isfinite(high),
+        f"a reference band of ({low}, {high}) draws nothing. Give finite bounds.",
+    )
+    require(
+        low <= high,
+        f"the reference band ({low}, {high}) runs backwards — `low` is the lower edge. "
+        "`Estimate` refuses the same mistake on an interval, for the same reason.",
+    )
     tone = color or MUTED_INK
     fill = ax.axhspan if is_vertical(orientation) else ax.axvspan
     # Faint: a reference the eye can find without the eye going there first. Drawn UNDER the frame
