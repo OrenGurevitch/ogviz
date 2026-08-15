@@ -375,6 +375,7 @@ ogviz
 │   │   ├── artist_name(artist) -> str
 │   │   ├── bracket_spans_px(ax: Axes) -> list[tuple[float, float, float]]
 │   │   ├── bracket_tops_px(ax: Axes) -> list[float]
+│   │   ├── brackets_of(ax: Axes) -> list
 │   │   ├── drawn_artists(ax) -> list
 │   │   ├── filled_marks_over(ax: Axes, box, zorder: float) -> list
 │   │   ├── is_backdrop(artist) -> bool

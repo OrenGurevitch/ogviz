@@ -69,14 +69,48 @@ def _is_bracket(data: np.ndarray) -> bool:
 BRACKET_POINTS = 4  # a bracket is drawn as four points: down, across, down
 
 
+def brackets_of(ax: Axes) -> list:
+    """The bracket lines on this axes: what was TAGGED, or failing that what looks like one.
+
+    The same shape as `orientation_of` above, and for the same reason. `bracket_stack` marks every
+    bracket it draws, so where the answer is known it is read rather than guessed; the shape test
+    is the fallback for a figure this package did not draw.
+
+    It was shape-only, and that disagreed with the rest of the package in two ways.
+
+    A HIDDEN BRACKET WAS STILL MEASURED. Neither reader filtered on visibility, though
+    `drawn_artists` and `filled_marks_over` both do — so hiding every bracket on a panel left
+    `bracket_tops_px` still reporting one, and every check built on it (`ticks_in_the_headroom`,
+    `significance_gaps`, `stack_spacing`) measuring ink that is not drawn.
+
+    AND `layout/axis.py` ALREADY ASKED BY TAG. `_is_furniture` excludes a bracket from the data
+    extent using `marked(line, "bracket")`, so a bracket-shaped line nobody tagged was furniture to
+    one file and data to the other — one package, one artist, two answers. That is precisely the
+    failure this module's own docstring says it exists to prevent.
+    """
+    # Asked of whether the tag is PRESENT, not whether the tagged line is showing. Filtering
+    # visibility first meant that hiding a real bracket dropped the axes back to shape inference,
+    # which then picked up whatever else happened to be bracket-shaped — the fallback firing on a
+    # panel whose brackets are perfectly well known, just not drawn.
+    claimed = [line for line in ax.lines if marked(line, "bracket")]
+    if claimed:
+        return [line for line in claimed if line.get_visible()]
+    # Nothing on this axes claims to be a bracket, so it was not drawn by this package. Infer.
+    axis = 1 if orientation_of(ax) == "vertical" else 0
+    return [
+        line
+        for line in ax.lines
+        if line.get_visible()
+        and _is_bracket(np.asarray(line.get_ydata() if axis else line.get_xdata(), dtype=float))
+    ]
+
+
 def bracket_tops_px(ax: Axes) -> list[float]:
     """Where each bracket's outer edge sits, in display pixels along the axis it grows on."""
     axis = 1 if orientation_of(ax) == "vertical" else 0
     tops = []
-    for line in ax.lines:
+    for line in brackets_of(ax):
         data = np.asarray(line.get_ydata() if axis == 1 else line.get_xdata(), dtype=float)
-        if not _is_bracket(data):
-            continue
         point = (0.0, float(np.max(data))) if axis == 1 else (float(np.max(data)), 0.0)
         tops.append(float(ax.transData.transform(point)[axis]))
     return sorted(tops)
@@ -158,10 +192,8 @@ def bracket_spans_px(ax: Axes) -> list[tuple[float, float, float]]:
     upright = orientation_of(ax) == "vertical"
     value_axis, category_axis = (1, 0) if upright else (0, 1)
     spans: list[tuple[float, float, float]] = []
-    for line in ax.lines:
+    for line in brackets_of(ax):
         along = np.asarray(line.get_ydata() if upright else line.get_xdata(), dtype=float)
-        if not _is_bracket(along):
-            continue
         across = np.asarray(line.get_xdata() if upright else line.get_ydata(), dtype=float)
         top = float(np.max(along))
         near, far = float(np.min(across)), float(np.max(across))
