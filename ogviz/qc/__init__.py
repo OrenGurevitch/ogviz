@@ -53,6 +53,13 @@ from ogviz.qc.reading import (
     knocked_out_over,
     orientation_of,
 )
+
+# The FUNCTION, which otherwise loses its own name to the module holding it. `from ogviz.qc import
+# repair` returned `ogviz.qc.repair` the module — not callable — and the README promises
+# `repair(fig)` beside `audit(fig)` and `assert_clean(fig)`, which both work. Identical to the trap
+# recorded in `layout/panels.py`, where `ogviz.panels` shadowed a `panels()` listed in `__all__` and
+# documented as callable. `test_public_surface.py` is what stops it happening a third time.
+from ogviz.qc.repair import repair
 from ogviz.qc.significance import significance_gaps, stack_spacing
 from ogviz.qc.typography import one_minus_sign, type_too_small, ungrouped_thousands
 
@@ -89,6 +96,7 @@ __all__ = [
     "orientation_of",
     "overflowing_text",
     "panels_disagree_about_ticks",
+    "repair",
     "rows_outside_their_panel",
     "series_confusable_under_cvd",
     "significance_gaps",

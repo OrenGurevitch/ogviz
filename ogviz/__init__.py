@@ -52,6 +52,15 @@ from ogviz.layout import (
     wrap_to_width,
     zero_baseline,
 )
+
+# The post-render passes. `save` runs them; a project that writes its own `savefig` — for its own
+# filenames or facecolour — has to call them itself, and until now could not reach them from here.
+# `value_label_off_its_marks` names `settle_axis_labels` in its own complaint text, which is the
+# best kind of message and was pointing at something `import ogviz` could not produce.
+from ogviz.layout.axis import settle_axis_labels
+from ogviz.layout.header import settle_header
+from ogviz.layout.panels import settle_caption
+from ogviz.layout.ticks import settle_corner_tick
 from ogviz.marks import (
     Z_ERROR,
     Z_IQR,
@@ -112,7 +121,13 @@ from ogviz.panels import (
     value_labels,
 )
 from ogviz.qc import assert_clean, audit
-from ogviz.significance import bracket_stack, significance_row, spaced_stars, stars
+from ogviz.significance import (
+    bracket_stack,
+    settle_bracket_labels,
+    significance_row,
+    spaced_stars,
+    stars,
+)
 from ogviz.tags import Tag, mark, marked, value_of
 from ogviz.theme import (
     BAD,
@@ -243,6 +258,11 @@ __all__ = [
     "save",
     "scatter_panel",
     "series_colors",
+    "settle_axis_labels",
+    "settle_bracket_labels",
+    "settle_caption",
+    "settle_corner_tick",
+    "settle_header",
     "share_value_limits",
     "shared_limits",
     "significance_row",
