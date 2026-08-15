@@ -31,13 +31,22 @@ def one_minus_sign(fig: Figure) -> list[str]:
     """
     hyphen: set[str] = set()
     minus: set[str] = set()
-    for ax in fig.axes:
-        for text in [*ax.texts, *ax.get_xticklabels(), *ax.get_yticklabels()]:
-            content = text.get_text().strip()
-            if not content or not any(character.isdigit() for character in content):
-                continue
-            signed = bool(CANDIDATE_MINUS.search(content))
-            (hyphen if signed else minus if "\u2212" in content else set()).add(content)
+    # `figure_text`, the same walk `_smallest_text` and `ungrouped_thousands` use. This looped over
+    # `ax.texts` plus the tick labels by hand, so a sign in a FIGURE-level subtitle or a LEGEND
+    # entry was invisible — measured, a subtitle reading "change of -3.5 units" beside ticks
+    # matplotlib had typeset with U+2212 drew no complaint at all. Three functions in one module
+    # asking three different questions about "the text in this figure" is how that happens.
+    for text, _owner in figure_text(fig, ticks=True, legend=True):
+        content = text.get_text().strip()
+        if not content or not any(character.isdigit() for character in content):
+            continue
+        # INDEPENDENTLY, not as an either/or. Written as a chained conditional, a single label
+        # carrying both glyphs — "\u22123.5 to -1.2" — landed only in `hyphen`, so a figure whose
+        # mixture is inside one string was the one case that reported nothing.
+        if CANDIDATE_MINUS.search(content):
+            hyphen.add(content)
+        if "\u2212" in content:
+            minus.add(content)
     if hyphen and minus:
         # The examples are listed BARE rather than as a repr'd list. Like a buried spine, this
         # complaint is about the figure and has no one label as its subject. But a repr'd list of
