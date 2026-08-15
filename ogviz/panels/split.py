@@ -144,9 +144,24 @@ def split_violins(
         len(left) == len(right) == len(categories),
         f"{len(categories)} categories, {len(left)} left and {len(right)} right series",
     )
+    require(
+        len(categories),
+        "split_violins needs at least one category",
+    )
     for name, side in (("left", left), ("right", right)):
         for index, values in enumerate(side):
-            missing = int(np.count_nonzero(~np.isfinite(np.asarray(values, dtype=float))))
+            array = np.asarray(values, dtype=float)
+            # EMPTY IS REFUSED BY NAME, and it has to be said out loud because the docstring above
+            # invites it: the two sides need not be the same length, since a paired measurement can
+            # drop samples on one side. Dropping ALL of them is a different thing, and it used to
+            # surface as `IndexError: list index out of range` from inside the violin — an error
+            # naming nothing the caller wrote.
+            require(
+                array.size,
+                f"the {name} series for {categories[index]!r} is empty; a half-violin needs "
+                "observations to have a shape. Drop the category, or say what an empty side means.",
+            )
+            missing = int(np.count_nonzero(~np.isfinite(array)))
             require(
                 not missing,
                 f"{name} series for {categories[index]!r} has {missing} non-finite value(s); drop "
