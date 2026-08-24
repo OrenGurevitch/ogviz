@@ -15,9 +15,9 @@ STAGES = ("Baseline", "3 months", "6 months", "12 months")
 
 def _strands(last: tuple[float, float, float]) -> list[Strand]:
     return [
-        Strand("QSM", [0.02, 0.05, 0.09, last[0]], SERIES[0]),
-        Strand("T1", [0.03, 0.04, 0.05, last[1]], SERIES[1]),
-        Strand("Volume", [0.01, -0.01, -0.04, last[2]], SERIES[2]),
+        Strand("Signal A", [0.02, 0.05, 0.09, last[0]], SERIES[0]),
+        Strand("Signal B", [0.03, 0.04, 0.05, last[1]], SERIES[1]),
+        Strand("Signal C", [0.01, -0.01, -0.04, last[2]], SERIES[2]),
     ]
 
 
@@ -48,7 +48,7 @@ def test_the_stages_are_evenly_spaced_whatever_they_represent() -> None:
 
 def test_a_strand_must_have_one_value_per_stage() -> None:
     _fig, ax = plt.subplots()
-    short = [Strand("QSM", [0.1, 0.2], SERIES[0])]
+    short = [Strand("Signal A", [0.1, 0.2], SERIES[0])]
     with pytest.raises(AssertionError, match="2 values across 4 stages"):
         slopegraph(ax, short, STAGES)
 
@@ -57,7 +57,7 @@ def test_a_band_is_bounds_per_stage_and_says_so_when_it_is_not() -> None:
     _fig, ax = plt.subplots(figsize=(8.0, 5.0))
     banded = [
         Strand(
-            "QSM",
+            "Signal A",
             [0.02, 0.05, 0.09, 0.12],
             SERIES[0],
             [(0.0, 0.04), (0.03, 0.08), (0.06, 0.12), (0.08, 0.16)],
@@ -67,7 +67,7 @@ def test_a_band_is_bounds_per_stage_and_says_so_when_it_is_not() -> None:
     assert ax.collections, "the band is drawn"
 
     with pytest.raises(AssertionError, match="spreads for 4 values"):
-        Strand("QSM", [0.02, 0.05, 0.09, 0.12], SERIES[0], [(0.0, 0.04)])
+        Strand("Signal A", [0.02, 0.05, 0.09, 0.12], SERIES[0], [(0.0, 0.04)])
 
 
 def test_the_shipped_slopegraph_passes_its_own_gate() -> None:
