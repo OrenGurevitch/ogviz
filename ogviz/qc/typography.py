@@ -63,6 +63,8 @@ def one_minus_sign(fig: Figure) -> list[str]:
 
 
 UNGROUPED = re.compile(r"(?<![\d,.])\d{4,}(?![\d,]*\.?\d*%)(?!\.\d)")
+# A digit run closing a hyphenated token is an identifier, not a quantity: sub-1007, acq-1200.
+IDENTIFIER_TAIL = re.compile(r"[A-Za-z]\w*-$")
 
 YEARS = range(1800, 2200)
 
@@ -173,12 +175,21 @@ def ungrouped_thousands(fig: Figure) -> list[str]:
 
     A four-digit number that could be a year is left alone. A year is an identifier, not a quantity,
     and no figure carries the fact of which it is.
+
+    So is a digit run inside a hyphenated identifier — `sub-1007`, `ses-02`, `acq-1200`. Grouping
+    one would produce `sub-1,007`, which is not the participant's name. The rule is about numbers a
+    reader counts, and an identifier is read as a label. Found blocking a real figure build: a
+    slice panel captioned with its subject id could not be written at all.
     """
     ensure_rendered(fig)
     complaints: list[str] = []
     for text, _owner in figure_text(fig, ticks=True):
-        for run in UNGROUPED.findall(text.get_text()):
+        content = text.get_text()
+        for match in UNGROUPED.finditer(content):
+            run = match.group(0)
             if len(run) == 4 and int(run) in YEARS:
+                continue
+            if IDENTIFIER_TAIL.search(content[: match.start()]):
                 continue
             complaints.append(
                 f"{quoted(text.get_text())!r} prints {run} without a thousands separator"

@@ -339,6 +339,28 @@ def test_an_ungrouped_thousand_is_caught_and_a_year_is_not() -> None:
     assert "1200000" in complaints[0]
 
 
+def test_a_digit_run_inside_a_hyphenated_identifier_is_not_a_quantity() -> None:
+    """`sub-1007` is a participant's name, and grouping it would print `sub-1,007`.
+
+    Found blocking a real build: a brain-slice panel captioned with the subject it shows could not
+    be written at all, because the caption's identifier read as an ungrouped thousand. The rule is
+    about numbers a reader counts; an identifier is read as a label. A bare quantity in the same
+    string must still be caught, which is what the last two cases check.
+    """
+    from ogviz.qc import ungrouped_thousands
+
+    fig, ax = plt.subplots(figsize=(8.0, 4.0))
+    ax.set_axis_off()
+    printed = ["sub-1007", "acq-1200", "ses-02 and 1200 ms", "n=1007"]
+    for index, line in enumerate(printed):
+        ax.text(0.05, 0.9 - index * 0.15, line, transform=ax.transAxes)
+    fig.canvas.draw()
+    complaints = ungrouped_thousands(fig)
+    assert len(complaints) == 2, complaints
+    assert any("1200 ms" in c for c in complaints), complaints
+    assert any("n=1007" in c for c in complaints), complaints
+
+
 def test_the_house_panels_group_their_own_numbers() -> None:
     """Everything the library prints follows the rule without being asked."""
 
