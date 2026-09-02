@@ -15,6 +15,8 @@ import pytest
 from matplotlib.collections import PathCollection
 
 from ogviz.panels.violins import group_violins
+from ogviz.qc import audit
+from ogviz.tags import marked
 from ogviz.theme import identity_colors
 
 
@@ -170,3 +172,80 @@ def test_a_constant_series_still_gets_a_panel_with_height() -> None:
         marks_px = ax.transData.transform((0.0, value))[1]
         assert floor_px < row_px < marks_px
         plt.close(fig)
+
+
+def _crowded(count: int, seed: int = 5):
+    """`count` groups of values small enough that `row_decimals` gives the row seven characters."""
+    rng = np.random.default_rng(seed)
+    return [
+        (float(i), rng.normal(0.0035 + i * 3e-5, 6e-4, 25), "#E8A838", "#B97C10")
+        for i in range(count)
+    ]
+
+
+def test_a_mean_row_that_would_collide_shrinks_instead_of_being_refused() -> None:
+    """The row could not shrink, so the GATE refused the figure for it.
+
+    A metric whose values are small takes many decimals from `row_decimals`, and six
+    seven-character numbers across one panel is wider than the panel. The premise is measured by
+    pinning the size: at the full `MEAN_LABEL_SIZE` the row overlaps and `audit` reports it.
+    """
+    from ogviz.panels.violins import MEAN_ROW_FLOOR_PT
+    from ogviz.theme import MEAN_LABEL_SIZE
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.5))
+    group_violins(ax, _crowded(6), show_means=True, mean_min_fontsize=MEAN_LABEL_SIZE)
+    fig.canvas.draw()
+    assert [one for one in audit(fig) if "runs into" in one], (
+        "premise: with the shrink floored at the full size, the row still collides"
+    )
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.5))
+    rows = group_violins(ax, _crowded(6), show_means=True)
+    fig.canvas.draw()
+    settled = {float(text.get_fontsize()) for text in ax.texts if marked(text, "mean_row")}
+    assert len(settled) == 1
+    assert MEAN_ROW_FLOOR_PT <= settled.pop() < MEAN_LABEL_SIZE, "it shrank, and not past the floor"
+    assert [one for one in audit(fig) if "runs into" in one] == []
+    assert rows is not None
+    plt.close(fig)
+
+
+def test_a_roomy_row_is_left_at_the_size_it_was_asked_for() -> None:
+    """The shrink is a fallback, not a policy: nothing crowded means nothing moves."""
+    from ogviz.theme import MEAN_LABEL_SIZE
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.5))
+    rng = np.random.default_rng(0)
+    roomy = [(float(i), rng.normal(5.0 + i, 1.0, 30), "#E8A838", "#B97C10") for i in range(2)]
+    group_violins(ax, roomy, show_means=True)
+    fig.canvas.draw()
+    sizes = {float(text.get_fontsize()) for text in ax.texts if marked(text, "mean_row")}
+    assert sizes == {MEAN_LABEL_SIZE}
+    plt.close(fig)
+
+
+def test_a_grid_reconciles_the_row_to_one_size() -> None:
+    """`printed_means` shrinks per PANEL, and a shared scale demands one size across the grid.
+
+    So the shrink created a new way to fail: `mean_rows_unaligned` refuses two sizes on purpose,
+    because the row's size is one of the constants that make a shared scale read as one
+    comparison. Measured before the reconciliation: 20.0 pt beside 11.5 pt, and the gate said so.
+    """
+    from ogviz.panels.grid import share_value_limits
+    from ogviz.qc.arrangement import mean_rows_unaligned
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.5))
+    group_violins(axes[0], _crowded(2, seed=6), show_means=True)
+    group_violins(axes[1], _crowded(6, seed=6), show_means=True)
+
+    apart = {float(t.get_fontsize()) for ax in axes for t in ax.texts if marked(t, "mean_row")}
+    assert len(apart) == 2, f"premise: the two panels shrink differently on their own — {apart}"
+
+    share_value_limits(axes, label_edge=False)
+    fig.canvas.draw()
+    together = {float(t.get_fontsize()) for ax in axes for t in ax.texts if marked(t, "mean_row")}
+    assert together == {min(apart)}, "the smallest is the only size guaranteed to fit both"
+    assert mean_rows_unaligned(fig) == []
+    plt.close(fig)

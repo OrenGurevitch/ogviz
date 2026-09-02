@@ -13,11 +13,13 @@ the same number, which is why a caller cannot place a bracket on a violin's tail
 
 from __future__ import annotations
 
+from itertools import pairwise
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ogviz.layout import drawn_value_extent, hairline_grid, ticks_over_data
+from ogviz.layout.overlap import DEFAULT_MIN_GAP
 from ogviz.marks import CATEGORY_HALF_SLOT, iqr_box, mean_line, points, violin, widths_of
 from ogviz.orientation import (
     category_limits,
@@ -51,6 +53,13 @@ LIMIT_DRIFT = 1e-9  # the value axis is settled; presentation must not move it
 # to; halve the pad and the row lands under the axis. One number, and the row is centred by
 # construction between the lowest mark and the frame.
 MEAN_ROW_OFFSET = BOTTOM_PAD / 2.0
+# The printed row shrinks to fit rather than being refused for not fitting. The floor is where a
+# number stops being a number a reader can use — below this the row is legible only by intent, and a
+# figure that needs it wants fewer groups or fewer decimals, which is the caller's call and not
+# something a shrink can decide. The step is a typographic half-point: finer wastes renders for a
+# difference nobody sees, coarser overshoots and gives away room the row could have kept.
+MEAN_ROW_FLOOR_PT = 9.0
+MEAN_ROW_STEP_PT = 0.5
 SPAN_HEADROOM = 0.30  # extra top room for the FIRST bracket
 PLAIN_HEADROOM = 0.20
 BRACKET_INSET = 0.12  # first bracket, below the expanded top
@@ -87,6 +96,7 @@ def printed_means(
     orientation: Orientation = "vertical",
     scale: float = 1.0,
     thousands_separator: bool = True,
+    min_fontsize: float = MEAN_ROW_FLOOR_PT,
 ) -> list[Text]:
     """A row of numbers under the marks they describe, ONE format for the whole row.
 
@@ -100,6 +110,19 @@ def printed_means(
 
     Every label is tagged `ogviz_mean_row`, which is how `align_mean_rows` finds them and puts a
     grid's rows on one line.
+
+    THE ROW SHRINKS UNTIL IT STOPS COLLIDING WITH ITSELF, down to `min_fontsize`. It could not
+    before, and the consequence was that the gate refused the figure: a metric whose values are
+    small takes many decimals from `row_decimals`, and six seven-character numbers across one
+    panel is wider than the panel — measured on a six-group panel of values of order 0.003, the
+    row overlapped by 14.8 px and `text_overlaps` reported five collisions. Nothing was wrong with
+    the figure that a smaller row would not fix, so refusing it asked the caller to do by hand
+    what is measurable here.
+
+    Shrunk to clear `overlap.DEFAULT_MIN_GAP`, which is the number the GATE judges this by, plus a
+    step's slack. A fixed target is what makes this subtly wrong to port from elsewhere: a
+    threshold tuned against a different gate can leave the row just under this one's, shrinking a
+    figure and still being refused for it.
     """
     from ogviz.layout.ticks import format_value, row_decimals
 
@@ -151,7 +174,45 @@ def printed_means(
         # prevent.
         mark(label, "mean_row")
         drawn.append(label)
+    _shrink_until_clear(ax, drawn, fontsize, min_fontsize)
     return drawn
+
+
+def _shrink_until_clear(
+    ax: Axes, row: list[Text], start: float, floor: float, *, step: float = MEAN_ROW_STEP_PT
+) -> float:
+    """Step the row's type down until no two numbers are closer than the gate allows.
+
+    Returns the size it settled at. Measures the RENDERED boxes rather than estimating from the
+    string lengths, because the estimate is what a proportional font makes wrong: `row_decimals`
+    gives every number in the row the same COUNT of characters, and "0.00111" is materially
+    narrower than "0.00000" in the house face.
+
+    Sorted by position along the row and compared neighbour to neighbour, so the answer does not
+    depend on the order the labels were created in.
+    """
+    if len(row) < 2:
+        return start
+    figure = ax.get_figure()
+    if figure is None:  # nothing to measure against; the caller's size stands
+        return start
+    target = DEFAULT_MIN_GAP + step
+    size = start
+    while True:
+        for label in row:
+            label.set_fontsize(size)
+        figure.canvas.draw()
+        boxes = sorted((label.get_window_extent() for label in row), key=lambda box: box.x0)
+        if all(b.x0 - a.x1 >= target for a, b in pairwise(boxes)):
+            return size
+        if size - step < floor:
+            # The floor is a floor, not a suggestion: a row set at 6 pt is not a fixed row, and the
+            # gate still has the last word on the figure. It stays at the floor and is reported.
+            for label in row:
+                label.set_fontsize(floor)
+            figure.canvas.draw()
+            return floor
+        size -= step
 
 
 def _finish(ax: Axes, orientation: Orientation, *, grid: bool) -> None:
@@ -269,6 +330,7 @@ def group_violins(
     mean_fontsize: float = MEAN_LABEL_SIZE,
     mean_weight: str = "bold",
     mean_decimals: int | None = None,
+    mean_min_fontsize: float = MEAN_ROW_FLOOR_PT,
     display_scale: float = 1.0,
     thousands_separator: bool = True,
     label_for: Callable[[float], str] | None = None,
@@ -308,6 +370,10 @@ def group_violins(
     so the axis and the means agree. The data is never touched.
 
     The `*_kwargs` reach the marks, so a panel whose layout wants a wider body passes
+    `mean_min_fontsize` is how far the printed row may shrink to stop colliding with itself; see
+    `printed_means`. Pass `mean_fontsize` for the floor to switch the shrink off, which is how to
+    ask for a row at exactly one size and let the gate refuse it if it does not fit.
+
     `category_pad` is the room left either side of the outermost violin, in category units. The
     default is `marks.CATEGORY_HALF_SLOT`, PINNED, so a set of panels drawn at different group
     counts puts its violins at the same size in every cell; the constant's comment carries the
@@ -443,6 +509,7 @@ def group_violins(
             orientation=orientation,
             scale=display_scale,
             thousands_separator=thousands_separator,
+            min_fontsize=mean_min_fontsize,
         )
 
     if categories is not None:

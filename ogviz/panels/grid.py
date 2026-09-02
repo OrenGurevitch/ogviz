@@ -233,7 +233,7 @@ def _bracket_artists(ax: Axes, *, upright: bool = True) -> tuple[list, list]:
 def align_mean_rows(
     axes: Iterable[Axes], *, floor: float, orientation: Orientation = "vertical"
 ) -> float | None:
-    """Put every panel's printed means on ONE line, and return that line.
+    """Put every panel's printed means on ONE line AND at one size, and return that line.
 
     A panel places its means in the middle of the margin below its own data. Once the panels share
     a scale that is wrong: the floor is common and the lowest violin is not, so the row sits at a
@@ -281,7 +281,16 @@ def align_mean_rows(
     if figure is not None:
         figure.canvas.draw()
     line = midpoint(reference, floor, lowest, orientation=orientation)
+    # THE SIZE IS RECONCILED HERE TOO, to the smallest any panel settled at. `printed_means`
+    # shrinks a row that would collide with itself, which is per-panel by construction — so a grid
+    # whose panels are differently crowded ends up with the row at two sizes, and
+    # `qc.mean_rows_unaligned` refuses that on purpose, because the row's size is one of the visual
+    # constants that make a shared scale read as one comparison. Measured on a two-panel grid with
+    # a roomy panel beside a crowded one: 20.0 pt against 11.5 pt. The MINIMUM is the only choice
+    # guaranteed to fit — the larger is what the crowded panel already rejected.
+    smallest = min(float(text.get_fontsize()) for text in rows)
     for text in rows:
         across, along = text.get_position()
         text.set_position((line, along) if orientation == "horizontal" else (across, line))
+        text.set_fontsize(smallest)
     return line
