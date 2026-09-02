@@ -31,7 +31,8 @@ format:
 format-check:
     uv run ruff format --check {{ SOURCES }}
 
-# `ogviz` only: the examples and the generator are checked by running them, and the strict settings
+# `ogviz` only: the examples and the generator are checked by running them in the DEFAULT gate
+# (`figures`, `readme`) — CI only lints them — and the strict settings
 # here report stub noise on code that pokes matplotlib internals. See `[tool.basedpyright]`.
 typecheck:
     uv run basedpyright ogviz

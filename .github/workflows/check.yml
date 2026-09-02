@@ -15,15 +15,15 @@ jobs:
         matplotlib: ["3.10.*", "3.11.*"]
     steps:
       # Pinned to FLOATING major tags, so patches arrive without anyone remembering. The version
-      # that matters is the Node runtime the action declares: checkout v4 and setup-uv v5 both
-      # declare node20, which GitHub has deprecated and is currently force-running on node24 while
-      # printing a warning. When that force is withdrawn the workflow stops starting, and the error
-      # reads like a repo problem rather than two version numbers.
+      # that matters is the Node runtime the action declares: both v7 tags declare node24. (The
+      # pins WERE checkout v4 and setup-uv v5, which declare node20 — deprecated, and force-run on
+      # node24 with a warning; when that force is withdrawn a workflow on them stops starting, and
+      # the error reads like a repo problem rather than two version numbers.)
       #
-      # setup-uv is held at v7 rather than the newer v9 on purpose: it stops publishing a bare `v9`
-      # major tag, so anything past v7 has to be pinned exactly and then bumped by hand — which is
-      # the same slow rot in a different coat. v7 already declares node24, and nothing here uses
-      # what the later majors added.
+      # setup-uv is held at v7 rather than a newer major on purpose: from v8 on it publishes no
+      # bare major tag, so anything past v7 has to be pinned exactly and then bumped by hand —
+      # which is the same slow rot in a different coat. Nothing here uses what the later majors
+      # added.
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
