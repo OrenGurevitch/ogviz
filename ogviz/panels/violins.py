@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout import drawn_value_extent, hairline_grid, ticks_over_data
-from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin, widths_of
+from ogviz.marks import CATEGORY_HALF_SLOT, iqr_box, mean_line, points, violin, widths_of
 from ogviz.orientation import (
     category_limits,
     category_tick_labels,
@@ -273,6 +273,7 @@ def group_violins(
     thousands_separator: bool = True,
     label_for: Callable[[float], str] | None = None,
     mean_row_offset: float = MEAN_ROW_OFFSET,
+    category_pad: float | None = None,
     bottom_pad: float = BOTTOM_PAD,
     grid: bool = True,
     headroom: float | None = None,
@@ -307,6 +308,12 @@ def group_violins(
     so the axis and the means agree. The data is never touched.
 
     The `*_kwargs` reach the marks, so a panel whose layout wants a wider body passes
+    `category_pad` is the room left either side of the outermost violin, in category units. The
+    default is `marks.CATEGORY_HALF_SLOT`, PINNED, so a set of panels drawn at different group
+    counts puts its violins at the same size in every cell; the constant's comment carries the
+    measurement. Pass a number for a panel that wants its own room — the retired behaviour was one
+    whole violin width, so `category_pad=marks.VIOLIN_WIDTH` is the old look exactly.
+
     `violin_kwargs={"width": 0.8}, point_kwargs={"width": 0.8}` and gets it — a composite that
     hardcodes its parts' defaults is not reusable, it is one project's figure with a public name.
     The spacing fractions are arguments for the same reason.
@@ -407,9 +414,13 @@ def group_violins(
     top = high + headroom * span
     value_limits(ax, orientation)(low - bottom_pad * span, top)
 
-    body = float(violin_kwargs.get("width", VIOLIN_WIDTH))  # type: ignore[arg-type]
+    # PINNED TO THE CELL, not padded by the body. This read `min - body .. max + body`, so a wider
+    # violin pushed the axis out with it and the body's share of its cell never moved — a `width`
+    # argument that could not change the picture. `CATEGORY_HALF_SLOT` carries the measurement and
+    # why 0.54; `category_pad` is the way back to a caller's own number.
     places = [p for p, _v, _f, _e in populated]
-    category_limits(ax, orientation)(min(places) - body, max(places) + body)
+    pad = CATEGORY_HALF_SLOT if category_pad is None else category_pad
+    category_limits(ax, orientation)(min(places) - pad, max(places) + pad)
 
     for (position, values, fill, edge), dots in zip(populated, dot_colors, strict=True):
         body = dict(violin_kwargs)

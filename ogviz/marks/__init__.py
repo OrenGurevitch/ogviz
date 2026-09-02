@@ -55,27 +55,62 @@ Z_IQR = 4
 Z_MEAN_LINE = 6
 Z_MEDIAN_DOT = 8
 
-VIOLIN_WIDTH = 0.62
-VIOLIN_ALPHA = 0.35
+# THE VIOLIN FILLS ITS SLOT. `VIOLIN_WIDTH` is 0.8 against a category axis pinned to a half-slot of
+# `CATEGORY_HALF_SLOT` below, which is the pair that matters: a body of 0.8 in a slot padded by a
+# whole body of 0.62 — what this used to do — leaves the dots reading as lost in empty fill, and the
+# figure's character comes from the ratio rather than from either number alone. Two projects that
+# consume this package converged on these values independently of it, one porting the other whole
+# after matching them by hand did not work; they are the defaults here so nobody ports them again.
+VIOLIN_WIDTH = 0.8
+# Paler than the 0.35 this was, because the body is now wider: the same alpha over a third more area
+# reads as the claim rather than as the texture, and the violin is meant to be the shape the dots
+# sit in.
+VIOLIN_ALPHA = 0.28
 POINT_SIZE = 30
 POINT_ALPHA = 0.85
 POINT_EDGE_WIDTH = 0.8
 JITTER_FILL = 0.82  # fraction of the local half-width dots may occupy (<1 keeps them inside)
-CENTER_GAP = 0.06  # min x-gap dots keep from the centre marks where the violin is wide
+CENTER_GAP = 0.08  # min x-gap dots keep from the centre marks where the violin is wide
 BOX_COLOR = "#6E6E6E"
-MEAN_HALF_WIDTH = 0.15
+# A short mean TICK, not a second bar. At the 0.15 this was, the mean spanned a quarter of the slot
+# and read as a box drawn over the IQR box; at 0.085 it is a marker ON that box, which is what the
+# mark means — the mean is one number, and a wide bar claims an extent it does not have.
+MEAN_HALF_WIDTH = 0.085
 # The widths of the central marks, named once. `iqr_box` DRAWS at these and `central_clearance`
 # reserves a lane against them, and they were two pairs of bare literals in two functions — which is
 # how the clearance came to reserve the IQR bar's width along the thin whisker.
-BOX_WIDTH = 5.5
+BOX_WIDTH = 6.0
 WHISKER_WIDTH = 1.5
-MEDIAN_SIZE = 7.5
+MEDIAN_SIZE = 6.0
 MEDIAN_EDGE_WIDTH = 1.6
-MEAN_LINEWIDTH = 3.2
+MEAN_LINEWIDTH = 2.8
+
+# THE CATEGORY AXIS IS PINNED TO THE CELL, and this is the half-slot it is pinned to.
+#
+# `group_violins` padded by one whole VIOLIN WIDTH each side. That was already independent of the
+# group count — the drift it looks like it should have is matplotlib's, not this package's — but it
+# tracked the body, which is worse in a subtler way: widening the violin widened the axis with it,
+# so the body's share of its cell was fixed at 0.62/(0.62 + 2 x 0.62) whatever width a caller asked
+# for. `VIOLIN_WIDTH` could not change the picture, only the units it was measured in.
+#
+# Pinning the pad instead makes the body's share of the cell the thing a width argument controls,
+# which is what a width argument should mean. MEASURED here after the change: the gap between
+# adjacent bodies is 0.200 of a slot and the clearance to the frame 0.140, at two, three and four
+# groups alike.
+#
+# 0.54 rather than a round number because it is exactly what matplotlib's own autoscale gives THREE
+# positions — measured here at 0.490 for two, 0.540 for three, 0.590 for four. Holding the
+# three-slot answer means the three-condition cell, which is the common one, keeps the framing
+# matplotlib would have given it, and the other counts stop drifting away from that.
+#
+# `group_violins(category_pad=...)` is the way to a caller's own number; `category_pad=VIOLIN_WIDTH`
+# is the retired behaviour exactly.
+CATEGORY_HALF_SLOT = 0.54
 
 __all__ = [
     "BOX_COLOR",
     "BOX_WIDTH",
+    "CATEGORY_HALF_SLOT",
     "CENTER_GAP",
     "ERROR_CAPSIZE",
     "ERROR_LINEWIDTH",

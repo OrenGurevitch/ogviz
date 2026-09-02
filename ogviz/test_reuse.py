@@ -16,14 +16,22 @@ def _sample(seed: int = 0) -> np.ndarray:
 
 
 def test_a_panel_does_not_hardcode_its_marks_defaults():
-    """The failure this guards: a caller wanting 0.8-wide bodies would silently
-    get the house 0.62, so it could use the marks but never the panel above them."""
+    """The failure this guards: a caller's own body width silently getting the house one, so the
+    caller could use the marks but never the panel above them.
+
+    The width asked for is DERIVED from the house one rather than written down. It was the literal
+    0.8, chosen because the house default was 0.62 — and when 0.8 became the default the premise
+    collapsed to `0.4 > 0.4` and the test failed for a reason that had nothing to do with what it
+    checks. A test about a caller's width overriding the default must not name a number that could
+    become the default.
+    """
+    asked = VIOLIN_WIDTH * 1.25
     wide, ax_wide = plt.subplots()
     group_violins(
         ax_wide,
         [(0.0, _sample(), "#2E7CE0", "#1A4F94")],
-        violin_kwargs={"width": 0.8},
-        point_kwargs={"width": 0.8},
+        violin_kwargs={"width": asked},
+        point_kwargs={"width": asked},
         show_means=False,
     )
     house, ax_house = plt.subplots()
@@ -32,8 +40,9 @@ def test_a_panel_does_not_hardcode_its_marks_defaults():
     def body_half_width(ax):
         return float(np.abs(ax.collections[0].get_paths()[0].vertices[:, 0]).max())
 
-    assert body_half_width(ax_wide) > body_half_width(ax_house)
+    assert body_half_width(ax_wide) == pytest.approx(asked / 2, abs=1e-9)
     assert body_half_width(ax_house) == pytest.approx(VIOLIN_WIDTH / 2, abs=1e-9)
+    assert body_half_width(ax_wide) > body_half_width(ax_house)
     assert wide is not house
 
 

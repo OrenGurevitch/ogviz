@@ -236,3 +236,81 @@ def test_iqr_box_accepts_a_plain_sequence_like_every_other_mark() -> None:
     assert len(ax.lines) == 3  # the whisker, the box, and the median dot
     with pytest.raises(AssertionError, match="at least one value"):
         iqr_box(ax, [], 0.0)  # type: ignore[arg-type]
+
+
+def test_the_category_axis_is_pinned_rather_than_padded_by_the_body() -> None:
+    """It was `min - body .. max + body`, so the pad tracked the violin instead of the cell.
+
+    Which means a wider body pushed the axis out with it and the body's share of its cell never
+    moved — a `width` argument that could not change the picture, only the units it was measured
+    in. That is the assertion below, and it is the one that would have failed before.
+
+    0.54 is held rather than a round number because it is matplotlib's own three-slot answer,
+    measured here alongside it.
+    """
+    from ogviz import group_violins
+    from ogviz.marks import CATEGORY_HALF_SLOT
+
+    def autoscale_pad(count: int) -> float:
+        _fig, ax = plt.subplots()
+        rng = np.random.default_rng(0)
+        ax.violinplot(
+            [rng.normal(0.0, 1.0, 30) for _ in range(count)],
+            positions=list(range(count)),
+            widths=VIOLIN_WIDTH,
+            showextrema=False,
+        )
+        low, _high = ax.get_xlim()
+        return abs(float(low))
+
+    pads = {count: autoscale_pad(count) for count in (2, 3, 4)}
+    assert pads[2] < pads[3] < pads[4], f"premise: autoscale drifts with the count — {pads}"
+    assert pads[3] == pytest.approx(CATEGORY_HALF_SLOT, abs=1e-9), "0.54 is the three-slot answer"
+
+    def panel_pad(count: int) -> float:
+        _fig, ax = plt.subplots()
+        rng = np.random.default_rng(1)
+        group_violins(
+            ax,
+            [(float(i), rng.normal(5.0, 1.0, 30), "#E8A838", "#B97C10") for i in range(count)],
+            show_means=False,
+        )
+        return abs(float(ax.get_xlim()[0]))
+
+    # PINNED: the same pad whatever the count, and — the part that changed — whatever the body.
+    assert [panel_pad(count) for count in (2, 3, 4)] == pytest.approx([CATEGORY_HALF_SLOT] * 3)
+
+    def share_of_the_cell(width: float) -> float:
+        """What fraction of the panel one body occupies at a given asked-for width."""
+        _fig, ax = plt.subplots()
+        rng = np.random.default_rng(3)
+        group_violins(
+            ax,
+            [(float(i), rng.normal(5.0, 1.0, 30), "#E8A838", "#B97C10") for i in range(3)],
+            show_means=False,
+            violin_kwargs={"width": width},
+            point_kwargs={"width": width},
+        )
+        low, high = ax.get_xlim()
+        return width / (high - low)
+
+    narrow, wide = share_of_the_cell(VIOLIN_WIDTH * 0.6), share_of_the_cell(VIOLIN_WIDTH)
+    assert wide > narrow * 1.5, (
+        "a width argument has to change the body's share of its cell; padding by the body made "
+        f"that share constant, and it is {narrow:.3f} against {wide:.3f}"
+    )
+
+
+def test_a_caller_can_still_have_the_retired_padding() -> None:
+    """The old look was one whole violin width either side, and it stays reachable by name."""
+    from ogviz import group_violins
+
+    _fig, ax = plt.subplots()
+    rng = np.random.default_rng(2)
+    group_violins(
+        ax,
+        [(float(i), rng.normal(5.0, 1.0, 30), "#E8A838", "#B97C10") for i in range(2)],
+        show_means=False,
+        category_pad=VIOLIN_WIDTH,
+    )
+    assert abs(float(ax.get_xlim()[0])) == pytest.approx(VIOLIN_WIDTH)
