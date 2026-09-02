@@ -193,14 +193,31 @@ def overflowing_text(fig: Figure) -> list[str]:
         size = float(text.get_fontsize())
         drawn = float(text.get_window_extent().width)
         if drawn > width_px + OVERFLOW_TOLERANCE_PX:
-            # Name the word that cannot be broken, not the first line of the block. The first line
-            # is usually short and innocent, and quoting it sends the reader looking in the wrong
-            # place for a problem that is three lines down.
+            # TWO DIFFERENT PROBLEMS, and this reported both as the second one. Naming the widest
+            # word rather than the first line is right — the first line is usually short and
+            # innocent, and quoting it sends the reader three lines away from the fault. But
+            # "is one word and cannot be wrapped" was said whatever the case, so a long TITLE that
+            # simply had not been wrapped was reported as an unbreakable word: measured on a 4 in
+            # panel, a 69-character title came back as "'Autonomic' is one word and cannot be
+            # wrapped", which is false — `wrap_to_panel` breaks that title into three lines
+            # happily. A caller acting on it shortens a word that was never the problem.
+            #
+            # So the WORD is measured against the canvas too, and it decides which of the two
+            # sentences is true.
             culprit = max(
                 content.split(), key=lambda word: text_width_points(word, size), default=""
             )
-            complaints.append(
-                f"a label is {drawn - width_px:.0f} px wider than the figure: {culprit[:60]!r} "
-                "is one word and cannot be wrapped"
-            )
+            widest_word_px = text_width_points(culprit, size) * units.px_per_point(fig)
+            over = drawn - width_px
+            if widest_word_px > width_px:
+                complaints.append(
+                    f"a label is {over:.0f} px wider than the figure: {culprit[:60]!r} is one word "
+                    "and cannot be wrapped, so it needs shorter wording or smaller type"
+                )
+            else:
+                complaints.append(
+                    f"a label is {over:.0f} px wider than the figure and has not been wrapped — "
+                    f"its longest word ({culprit[:40]!r}) does fit, so `wrap_to_panel` or "
+                    "`wrap_to_width` will place it"
+                )
     return complaints

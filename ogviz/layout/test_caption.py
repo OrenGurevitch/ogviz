@@ -101,3 +101,38 @@ def test_a_plain_figure_reserves_its_room_and_reports_nothing() -> None:
     assert caption(fig, NOTE) == []
     assert fig.subplotpars.bottom > before
     plt.close(fig)
+
+
+def test_an_unwrapped_label_is_not_reported_as_an_unbreakable_word() -> None:
+    """Two different problems were reported as the second one.
+
+    A long title that simply has not been wrapped came back as "'Autonomic' is one word and cannot
+    be wrapped", which is false — that title wraps into three lines. A caller acting on it shortens
+    a word that was never the problem. Naming the WIDEST word is still right; claiming it is
+    unbreakable is only right when it is.
+    """
+    fig, ax = plt.subplots(figsize=(4.0, 3.5))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.set_title(
+        "Autonomic burden across every measured condition and follow-up window", fontsize=16
+    )
+    fig.canvas.draw()
+
+    said = overflowing_text(fig)
+    assert said, "premise: the title really is wider than the canvas"
+    assert "has not been wrapped" in said[0]
+    assert "cannot be wrapped" not in said[0]
+    plt.close(fig)
+
+
+def test_a_genuinely_unbreakable_word_still_says_so() -> None:
+    """The other branch, which is the one the message was written for."""
+    fig, ax = plt.subplots(figsize=(4.0, 3.5))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.set_title("Pneumonoultramicroscopicsilicovolcanoconiosisandthensome", fontsize=16)
+    fig.canvas.draw()
+
+    said = overflowing_text(fig)
+    assert said and "is one word and cannot be wrapped" in said[0]
+    assert "shorter wording or smaller type" in said[0]
+    plt.close(fig)
