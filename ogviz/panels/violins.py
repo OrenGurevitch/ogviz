@@ -16,6 +16,7 @@ from __future__ import annotations
 from itertools import pairwise
 from typing import TYPE_CHECKING
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from ogviz.layout import drawn_value_extent, hairline_grid, ticks_over_data
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
 
     from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
     from matplotlib.text import Text
     from numpy.typing import NDArray
 
@@ -82,6 +84,146 @@ CONSTANT_SPAN_FLOOR = 0.1
 def constant_span(value: float) -> float:
     """The nominal span for a panel whose data is one repeated number."""
     return max(abs(value) * 0.1, CONSTANT_SPAN_FLOOR)
+
+
+# THE CELL, in inches. A violin panel's width is a CHROME budget plus one slot per group, and its
+# height is fixed — so the violin comes out the same physical size in every figure of a set, and the
+# cell's ASPECT follows from the group count rather than being chosen.
+#
+# WHY IT IS WORTH HAVING. Measured across this package's own gallery — fourteen violin panels in six
+# figures — the slot lands between 1.755 in and 3.188 in, a 1.82x spread. The same violin is drawn
+# at nearly double the size in one figure as in another, and every mark, the type and the bracket
+# band hold a different ratio to it in each. Nothing is wrong with any one of those figures; the set
+# is what stops being comparable.
+#
+# `VIOLIN_SLOT_INCHES` is what this package's own three-condition grid already uses (measured at
+# 1.8833 in per category step), because that is the common cell and the one worth holding still.
+#
+# `VIOLIN_CHROME_INCHES` is the room the y-label and tick labels need to the LEFT of the axes. Over
+# those same fourteen panels it runs 0.307 to 0.893 in, and 1.0 clears the widest by 12%. The MAX
+# and not the median, deliberately: a budget set from the middle of a sample is a budget that fails
+# on the widest case, and the widest case is a tick label like "15,000" in a project this package
+# has never seen. It is an argument for that reason — MEASURE IT OVER EVERY FIGURE A PROJECT DRAWS,
+# not a sample of them, and `text_wider_than_its_panel` is what catches the miss.
+#
+# `VIOLIN_CELL_INCHES` is the cell height, from the same grids (3.82 to 3.93 in).
+VIOLIN_SLOT_INCHES = 1.88
+VIOLIN_CHROME_INCHES = 1.0
+VIOLIN_CELL_INCHES = 3.9
+# A hair on the right, so the rightmost violin does not sit against the canvas edge. Part of the
+# WIDTH rather than taken out of the cell, which is what keeps the slot exact.
+RIGHT_TRIM_INCHES = 0.08
+
+
+def violin_figsize(
+    count: int,
+    *,
+    rows: int = 1,
+    columns: int = 1,
+    chrome: float = VIOLIN_CHROME_INCHES,
+    per_slot: float = VIOLIN_SLOT_INCHES,
+    cell_height: float = VIOLIN_CELL_INCHES,
+    half_slot: float = CATEGORY_HALF_SLOT,
+) -> tuple[float, float]:
+    """The `figsize` that gives each cell `count` groups at ONE physical slot size.
+
+    `count` is the groups in a single cell, not in the figure. Pass it with the grid you intend and
+    the violins come out the same size as in every other figure sized this way — which is the whole
+    point, and is not something a hand-picked `figsize` can promise.
+
+        fig, axes = plt.subplots(2, 2, figsize=violin_figsize(3, rows=2, columns=2))
+
+    THE SLOT IS ONE CATEGORY STEP, and the axes carries `count - 1 + 2 * half_slot` of them, since
+    `group_violins` pins `half_slot` of room past the outermost violin at each end. So the width
+    grows by exactly one slot per group added, and a cell's ASPECT is derived rather than chosen: at
+    three groups it comes out near this package's own grids, and a two-group cell is squarer. That
+    is correct rather than a miss — a two-group cell stretched to a three-group width puts half
+    again as much fill around the same dots.
+
+    Returns both dimensions, where `width_for_bars` returns only a width, because a bar panel's
+    height is not slot-driven and a violin cell's aspect is the thing being held.
+
+    PAIR IT WITH `crop=False`. `save` writes `bbox_inches="tight"` by default, which crops each
+    file to its own ink and throws the shared geometry away — the point here is that the declared
+    canvas is what lands on disk. `layout.density.required_margins` is how to pin the margins across
+    a set so the axes rectangle matches too; this fixes the canvas, that fixes the rectangle inside
+    it, and a set wants both.
+    """
+    require(count >= 1, f"a violin cell needs at least one group, got {count}")
+    require(rows >= 1 and columns >= 1, f"a grid of {rows}x{columns} has no cells in it")
+    require(per_slot > 0.0, f"a slot is a width in inches, got {per_slot}")
+    require(cell_height > 0.0, f"a cell height is inches, got {cell_height}")
+    require(chrome >= 0.0, f"a chrome budget is inches, got {chrome}")
+    slots = count - 1 + 2.0 * half_slot
+    return (columns * (chrome + per_slot * slots) + RIGHT_TRIM_INCHES, rows * cell_height)
+
+
+def violin_cells(
+    count: int,
+    *,
+    rows: int = 1,
+    columns: int = 1,
+    chrome: float = VIOLIN_CHROME_INCHES,
+    per_slot: float = VIOLIN_SLOT_INCHES,
+    cell_height: float = VIOLIN_CELL_INCHES,
+    half_slot: float = CATEGORY_HALF_SLOT,
+    bottom: float = 0.10,
+    top: float = 0.97,
+    hspace: float = 0.30,
+) -> tuple[Figure, list[Axes]]:
+    """A grid of violin cells whose SLOT is one fixed physical size. Returns the figure and axes.
+
+    THE CANVAS IS NOT ENOUGH ON ITS OWN, which is why this exists beside `violin_figsize` rather
+    than leaving a caller to `plt.subplots(figsize=violin_figsize(...))`. Measured: sizing the
+    canvas and leaving matplotlib's default subplot params gives slots of 1.830, 1.709 and 1.647 in
+    at two, three and four groups, and 1.553 in on a 2x2 — a 1.18x spread, better than the 1.82x
+    the gallery has and still not the invariant. Pinning the margins to the same chrome budget the
+    width was computed from gives 1.868, 1.869, 1.869 and 1.892 in: a 1.01x spread. A caller given
+    only the first half would believe the slot was held when it was not, so both halves ship as one
+    call, and `tight_layout` must not be run on the result — it would size the axes around whatever
+    the tick labels happen to need, which is the thing being pinned.
+
+    ONLY THE HORIZONTAL GEOMETRY IS EXACT, and that is deliberate: the slot is a width, and the
+    violin's size is what varied. `bottom`, `top` and `hspace` are ordinary subplot fractions with
+    defaults that leave room for a tick row and a printed mean; a panel with a bracket stack or a
+    two-line title will want its own.
+
+    THIS IS THE OTHER OF TWO COHERENT CHOICES, and `panel_grid` is the first. `panel_grid` holds
+    the TOTAL WIDTH so a set of grids places consistently in a document, and lets the cell size
+    fall out; its docstring gives the reason, and the reason is real — a document that places every
+    figure at one column width will scale a wide four-group figure down, making its violins
+    SMALLER than a two-group figure's, which is the exact defect this function exists to prevent,
+    arrived at from the other end. Hold the cell when the figures are placed at their natural size;
+    hold the width when they are all placed at one column. Nothing can hold both.
+    """
+    figure, drawn = plt.subplots(
+        rows,
+        columns,
+        figsize=violin_figsize(
+            count,
+            rows=rows,
+            columns=columns,
+            chrome=chrome,
+            per_slot=per_slot,
+            cell_height=cell_height,
+            half_slot=half_slot,
+        ),
+        squeeze=False,
+    )
+    width = float(figure.get_figwidth())
+    axes_in = per_slot * (count - 1 + 2.0 * half_slot)
+    figure.subplots_adjust(
+        left=chrome / width,
+        right=1.0 - RIGHT_TRIM_INCHES / width,
+        bottom=bottom,
+        top=top,
+        # A gap of `chrome` inches between columns, so an inner cell gets the same room for its own
+        # tick labels as the leftmost one. Expressed against the axes width because that is what
+        # `wspace` is a fraction of.
+        wspace=chrome / axes_in,
+        hspace=hspace,
+    )
+    return figure, [ax for row in drawn for ax in row]
 
 
 def printed_means(

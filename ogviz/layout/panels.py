@@ -204,6 +204,14 @@ def panel_grid(
     Returns the figure and `count` axes in reading order. Extra slots are left empty and REPORTED —
     see `grid_warnings`, which is also a QC check, since both of these are invisible until the
     figure is drawn.
+
+    THE OTHER COHERENT CHOICE IS `panels.violin_cells`, which holds the CELL and lets the total
+    width fall out — the exact inverse of the paragraph above, and right for a different consumer.
+    Measured across this package's own gallery, a violin's slot varies by 1.82x between figures,
+    so a reader comparing two of them is comparing marks drawn at nearly double the size. Hold the
+    width, as here, when every figure is placed at one column in a document; hold the cell when
+    they are placed at their natural size. Nothing can hold both, and the two live apart so that
+    picking one is a decision rather than an accident.
     """
     require(
         count >= 1,
@@ -417,6 +425,9 @@ def width_for_bars(count: int, *, minimum: float = 12.0, per_bar: float = BAR_IN
     `per_bar` is measured against the house type sizes: a value label, an arm name and a group row
     all have to clear their neighbours, and 1.9 in is what does it. A project setting smaller type
     can pass its own and still have one number to change rather than a width to re-guess.
+
+    Returns a WIDTH only, where the violin sibling `panels.violin_figsize` returns both dimensions:
+    a bar panel's height is not slot-driven, and a violin cell's aspect is the thing being held.
     """
     require(
         count >= 1,

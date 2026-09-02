@@ -119,6 +119,8 @@ from ogviz.panels import (
     trend_line,
     value_floor,
     value_labels,
+    violin_cells,
+    violin_figsize,
 )
 from ogviz.qc import assert_clean, audit
 from ogviz.significance import (
@@ -292,6 +294,8 @@ __all__ = [
     "value_of",
     "value_ticks",
     "violin",
+    "violin_cells",
+    "violin_figsize",
     "width_for_bars",
     "wrap_to_panel",
     "wrap_to_width",

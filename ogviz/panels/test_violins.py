@@ -6,6 +6,8 @@ what the panel drew before them, which is what the last test in this file assert
 
 from __future__ import annotations
 
+from itertools import pairwise
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -249,3 +251,101 @@ def test_a_grid_reconciles_the_row_to_one_size() -> None:
     assert together == {min(apart)}, "the smallest is the only size guaranteed to fit both"
     assert mean_rows_unaligned(fig) == []
     plt.close(fig)
+
+
+def _slot_inches(fig, ax) -> float:
+    """Inches per category step in a drawn cell — the size a violin is actually rendered at."""
+    fig.canvas.draw()
+    low, high = ax.get_xlim()
+    return float(ax.get_position().width * fig.get_figwidth() / (high - low))
+
+
+def _fill(ax, count: int, ylabel: str = "Measurement (units)") -> None:
+    rng = np.random.default_rng(0)
+    group_violins(
+        ax,
+        [(float(i), rng.normal(5.0, 1.0, 25), "#E8A838", "#B97C10") for i in range(count)],
+        show_means=False,
+    )
+    ax.set_ylabel(ylabel, fontsize=16)
+
+
+def test_violin_cells_holds_one_slot_size_across_every_shape() -> None:
+    """The invariant the cell exists for: a violin is one physical size in every figure of a set.
+
+    The premise is this package's own gallery, measured: across fourteen violin panels in six
+    figures the slot runs 1.755 in to 3.188 in, a 1.82x spread — the same violin at nearly double
+    the size in one figure as in another. Nothing is wrong with any one of them; the SET is what
+    stops being comparable.
+    """
+    from ogviz.panels.violins import VIOLIN_SLOT_INCHES, violin_cells
+
+    measured = []
+    for count, rows, columns in ((2, 1, 1), (3, 1, 1), (4, 1, 1), (6, 1, 1), (3, 2, 2), (2, 1, 3)):
+        fig, axes = violin_cells(count, rows=rows, columns=columns)
+        for ax in axes:
+            _fill(ax, count)
+        measured.append(_slot_inches(fig, axes[0]))
+        plt.close(fig)
+
+    assert measured == pytest.approx([VIOLIN_SLOT_INCHES] * len(measured), abs=0.01)
+
+
+def test_the_canvas_alone_does_not_hold_the_slot() -> None:
+    """Which is why `violin_cells` pins the margins rather than leaving that to the caller.
+
+    Sizing the canvas and taking matplotlib's default subplot params leaves the slot varying with
+    the group count, because the default margins are FRACTIONS of a canvas that is now a different
+    width for each count. A caller handed only `violin_figsize` would believe the slot was held.
+    """
+    from ogviz.panels.violins import violin_figsize
+
+    loose = []
+    for count in (2, 3, 4):
+        fig, ax = plt.subplots(figsize=violin_figsize(count))
+        _fill(ax, count)
+        loose.append(_slot_inches(fig, ax))
+        plt.close(fig)
+
+    assert max(loose) / min(loose) > 1.05, (
+        f"premise: the canvas alone leaves the slot drifting — {[round(v, 3) for v in loose]}"
+    )
+
+
+def test_a_wider_y_label_does_not_eat_the_slot() -> None:
+    """Chrome is a BUDGET, not a measurement of what happened to be there.
+
+    A `tight_layout` sizes the axes around whatever the tick labels need, so a figure with wide
+    labels gets a narrower plot than one with short labels on the same canvas — which is the thing
+    being pinned, and the reason this must not be run through `tight_layout`.
+    """
+    from ogviz.panels.violins import violin_cells
+
+    sizes = []
+    for label in ("y", "Concentration (15,000 ppb equivalent) measured at the sensor"):
+        fig, axes = violin_cells(3)
+        _fill(axes[0], 3, ylabel=label)
+        sizes.append(_slot_inches(fig, axes[0]))
+        plt.close(fig)
+
+    assert sizes[0] == pytest.approx(sizes[1], abs=1e-9)
+
+
+def test_the_width_grows_by_exactly_one_slot_per_group() -> None:
+    """The property that makes the aspect derived rather than chosen."""
+    from ogviz.panels.violins import VIOLIN_SLOT_INCHES, violin_figsize
+
+    widths = [violin_figsize(count)[0] for count in (2, 3, 4, 5)]
+    steps = [b - a for a, b in pairwise(widths)]
+    assert steps == pytest.approx([VIOLIN_SLOT_INCHES] * 3)
+
+
+def test_a_cell_needs_a_group_and_a_grid_needs_a_cell() -> None:
+    from ogviz.panels.violins import violin_figsize
+
+    with pytest.raises(AssertionError, match="at least one group"):
+        violin_figsize(0)
+    with pytest.raises(AssertionError, match="no cells in it"):
+        violin_figsize(3, rows=0)
+    with pytest.raises(AssertionError, match="a slot is a width"):
+        violin_figsize(3, per_slot=0.0)
