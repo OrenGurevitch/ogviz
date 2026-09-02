@@ -190,3 +190,47 @@ def test_a_corner_that_is_not_a_doubled_zero_keeps_its_label() -> None:
     assert labels[0].strip(), "the first x label survives, having nothing to duplicate"
     assert ax.get_xticklabels()[0].get_horizontalalignment() == "left"
     plt.close(fig)
+
+
+def test_a_row_takes_its_decimals_from_its_largest_nonzero_finite_value() -> None:
+    """Three spellings existed across bars, violins and split, and a row containing a zero got a
+    different answer from each."""
+    from ogviz.layout.ticks import auto_decimals, row_decimals
+
+    assert row_decimals([0.0, 0.004]) == auto_decimals(0.004)
+    assert row_decimals([float("nan"), 0.0]) == auto_decimals(1.0)
+    assert row_decimals([0.004], scale=1000.0) == auto_decimals(4.0)
+
+
+def test_a_negative_decimals_count_is_refused_by_name() -> None:
+    """It reached a format spec as `.-1f`, whose error names the spec and not the argument."""
+    with pytest.raises(AssertionError, match="non-negative decimals"):
+        format_value(1.5, decimals=-1)
+
+
+def test_the_corner_rule_reads_the_lowest_tick_not_the_first_one_set() -> None:
+    """`get_xticks` returns them in the order they were set, and `inside[0]` asked the wrong one."""
+    from ogviz.layout.ticks import _lowest_tick_is_zero
+
+    _fig, ax = plt.subplots()
+    ax.set_xlim(0.0, 4.0)
+    ax.set_xticks([2.0, 0.0, 4.0])  # a caller's own order: the lowest is not the first
+    assert _lowest_tick_is_zero(ax, "x")
+
+    ax.set_xticks([2.0, 1.0, 4.0])
+    assert not _lowest_tick_is_zero(ax, "x")
+
+
+def test_a_doubled_corner_zero_loses_the_x_axis_copy() -> None:
+    """The branch that drops it: the only one that changes a LABEL rather than an alignment."""
+    from ogviz.layout.ticks import settle_corner_tick
+
+    _fig, ax = plt.subplots()
+    ax.set_xlim(0.0, 2.0)
+    ax.set_ylim(0.0, 50.0)
+    ax.set_xticks([0.0, 1.0, 2.0])
+    ax.set_yticks([0.0, 25.0, 50.0])
+    assert settle_corner_tick(ax)
+    printed = [label.get_text() for label in ax.get_xticklabels()]
+    assert printed[0] == "", "the x axis's zero is the redundant one"
+    assert any(text for text in printed[1:]), "every other x tick still states the scale"

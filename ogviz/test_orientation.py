@@ -168,3 +168,26 @@ def test_a_horizontal_star_clears_its_bracket_by_width_not_height():
     bracket_x = max(ax.lines[-1].get_xdata())
     star_x = ax.texts[-1].get_position()[0]
     assert star_x > bracket_x, "the star must sit beyond the bracket, on the outward side"
+
+
+def test_a_horizontal_reference_label_stays_on_its_line() -> None:
+    """`slide_label_clear` wrote the axes fraction into x whatever the orientation, so on a
+    horizontal panel the label for a line at x = 2.5 ended at (0.012, 0.012) — off its line.
+    `test_a_horizontal_reference_line_is_vertical_on_screen` checks the line only."""
+    from ogviz.tags import marked
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    bar_panel(
+        ax,
+        [Series("s", np.array([1.0, 2.0]), "#7C9A6E")],
+        ["A", "B"],
+        orientation="horizontal",
+        reference=(2.5, "ceiling"),
+    )
+    fig.canvas.draw()
+    (label,) = [
+        text for text in ax.texts if marked(text, "anchored") and text.get_text() == "ceiling"
+    ]
+    x, _y = label.get_position()
+    assert x == pytest.approx(2.5), "the value coordinate is the line's"
+    plt.close(fig)

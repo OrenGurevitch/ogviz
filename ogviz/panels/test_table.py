@@ -11,6 +11,9 @@ from ogviz.panels.table import VALUE_SIZE
 from ogviz.qc import type_too_small
 from ogviz.theme import BAD, GLYPH_FAMILY, GOOD, INK, MUTED_INK, family_for
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def _table(**kwargs):
     rows = [
@@ -242,3 +245,68 @@ def test_a_column_width_must_be_a_width() -> None:
     fig, _ax = _table()
     with pytest.raises(AssertionError, match="inches on the page"):
         type_too_small(fig, column_width=0.0)
+
+
+def _sub_labelled(count: int, **kwargs):
+    """`count` rows, each carrying a sub-label, on one fixed canvas."""
+    rows = [
+        Row(f"metric {index}", (Cell("1.0"),), sub="on the same instrument")
+        for index in range(count)
+    ]
+    fig, ax = plt.subplots(figsize=(14.0, 8.4))
+    table_panel(ax, ["arm"], rows, **kwargs)
+    fig.canvas.draw()
+    return fig, ax, rows
+
+
+def _row_span(count: int, index: int) -> tuple[float, float]:
+    from ogviz.panels.table import _measure
+
+    grid = _measure(["arm"], [Row("x", (Cell("1"),), sub="s") for _ in range(count)], 1.0)
+    return grid.tops[index + 1], grid.tops[index]
+
+
+def test_a_sub_label_stays_inside_its_own_row_on_a_long_table() -> None:
+    """The offsets were axes fractions, so a tall table pushed the sub-label through its own rule.
+
+    The premise first: the retired constant. On twenty rows of this canvas the row is 22 pt tall,
+    and 0.020 of the axes is 42% of that — the sub-label's centre 1.7 pt above the rule below it,
+    with 4.75 pt of its own ink to go. Asserting the FIXED number would only restate the code, so
+    what is measured is the rendered ink against the rule it must not cross.
+    """
+    _fig, ax, _rows = _sub_labelled(20)
+    bottom, top = _row_span(20, 0)
+    rule_px = ax.transData.transform((0.0, bottom))[1]
+    middle = (top + bottom) / 2
+
+    sub = next(text for text in ax.texts if text.get_text() == "on the same instrument")
+    box = sub.get_window_extent()
+    half = box.height / 2.0
+
+    retired = ax.transData.transform((0.0, middle - 0.020))[1]
+    assert retired - half < rule_px, (
+        "premise: the old offset put the sub-label's INK below its rule"
+    )
+
+    assert box.y0 > rule_px, "the sub-label's ink crossed into the row below"
+    assert sub.get_window_extent().y1 < ax.transData.transform((0.0, top))[1]
+
+
+def test_the_split_follows_font_scale() -> None:
+    """It was a share of the axes, so `font_scale` set both strings larger in the same gap."""
+    _fig, plain, _rows = _sub_labelled(4)
+    _fig2, scaled, _rows2 = _sub_labelled(4, font_scale=1.6)
+
+    def split(ax) -> float:
+        label = next(text for text in ax.texts if text.get_text() == "metric 0")
+        sub = next(text for text in ax.texts if text.get_text() == "on the same instrument")
+        return float(label.get_position()[1] - sub.get_position()[1])
+
+    assert split(scaled) > split(plain) * 1.4
+
+
+def test_a_table_with_no_columns_is_refused() -> None:
+    """With none, the panel draws a row of labels with nothing beside them — a list, not a table."""
+    _fig, ax = plt.subplots(figsize=(6.0, 3.0))
+    with pytest.raises(AssertionError, match="at least one column"):
+        table_panel(ax, [], [Row("only a name", ())])

@@ -18,6 +18,9 @@ import pytest
 from ogviz.layout.collision import quoted
 from ogviz.qc.report import group_by_subject, subject_of
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def _complaint(label: str, tail: str) -> str:
     """A complaint built the way the checks build one: `repr` of `quoted`."""
@@ -86,3 +89,42 @@ def test_the_group_header_is_the_complaint_s_own_quoting() -> None:
     (line,) = group_by_subject(said)
     header = line.split(":")[0]
     assert header in said[0], "the header is a slice of the complaint, not a re-rendering of it"
+
+
+def test_a_grouped_ink_complaint_does_not_lose_its_verb() -> None:
+    """It read "'X': and Rectangle share 412 px of ink" — a dangling conjunction.
+
+    `group_by_subject` strips the label out of every line it folds under that label, so a
+    complaint shaped "A and B share …" leaves an orphaned "and" where A was — or, where the text
+    was the second of the pair, an "and" stranded mid-sentence. It was on this package's own
+    gallery plate of the gate's output.
+    """
+    grouped = group_by_subject(
+        [
+            "'0.341 units' shares 412 px of ink with Rectangle",
+            "'0.341 units' sits on 2 mark(s) — it has to move",
+        ]
+    )
+    assert grouped == [
+        "'0.341 units': shares 412 px of ink with Rectangle; sits on 2 mark(s) — it has to move"
+    ]
+
+
+def test_the_ink_complaint_names_the_text_first_whichever_of_the_pair_it_is() -> None:
+    """The subject has to lead, or `group_by_subject` folds the line under a label mid-sentence."""
+    import matplotlib.pyplot as plt
+
+    from ogviz.qc.ink import colliding_ink
+
+    fig, ax = plt.subplots(figsize=(5.0, 3.0))
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    # The patch is added FIRST, so it is `first` in the artist order and the text is `second`.
+    ax.add_patch(plt.Rectangle((0.2, 0.2), 0.6, 0.6, facecolor="#2E7CE0", zorder=1))
+    ax.text(0.5, 0.5, "on the block", ha="center", va="center", zorder=2)
+    fig.canvas.draw()
+
+    said = colliding_ink(fig)
+    assert said, "premise: the label really does share ink with the patch"
+    assert said[0].startswith("'on the block' shares"), said[0]
+    plt.close(fig)

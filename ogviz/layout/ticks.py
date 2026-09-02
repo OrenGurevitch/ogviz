@@ -6,8 +6,9 @@ Two facilities that a figure needs and matplotlib does not give directly.
 locator lands on. Four labelled gridlines read; nine do not, and the count changing between panels
 of one figure reads as an error.
 
-`display_scale` exists because a value's stored unit and its printed unit differ more often than
-not. A trace quantity is stored in ppm and written in ppb; a volume is stored in mm3 and
+`display_scale` — the panels' name for `format_value(scale=...)`, which is what lives here — exists
+because a value's stored unit and its printed unit differ more often than not. A trace quantity is
+stored in ppm and written in ppb; a volume is stored in mm3 and
 sometimes written in mL. Without it an axis labelled "ppb" carries -0.002 and a printed mean reads
 "-0.00" — the number is right and the figure is wrong, which is worse than a crash. The SCALE is a
 display fact, so it lives here; the DATA is never touched.
@@ -22,6 +23,8 @@ from ogviz.orientation import is_vertical, require_linear_value_axis, value_span
 from ogviz.require import require
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from matplotlib.axes import Axes
 
     from ogviz.orientation import Orientation
@@ -32,7 +35,15 @@ INSET_FRACTION = 0.10  # keep ticks off the very ends, where a label collides wi
 
 
 def round_ticks(low: float, high: float, count: int) -> list[float]:
-    """Exactly `count` round values inside [low, high], inset from both ends."""
+    """Exactly `count` round values inside [low, high], inset from both ends.
+
+    The steps tried run 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8 across nineteen decades, so a nice step
+    exists for any span a figure can show. What has no round answer is a COUNT the span cannot hold
+    — nine ticks inset into a unit range need a step under 0.1 that lands on round numbers, and
+    there is none. Then the ticks come back evenly spaced and NOT round, because `count` is the
+    caller's contract and silently returning fewer would break `value_ticks`' labels. A caller who
+    sees decimals it did not expect asked for too many ticks.
+    """
     require(
         count >= 2,
         "round_ticks needs at least two ticks",
@@ -68,6 +79,23 @@ def typeset(text: str) -> str:
     return text.replace("-", MINUS) if mpl.rcParams["axes.unicode_minus"] else text
 
 
+def row_decimals(values: Iterable[float], *, scale: float = 1.0) -> int:
+    """`auto_decimals` for a ROW of printed numbers: the precision the largest one wants.
+
+    A row of labels takes its precision from its largest value so the row reads as one measurement
+    rather than several. THREE spellings of this existed — one that skipped non-finite and zero
+    values, one that skipped zeros only, and one that skipped nothing and so could never reach a
+    default — and a row containing a zero got a different answer from each panel.
+    Zero and non-finite values do not vote: a zero has no precision to ask about, and a NaN has
+    no magnitude.
+    """
+    largest = max(
+        (abs(value * scale) for value in values if math.isfinite(value) and value != 0),
+        default=1.0,
+    )
+    return auto_decimals(largest)
+
+
 def format_value(
     value: float,
     *,
@@ -92,6 +120,12 @@ def format_value(
     `one_minus_sign` then reports the figure for carrying two minus glyphs. That had already
     happened in a consumer's figure. A zero takes no sign: "+0" claims a direction it does not have.
     """
+    # `decimals` reaches a format spec, where a negative count is `.-1f` and raises "Format
+    # specifier missing precision" — an error naming the spec rather than the argument.
+    require(
+        decimals is None or decimals >= 0,
+        f"format_value needs a non-negative decimals count, got {decimals}",
+    )
     scaled = value * scale
     chosen_here = decimals is None
     if decimals is None:
@@ -176,7 +210,7 @@ def value_ticks(
     return positions
 
 
-def _lowest_tick_is_zero(ax, axis: Literal["x", "y"]) -> bool:
+def _lowest_tick_is_zero(ax: Axes, axis: Literal["x", "y"]) -> bool:
     """Whether the lowest tick this axis actually draws is zero.
 
     The lowest tick of each axis is the one at the bottom-left corner, so asking this of BOTH axes
@@ -186,11 +220,14 @@ def _lowest_tick_is_zero(ax, axis: Literal["x", "y"]) -> bool:
     """
     low, high = sorted(ax.get_xlim() if axis == "x" else ax.get_ylim())
     ticks = ax.get_xticks() if axis == "x" else ax.get_yticks()
-    inside = [float(tick) for tick in ticks if low <= float(tick) <= high]
+    # SORTED, because `get_xticks` returns them in the order they were set and a caller may set
+    # them in any order. Reading `inside[0]` of an unsorted list asks about the first tick WRITTEN,
+    # which is not the question the name asks and is not the label in the corner.
+    inside = sorted(float(tick) for tick in ticks if low <= float(tick) <= high)
     return bool(inside) and abs(inside[0]) < (high - low) * 1e-9
 
 
-def settle_corner_tick(ax) -> bool:
+def settle_corner_tick(ax: Axes) -> bool:
     """Stop the two axes printing zero twice, in two spellings, in the same corner.
 
     THE CORNER IS A COLLISION NOBODY OWNS. A tick label is centred on its tick, so the one at the
@@ -221,7 +258,7 @@ def settle_corner_tick(ax) -> bool:
     Returns whether anything changed, so a caller can tell the no-op case from the fixed one.
     """
     low, high = sorted(ax.get_xlim())
-    inside = [float(tick) for tick in ax.get_xticks() if low <= float(tick) <= high]
+    inside = sorted(float(tick) for tick in ax.get_xticks() if low <= float(tick) <= high)
     if not inside:
         return False
 

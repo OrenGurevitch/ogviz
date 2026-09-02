@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Literal, NamedTuple
 from matplotlib.colors import to_rgba
 from matplotlib.patches import FancyBboxPatch, Rectangle
 
+from ogviz import units
 from ogviz.layout.panels import text_width_points
 from ogviz.require import require
 from ogviz.tags import mark
@@ -56,6 +57,15 @@ HIGHLIGHT_RADIUS = 0.012
 LABEL_INDENT = 0.008
 TINT_STRENGTH = 0.84  # how far a highlight colour is blended toward the page for a cell fill
 CELL_PAD_PT = 18.0
+# The split between a label and its sub-label, IN POINTS, because it is a typographic distance and
+# not a share of the row. Both numbers were axes fractions — 0.012 above and 0.020 below — which
+# made them a share of the WHOLE table: on this package's own eight-row gallery table those are
+# 5.6 pt and 9.3 pt, and they are what these constants reproduce. On a twenty-row table of the same
+# height the row is 22 pt tall, so 0.020 of the axes is 42% of the row and the sub-label crossed
+# its own bottom rule into the next row. They also ignored `font_scale` entirely, so a table at
+# `font_scale=1.5` set both strings larger in the same-sized gap.
+LABEL_RISE_PT = 5.6
+SUBLABEL_DROP_PT = 9.3
 
 
 Tone = Literal["good", "bad", "neutral"]
@@ -178,6 +188,27 @@ def _measure(headers: Sequence[str], rows: Sequence[Row], font_scale: float) -> 
     return Layout(shares, edges, centres, tops, unit)
 
 
+def _sub_split(
+    ax: Axes, row_height: float, *, above_size: float, below_size: float, font_scale: float
+) -> tuple[float, float]:
+    """How far a label and its sub-label sit either side of the row's middle, in axes fractions.
+
+    `row_height` is the row's own height in axes fractions — `unit * row.height` — and it is the
+    CEILING here rather than the measure: the pair is placed at the typographic distance, then
+    clamped so each string's ink stays inside the row it names. A sub-label that leaves its row
+    crosses the rule below it and lands on the next row's label, which reads as that row's own
+    sub-label; clamping instead crowds the pair inside one row, which `text_overlaps` reports and
+    a caller fixes with a taller figure or fewer rows.
+    """
+    figure = ax.get_figure()
+    assert figure is not None, "the axes must belong to a figure"
+    per_point = 1.0 / units.to_points(ax.get_window_extent().height, fig=figure)
+    room = row_height / 2.0
+    rise = min(LABEL_RISE_PT * font_scale * per_point, max(room - above_size * per_point, 0.0))
+    drop = min(SUBLABEL_DROP_PT * font_scale * per_point, max(room - below_size * per_point, 0.0))
+    return rise, drop
+
+
 def table_panel(
     ax: Axes,
     headers: Sequence[str],
@@ -210,6 +241,10 @@ def table_panel(
     ASPECT RATIO rather than the type size — `type_too_small` in `ogviz.qc` reports which.
     """
     require(rows, "a table needs at least one row")
+    # And at least one COLUMN. With none, `_measure` divides the label width by itself, every row
+    # matches its zero cells, and the table draws as a row of labels with nothing beside them —
+    # which is a list, not a comparison, and is what this panel exists to refuse.
+    require(headers, "a table needs at least one column")
     for row in rows:
         require(
             len(row.cells) == len(headers),
@@ -297,12 +332,26 @@ def table_panel(
     for row_index, row in enumerate(rows):
         top, bottom = tops[row_index], tops[row_index + 1]
         middle = (top + bottom) / 2
+        label_rise, label_drop = _sub_split(
+            ax,
+            top - bottom,
+            above_size=label_size,
+            below_size=sublabel_size,
+            font_scale=font_scale,
+        )
+        value_rise, value_drop = _sub_split(
+            ax,
+            top - bottom,
+            above_size=value_size,
+            below_size=value_sub_size,
+            font_scale=font_scale,
+        )
         ax.plot(
             [0.0, 1.0], [top, top], color=rule_color, lw=ROW_RULE_WIDTH, zorder=1, clip_on=False
         )
         cell_text(
             LABEL_INDENT,
-            middle + (0.012 if row.sub else 0.0),
+            middle + (label_rise if row.sub else 0.0),
             row.label,
             ha="left",
             va="center",
@@ -313,7 +362,7 @@ def table_panel(
         if row.sub:
             cell_text(
                 LABEL_INDENT,
-                middle - 0.020,
+                middle - label_drop,
                 row.sub,
                 ha="left",
                 va="center",
@@ -337,7 +386,7 @@ def table_panel(
                 ax.add_patch(fill)
             cell_text(
                 centre,
-                middle + (0.012 if cell.sub else 0.0),
+                middle + (value_rise if cell.sub else 0.0),
                 cell.value,
                 ha="center",
                 va="center",
@@ -349,7 +398,7 @@ def table_panel(
             if cell.sub:
                 cell_text(
                     centre,
-                    middle - 0.020,
+                    middle - value_drop,
                     cell.sub,
                     ha="center",
                     va="center",

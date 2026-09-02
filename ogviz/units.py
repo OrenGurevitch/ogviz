@@ -71,6 +71,9 @@ def to_px(value: float, unit: Unit, *, fig: Figure | SubFigure, em: float | None
         return value / CM_PER_INCH * dpi
     if unit == "mm":
         return value / 10.0 / CM_PER_INCH * dpi
+    # An unknown unit used to fall through to the em branch: a typo was reported as a missing type
+    # size, and with `em=` given it returned a number in no unit at all.
+    require(unit == "em", f"unknown unit {unit!r}; one of px, pt, in, cm, mm, em")
     require(em is not None, "an em is relative to a type size; pass the size it is relative to")
     return value * float(em or 0.0) * px_per_point(fig)
 
@@ -89,6 +92,11 @@ def to_points(pixels: float, *, fig: Figure | SubFigure) -> float:
 def inches_to_points(inches: float) -> float:
     """Figure inches as points. The one conversion with no figure in it — 72 is the definition."""
     return inches * POINTS_PER_INCH
+
+
+def points_to_inches(points: float) -> float:
+    """The inverse of `inches_to_points`, for a figure size computed from a type size."""
+    return points / POINTS_PER_INCH
 
 
 def value_to_px(ax: Axes, value: float, *, orientation: str = "vertical") -> float:

@@ -30,6 +30,7 @@ then behaves like `"warn"` about whatever is left.
 
 from __future__ import annotations
 
+import functools
 import os
 import warnings
 from contextlib import contextmanager
@@ -75,9 +76,7 @@ def _complaints(fig: Figure, *, mode: Mode, min_gap: float, advise: bool) -> lis
         repair(fig)
     found = audit(fig, min_gap=min_gap)
     if advise:
-        from ogviz.layout.density import dead_space
-        from ogviz.qc.arrangement import header_crowds_the_panels
-        from ogviz.qc.typography import type_too_small
+        from ogviz.qc import ADVISORY_CHECKS
 
         # Advisory, and kept separate on purpose: a deliberately airy figure is a real choice and a
         # panel holding room for a bracket is not wasting it. These never decide whether a figure is
@@ -86,7 +85,7 @@ def _complaints(fig: Figure, *, mode: Mode, min_gap: float, advise: bool) -> lis
         # `type_too_small` is here rather than in `CHECKS` for the same reason and one of its own:
         # the figure it was written for and the densest figure this package ships are 1.3x apart on
         # the measurement, which is not a margin to fail a build on. See its own note.
-        notes = dead_space(fig) + type_too_small(fig) + header_crowds_the_panels(fig)
+        notes = [note for check in ADVISORY_CHECKS for note in check(fig)]
         found = found + [f"(advisory) {note}" for note in notes]
     return found
 
@@ -137,6 +136,13 @@ def guard(
     It honours `mode` like everything else here: a missing glyph raises under `raise` and warns
     under `warn`. That is the whole reason it is not simply `with glyphs_must_render():` around the
     write — that context manager only raises, and a guard installed to warn must keep warning.
+
+    PROCESS-WIDE, not per thread. `mode`, `min_gap` and `advise` are closed over in the one
+    `Figure.savefig` this installs, and `guarded()` swaps that class attribute for every thread at
+    once. What IS per thread is the re-entry flag (`_AUDITING`), so two threads saving concurrently
+    are both audited; a `with guarded(mode="warn")` in one thread changes the mode for the other
+    for as long as the block lasts. A project saving from several threads under different settings
+    wants `save`, which takes its settings per call.
     """
     from ogviz.layout.overlap import DEFAULT_MIN_GAP
 
@@ -153,8 +159,10 @@ def guard(
             hard = [note for note in found if not note.startswith("(advisory)")]
             if hard and mode == "raise":
                 where = args[0] if args else kwargs.get("fname", "a figure")
+                # The REASONS, and only those: the advisory notes never decide anything, and listed
+                # among the grounds for a refusal they read as though they had.
                 raise FigureRejectedError(
-                    f"ogviz.guard refused to write {where}:\n  - " + "\n  - ".join(found)
+                    f"ogviz.guard refused to write {where}:\n  - " + "\n  - ".join(hard)
                 )
             if found:
                 warnings.warn("ogviz.guard: " + "; ".join(found), FigureQuality, stacklevel=2)
@@ -163,16 +171,41 @@ def guard(
             _AUDITING.reset(token)
 
     global _INSTALLED
-    savefig.__doc__ = _ORIGINAL.__doc__
+    # The whole signature's worth of metadata, not `__doc__` alone: `help(fig.savefig)` and
+    # `inspect.signature` should show matplotlib's, since the wrapper's point is to be invisible.
+    functools.update_wrapper(savefig, _ORIGINAL)
     _INSTALLED = savefig
     Figure.savefig = savefig  # type: ignore[method-assign, assignment]
 
 
 def unguard() -> None:
-    """Put matplotlib's own `savefig` back."""
+    """Put matplotlib's own `savefig` back — if what is there is ours.
+
+    Only when `is_guarded()`: this assigned `_ORIGINAL` unconditionally, so a call from a project
+    that never guarded, or one sharing the process with another library's `savefig` wrapper,
+    silently removed a wrapper this module did not install.
+    """
     global _INSTALLED
+    if is_guarded():
+        Figure.savefig = _ORIGINAL  # type: ignore[method-assign]
     _INSTALLED = None
-    Figure.savefig = _ORIGINAL  # type: ignore[method-assign]
+
+
+@contextmanager
+def gate_already_run() -> Iterator[None]:
+    """Saves inside this block pass the guard untouched, because the caller has run the gate.
+
+    For `ogviz.save`, which runs `assert_clean` itself and then writes: under `guard()` the write
+    was audited a second time, and — the defect this exists for — a `save(check_overlap=False)` on
+    a panel whose text legitimately abuts was refused by the guard anyway, so the documented escape
+    and the documented guard could not be used together. Same flag the wrapper uses to stop its own
+    audit from recursing, so a save that is already inside an audit is unaffected.
+    """
+    token = _AUDITING.set(True)
+    try:
+        yield
+    finally:
+        _AUDITING.reset(token)
 
 
 def is_guarded() -> bool:
@@ -221,6 +254,9 @@ def guard_from_environment() -> bool:
     mode = setting.replace("+advise", "").strip(" +") or "raise"
     if mode in ("1", "true", "on", "yes"):
         mode = "raise"
+    # LOUD at import, deliberately. The alternative — warn and install nothing — leaves a build
+    # that believes it is guarded running unguarded, which is the one outcome worse than a failed
+    # import. A misspelled setting is a configuration error and is reported as one.
     if mode not in ("raise", "warn", "repair"):
         raise ValueError(
             f"{ENV_VAR}={setting!r} is not a mode; use raise, warn or repair, optionally +advise"

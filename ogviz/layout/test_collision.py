@@ -17,6 +17,9 @@ from ogviz.layout.collision import (
 )
 from ogviz.tags import mark
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def _filled_curve():
     """A filled area under a curve — the shape a bounding box describes worst."""
@@ -120,7 +123,7 @@ def test_a_thin_marker_is_not_measured_as_a_square() -> None:
     """An error-bar cap is `"_"`: wide, and ink only as thick as its own stroke.
 
     Measuring it as markersize-by-markersize claimed 8 px of height it does not have and reported
-    fourteen value labels on a real figure as sitting on a mark each was 0.5 px clear of.
+    every value label on one figure as sitting on a mark each was 0.5 px clear of.
     """
     import numpy as np
 

@@ -44,7 +44,7 @@ def test_a_series_takes_whatever_matplotlib_takes(points) -> None:
 def test_mismatched_series_lengths_are_refused_with_a_sentence() -> None:
     """And the sentence is the point — this used to be an AttributeError about `list`."""
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
-    with pytest.raises(AssertionError, match="3 x values and 2 y values"):
+    with pytest.raises(AssertionError, match=r"x has shape \(3,\) and y has shape \(2,\)"):
         line_panel(ax, [Line(label="a", x=[0, 1, 2], y=[1.0, 2.0], color="#2E7CE0")])
     plt.close(fig)
 
@@ -105,3 +105,30 @@ def test_a_muted_series_is_drawn_behind_the_others() -> None:
     by_label = {line.get_label(): line.get_zorder() for line in ax.lines}
     assert by_label["baseline"] < by_label["lead"]
     plt.close(fig)
+
+
+def test_a_broken_axis_groups_its_thousands() -> None:
+    """`_tick_text` was `f"{value:g}"`; over five-figure values the package's own
+    `ungrouped_thousands` then refused the panel — five complaints, measured."""
+    from ogviz.qc import ungrouped_thousands
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    lines = [Line("a", [0.0, 1.0, 2.0], [52000.0, 56000.0, 61000.0], "#7C9A6E")]
+    line_panel(ax, lines)
+    broken_zero(ax, floor=50000.0)
+    fig.canvas.draw()
+    labels = [tick.get_text() for tick in ax.get_yticklabels()]
+    assert "0" in labels and all("," in text for text in labels if text not in ("0", "")), labels
+    assert not ungrouped_thousands(fig)
+    plt.close(fig)
+
+
+def test_a_mismatch_report_survives_a_zero_dimensional_array() -> None:
+    """The message said `shape[0]`, which is itself an IndexError on a 0-d array.
+
+    So the sentence written to name the mismatch raised a different error from inside itself, which
+    is the one shape a `require` message must never have.
+    """
+    _fig, ax = plt.subplots()
+    with pytest.raises(AssertionError, match="x has shape"):
+        line_panel(ax, [Line(label="a", x=1.0, y=[1.0, 2.0], color="#2E7CE0")])

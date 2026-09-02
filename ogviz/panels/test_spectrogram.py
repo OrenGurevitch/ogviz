@@ -16,6 +16,9 @@ import pytest
 from ogviz.panels.spectrogram import FLOOR_DB, spectrogram, to_decibels
 from ogviz.qc import audit
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def _grid(rows: int = 16, columns: int = 40):
     """A precomputed time-frequency surface: one band, plus a floor of noise."""
@@ -196,3 +199,11 @@ def test_no_tick_is_labelled_outside_the_axis() -> None:
     low, high = ax.get_xlim()
     assert all(low <= float(tick) <= high for tick in ax.get_xticks())
     plt.close(fig)
+
+
+def test_a_missing_bin_is_floored_like_a_silent_one() -> None:
+    """`clip` leaves a NaN where it finds one, so the promise that no cell reaches matplotlib
+    non-finite held for a zero and not for a NaN. The existing test's input had no NaN in it."""
+    decibels = to_decibels(np.array([[np.nan, 1.0], [0.0, 0.5]]))
+    assert np.isfinite(decibels).all()
+    assert decibels[0, 0] == pytest.approx(FLOOR_DB)

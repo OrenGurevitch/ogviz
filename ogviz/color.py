@@ -2,10 +2,9 @@
 
 Every other check in this package measures where things ARE, and none of them looks at what colour
 they are — so a figure whose two series are a confident red and green passes all of them and is a
-single grey line to about one man in twelve. (The count used to be written out here as "thirteen",
-and there are twenty-one now: a number that has to be maintained by hand in prose is a number that
-goes stale, which is the same reason the README's module tree is generated.) It is the most common
-accessibility defect in scientific figures and the one an author is least able to see.
+single grey line to about one man in twelve. It is the most common accessibility defect in
+scientific figures and the one an author is least able to see. (A count of the other checks used to
+sit in this sentence, and had gone stale twice — `--list-checks` is where that number lives.)
 
 The simulation is Viénot, Brettel and Mollon's, the standard construction: take the colour to LMS,
 collapse the missing cone's response onto the plane spanned by the other two, come back. It is a
@@ -24,7 +23,8 @@ which this module does not use. It had been carried as an open worry for a week 
 tritanopia was the weak leg and that a correction might make the shipped palettes report
 themselves. Both halves of that were wrong:
 
-  the 114 pairs in SERIES and LINE_SERIES   0 change verdict at the 0.18 threshold
+  the 38 pairs in SERIES and LINE_SERIES,
+  under each of the three deficiencies      0 change verdict at the 0.18 threshold
   tritanopia, the deficiency under suspicion  mean |difference| 0.023, and the LEAST affected
   protanopia, which nobody suspected          mean |difference| 0.082, max 0.270
   the tightest pair anywhere, either way      0.216 here, 0.219 under Brettel, both clear of 0.18
@@ -39,7 +39,8 @@ to be wrong on — and it is now a measured limitation rather than an unexamined
 
 THE METRIC IS THE SAME STORY. `separation` is Euclidean in sRGB where the accepted choice is a
 uniform space; Petroff's accessible-sequence work builds palettes in CAM02-UCS for exactly that
-reason. Measured on the same 114 pairs, the two rank pairs 0.896 alike, and a CAM02-UCS threshold
+reason. Measured on the same 38 pairs x 3 deficiencies, the two rank pairs 0.896 alike, and a
+CAM02-UCS threshold
 anywhere in (5.2, 8.2) reproduces every verdict the 0.18 sRGB threshold gives — 5.2 being
 matplotlib's own red/green, which must be caught, and 8.2 the tightest shipped pair, which must
 not be. Switching would change the units, force the threshold to be re-derived, add a dependency,
@@ -103,13 +104,19 @@ _COLLAPSE = {
 #                     a traffic red/green          0.123
 #                     the violet/blue this palette 0.062    already fixed, and it must stay caught
 #                     dropped
-#   must not be       the tightest pair in SERIES  0.216    #14A97C against #9B3B8F
-#                     the tightest in the line wheel 0.216
+#   must not be       the tightest pair in either  0.216    #14A97C against #9B3B8F, which are in
+#                     palette                                both SERIES and LINE_SERIES — one
+#                                                            pair, not two measurements
 #
 # So anything in (0.165, 0.216] separates the two sets, and 0.18 sits in it with room either side.
 # The previous 0.12 was set against the ENCODED distances and let matplotlib's red/green through —
 # the open question of 2026-07-31, which measurement in the right space now answers.
 CONFUSABLE_DISTANCE = 0.18
+# How far past `threshold` a `near=` answer has to clear before it counts as a recommendation.
+# 1.5x, because the threshold is a screening line rather than a cliff — `separation` catches 88.1%
+# of the pairs Brettel calls confusable, so a colour clearing by a thousandth is inside the
+# metric's own error and looks identical to the one it replaced. Measured: asked for the nearest
+# safe colour to matplotlib's green, the bare threshold returns 0.181 and this returns 0.276.
 NEAR_HEADROOM = 1.5
 
 
@@ -201,11 +208,6 @@ def worst_separation(color: str, taken: Iterable[str]) -> float:
 _HUES = 144
 _SATURATIONS = (0.30, 0.45, 0.60, 0.78, 0.95)
 _VALUES = (0.35, 0.48, 0.62, 0.75, 0.86, 0.95)
-# How far past `threshold` a `near=` answer has to clear before it counts as a recommendation.
-# 1.5x, because the threshold is a screening line rather than a cliff — `separation` catches 88.1%
-# of the pairs Brettel calls confusable, so a colour clearing by a thousandth is inside the
-# metric's own error and looks identical to the one it replaced. Measured: asked for the nearest
-# safe colour to matplotlib's green, the bare threshold returns 0.181 and this returns 0.276.
 
 
 def separated_from(
@@ -260,6 +262,10 @@ def separated_from(
     from matplotlib.colors import to_hex
 
     others = [to_hex(one) for one in taken]
+    # Refused, because the answer for nothing is not a colour: every score stayed at infinity, the
+    # threshold passed vacuously, and this handed back the first grid candidate — a dark maroon —
+    # or, with `near=`, a near-copy of `near`, both as though they had been computed. Measured.
+    require(others, "separated_from needs at least one colour to be separated from")
     candidates = [
         to_hex(hsv_to_rgb(index / _HUES, saturation, value))
         for index in range(_HUES)

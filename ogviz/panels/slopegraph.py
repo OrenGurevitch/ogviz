@@ -72,10 +72,26 @@ class Strand:
 def crowded_ends(strands: Sequence[Strand], ax: Axes, *, gap_px: float = CROWDED_PX) -> list[str]:
     """Pairs of strands whose last points are too close for their labels to be placed separately.
 
-    Answered before drawing rather than discovered afterwards. Placing end labels one at a time is
-    only correct when they do not compete, and a caller that knows its series converge can reach for
-    a legend instead of finding out from the rendered figure.
+    Answered before the LABELS are placed rather than discovered afterwards. Placing end labels one
+    at a time is only correct when they do not compete, and a caller that knows its series converge
+    can reach for a legend instead of finding out from the rendered figure.
+
+    THE ANSWER IS IN PIXELS, so the panel's value axis has to contain the ends already. That is the
+    precondition, and it used to be an unstated one: `ax.transData` on a fresh axes maps against the
+    default 0-1 limits, so a public call before anything was drawn returned a list of gaps computed
+    against the wrong scale — confidently, in the same shape as a real answer. `slopegraph` draws
+    the strands and renders before asking, which is why its own call was always right and the one a
+    caller could make was not. Refused rather than guessed at, because a wrong crowding answer sends
+    a caller to a legend they did not need, or leaves a pile of labels it should have prevented.
     """
+    reach = [float(strand.values[-1]) for strand in strands]
+    low, high = sorted(ax.get_ylim())
+    require(
+        not reach or (low <= min(reach) and max(reach) <= high),
+        f"crowded_ends measures in pixels, and this panel's value axis runs {low:g} to {high:g} "
+        f"while the strand ends reach {min(reach, default=0.0):g} to {max(reach, default=0.0):g}. "
+        "Draw the strands first, or set the limits, then ask.",
+    )
     ends = sorted(
         (float(ax.transData.transform((0.0, float(strand.values[-1])))[1]), strand.label)
         for strand in strands

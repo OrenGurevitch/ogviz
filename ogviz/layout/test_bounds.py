@@ -4,8 +4,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import pytest
 
 from ogviz.layout.bounds import text_off_canvas, text_wider_than_its_panel
+
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
 
 
 def test_a_label_running_off_the_page_is_caught() -> None:
@@ -84,3 +88,24 @@ def test_a_rotated_label_is_told_which_way_to_edit() -> None:
     assert "ROTATED" in _rotation_hint(rotated)
     assert "shorten it" in _rotation_hint(rotated)
     assert _rotation_hint(upright) == "", "a horizontal label gets the opposite advice, correctly"
+
+
+def test_a_panel_is_identified_one_way_across_every_check() -> None:
+    """Three conventions existed, so one report could open three ways about the same panel.
+
+    A title where the panel has one, because that is what a person reads off the picture; a
+    reading-order index only where it does not; and NOTHING on a single-panel figure, where
+    `axes 0:` was a prefix identifying nothing on the commonest kind of figure there is.
+    """
+    from ogviz.layout.bounds import panel_prefix
+
+    fig, ax = plt.subplots(figsize=(5.0, 3.0))
+    assert panel_prefix(fig, ax) == ""
+    ax.set_title("Latency")
+    assert panel_prefix(fig, ax) == "panel 'Latency': "
+
+    grid, axes = plt.subplots(1, 3, figsize=(9.0, 3.0))
+    assert panel_prefix(grid, axes[1]) == "panel 1 of 3: "
+    axes[1].set_title("Throughput")
+    assert panel_prefix(grid, axes[1]) == "panel 'Throughput': "
+    plt.close("all")

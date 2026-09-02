@@ -16,6 +16,10 @@ passing through.
   density     how much of the page is unused
   ticks       round numbers, and values in their display unit
   panels      a row of panels with a reserved caption row
+  bounds      text that leaves the canvas or reaches across its neighbour
+  stacking    labels sharing a column, placed without overlap
+  raster      the rendered frame as pixels, and which of them are ink
+  render      one render for a whole pass, and a renderer for a figure with no canvas
 """
 
 from ogviz.layout.axis import drawn_value_extent, ticks_over_data

@@ -21,11 +21,13 @@ from ogviz.orientation import (
     constant_value_line,
     is_vertical,
     place_many,
+    read_orientation,
     value_transform,
 )
+from ogviz.qc.reading import is_backdrop
 from ogviz.require import require
 from ogviz.tags import mark, value_of
-from ogviz.theme import CANVAS, MUTED_INK, VALUE_LABEL_SIZE
+from ogviz.theme import MUTED_INK, VALUE_LABEL_SIZE, page_color
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -182,7 +184,12 @@ def reference_band(
         # Knockout box, the device `value_labels` uses: the label sits just above the band's upper
         # edge, exactly where a gridline is likely to run. A glyph stroke would fringe the letters;
         # an opaque box behind them keeps the type clean and hides only what it covers.
-        bbox={"facecolor": CANVAS, "edgecolor": "none", "pad": 1.6},
+        # `page_color()`, not the `CANVAS` constant: under `use_house_style(PAPER_WHITE)` the
+        # constant painted a warm-grey rectangle on a white page, which is the failure `page_color`
+        # exists to prevent and every other knockout in the package already avoids. The pad is
+        # wider than `value_labels`' on purpose — this label sits on a dashed edge and a gridline,
+        # and the box has to cover the dashes on either side of the text as well as behind it.
+        bbox={"facecolor": page_color(), "edgecolor": "none", "pad": 1.6},
     )
     mark(drawn, "anchored")
     mark(drawn, "anchor", edges[1])
@@ -202,31 +209,71 @@ def slide_label_clear(ax: Axes, label: Text) -> None:
     The label slides along the line and never off it: that is the axis it is free on, and the line
     is the thing it names. Both sides of the line are tried, because a threshold above a short bar
     has room underneath it that a threshold below a tall one does not.
+
+    ALONG THE LINE MEANS ALONG THE CATEGORY AXIS, whichever screen axis that is. This wrote the
+    axes fraction into x unconditionally, which is right on a vertical panel and, on a horizontal
+    one — where `reference_line` puts the VALUE in x and the fraction in y — overwrote the data
+    coordinate with a fraction: measured, a label for a line at x = 2.5 ended at (0.012, 0.012),
+    well off its line. `bar_panel` calls this for both orientations.
     """
     fig = ax.figure
     fig.canvas.draw()
+    orientation = read_orientation(ax) or "vertical"
+    upright = is_vertical(orientation)
     anchor = value_of(label, "anchor", None)
+    # A BACKDROP IS NOT AN OBSTACLE. A shaded band or a highlighted column is there to tint the
+    # marks under it, and text over one is the design — `is_backdrop` is the rule the whole gate
+    # already reads, and `colliding_ink` excuses exactly this pair. Counting them as obstacles
+    # meant a panel with a `reference_band` (which tags its own fill `backdrop` two functions
+    # above) or a `bar_panel(highlight=...)` column had no clear slot anywhere along the line, so
+    # every trial failed and the label went to the fallback OUTSIDE the axes — a threshold label
+    # exiled off the panel because it touched the tint it was meant to sit on.
     obstacles = [
         artist
         for artist in [*ax.patches, *ax.texts, *ax.lines, *ax.collections]
-        if artist is not label and artist is not anchor
+        if artist is not label and artist is not anchor and not is_backdrop(artist)
     ]
     boxes = [artist.get_window_extent() for artist in obstacles]
     original = label.get_position()
-    for vertical in ("bottom", "top"):
-        for slot in range(LABEL_SLOTS):
-            fraction = 0.012 + slot * (0.976 / max(LABEL_SLOTS - 1, 1))
-            label.set_position((fraction, original[1]))
-            label.set_verticalalignment(vertical)
-            label.set_horizontalalignment("left" if fraction < 0.5 else "right")
-            fig.canvas.draw()
-            if not any(label.get_window_extent().overlaps(box) for box in boxes):
-                return
+    value = original[1] if upright else original[0]
+
+    def put(fraction: float) -> None:
+        label.set_position((fraction, value) if upright else (value, fraction))
+
+    fractions = [0.012 + slot * (0.976 / max(LABEL_SLOTS - 1, 1)) for slot in range(LABEL_SLOTS)]
+    # Which side of the line, then where along it. The alignment ACROSS the line is what picks the
+    # side; the alignment ALONG it keeps the label inside the axes at either end.
+    horizontals: tuple[Literal["left", "right"], ...] = ("left", "right")
+    verticals: tuple[Literal["bottom", "top"], ...] = ("bottom", "top")
+    trials: list[tuple[float, Literal["left", "right"], Literal["bottom", "top"]]]
+    if upright:
+        trials = [
+            (fraction, ("left" if fraction < 0.5 else "right"), vertical)
+            for vertical in verticals
+            for fraction in fractions
+        ]
+    else:
+        trials = [
+            (fraction, horizontal, ("bottom" if fraction < 0.5 else "top"))
+            for horizontal in horizontals
+            for fraction in fractions
+        ]
+    for fraction, horizontal, vertical in trials:
+        put(fraction)
+        label.set_horizontalalignment(horizontal)
+        label.set_verticalalignment(vertical)
+        fig.canvas.draw()
+        if not any(label.get_window_extent().overlaps(box) for box in boxes):
+            return
     # Nowhere along the line is clear — a crowded panel, which is normal rather than exceptional.
     # The label goes just outside the axes, level with its own line. It is still unambiguously that
     # line's label, it is legible, and it is the one place in a full panel guaranteed to be empty.
     # `save` writes with a tight bounding box, so the margin it needs comes with it.
-    label.set_position((1.012, original[1]))
-    label.set_horizontalalignment("left")
-    label.set_verticalalignment("center")
+    put(1.012)
+    if upright:
+        label.set_horizontalalignment("left")
+        label.set_verticalalignment("center")
+    else:
+        label.set_verticalalignment("bottom")
+        label.set_horizontalalignment("center")
     fig.canvas.draw()

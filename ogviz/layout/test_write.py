@@ -129,3 +129,87 @@ def test_crop_decides_whether_the_declared_canvas_is_what_lands(tmp_path) -> Non
     cropped = save(_clean((7.0, 4.0)), tmp_path, "cropped", formats=("png",), dpi=100, crop=True)
     assert Image.open(pinned[0]).size == (700, 400), "crop=False writes the canvas as declared"
     assert Image.open(cropped[0]).size != (700, 400), "crop=True writes the artists' extent"
+
+
+def _refused_figure():
+    """A figure the gate refuses on its own — asserted, since `house_style` can clean a fixture."""
+    from ogviz.qc import audit
+
+    fig, ax = plt.subplots(figsize=(4.0, 3.0))
+    ax.bar([0, 1], [1.0, 2.0])
+    ax.text(0, 0.5, "on the bar", ha="center")
+    fig.canvas.draw()
+    assert audit(fig), "the premise: this figure is refused"
+    return fig
+
+
+def test_a_refusal_writes_nothing_not_even_the_directory(tmp_path) -> None:
+    """`mkdir` ran before the gate, so a refused save left an empty tree behind."""
+    fig = _refused_figure()
+    target = tmp_path / "never" / "made"
+    with pytest.raises(AssertionError):
+        save(fig, target, "figure")
+    assert not target.exists()
+    plt.close(fig)
+
+
+def test_save_without_the_gate_is_not_refused_by_the_guard(tmp_path) -> None:
+    """The documented escape hatch and the documented guard could not be used together: `save`
+    skipped its gate and the guard then refused the write. Probed 2026-09-01."""
+    from ogviz import guarded
+
+    fig = _refused_figure()
+    with guarded(mode="raise"):
+        written = save(fig, tmp_path, "figure", check_overlap=False, formats=("png",))
+    assert written[0].exists()
+
+
+def test_save_hands_its_settle_adjustments_to_a_caller_who_asks(tmp_path) -> None:
+    """Four settle passes each return what they moved, and `save` threw all four away.
+
+    Each of those functions says in its own docstring that it reports because "a silent adjustment
+    is unreviewable", and this is the call site that matters. Exercised on the bracket pass, which
+    is the one a caller can provoke: rescaling the value axis after the brackets are drawn moves
+    them through the data transform while the label's offset, set in points, stays put.
+    """
+    import numpy as np
+
+    from ogviz import group_violins
+
+    rng = np.random.default_rng(4)
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    group_violins(
+        ax,
+        [
+            (0.0, rng.normal(5.0, 1.0, 40), "#E8A838", "#B97C10"),
+            (1.0, rng.normal(7.0, 1.0, 40), "#7C9A6E", "#4A6136"),
+        ],
+        comparisons=[(0.0, 1.0, 0.001)],
+    )
+    # What moves the brackets out from under their labels. `ax.margins` cannot do it: this panel
+    # set its own limits when it fitted the bracket stack, so autoscaling is off and a margin
+    # changes nothing.
+    # 5%, chosen so the figure still PASSES the gate: at 36% `unused_value_headroom` refuses it,
+    # and the sink would then be exercised only on the way to a raise.
+    low, high = ax.get_ylim()
+    ax.set_ylim(low, high + (high - low) * 0.05)
+
+    lines: list[str] = []
+    save(fig, tmp_path, "settled", formats=("png",), settled=lines.append)
+    assert lines, "the bracket label had to be re-anchored and nothing said so"
+
+
+def test_a_name_with_a_separator_in_it_cannot_write_outside_the_directory(tmp_path) -> None:
+    """`save`'s `name` is joined onto a directory and had no guard, where `--fix`'s label has one.
+
+    The premise is that the escape really was one: the naive join lands a level up.
+    """
+    out = tmp_path / "out"
+    assert (out / "../escaped.png").resolve() == tmp_path / "escaped.png", "premise: it escapes"
+
+    fig, ax = plt.subplots(figsize=(5.0, 3.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    written = save(fig, out, "../escaped", formats=("png",))
+    assert not (tmp_path / "escaped.png").exists()
+    assert [path.parent for path in written] == [out]
+    assert written[0].name == "_escaped.png"

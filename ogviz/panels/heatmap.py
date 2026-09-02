@@ -122,9 +122,15 @@ def effect_heatmap(
         grid.shape == (len(row_labels), len(column_labels)),
         f"matrix {grid.shape} against {len(row_labels)} rows and {len(column_labels)} columns",
     )
+    # Coerced ONCE, and only when there is something to coerce. A `require` message is an
+    # f-string, so it is built on every call whether the condition fails or not: this one ran
+    # `np.asarray(p_values)` on every call INCLUDING the None case, where it printed `()` as a
+    # shape it can never actually report. The per-cell loop below then coerced again, once per
+    # cell — a hundred times on a ten-by-ten matrix.
+    given = None if p_values is None else np.asarray(p_values)
     require(
-        p_values is None or np.asarray(p_values).shape == grid.shape,
-        f"p-values {np.asarray(p_values).shape} do not match the matrix {grid.shape}",
+        given is None or given.shape == grid.shape,
+        f"p-values {() if given is None else given.shape} do not match the matrix {grid.shape}",
     )
 
     departures = np.abs(grid - neutral)
@@ -168,9 +174,9 @@ def effect_heatmap(
             )
             # Printed on its own cell on purpose, which is the whole design of the panel.
             mark(number, "anchored")
-            if p_values is None or missing:
+            if given is None or missing:
                 continue
-            p = float(np.asarray(p_values)[row, column])
+            p = float(given[row, column])
             if not np.isfinite(p):
                 continue
             glyphs = _stars_for(p, label_for)

@@ -162,8 +162,9 @@ def point_offsets(collection: Collection) -> NDArray[np.float64] | None:
         return None
     if isinstance(collection, PathCollection) and len(collection.get_paths()) <= 1:
         return offsets
-    if offsets.shape[0] > 1 and len(collection.get_paths()) <= 1:
-        return offsets
+    # No count test after the type test. The old "more than one offset" rule survived here for
+    # collections that are not a `PathCollection`, so the two branches could disagree about the
+    # same object, and the docstring described a rule the code had not finished retiring.
     return None
 
 
@@ -189,7 +190,7 @@ class MarkCloud(NamedTuple):
     Two numbers rather than one, because a mark is not square and the difference is not cosmetic. An
     error-bar cap is matplotlib's `"_"` marker: at markersize 12 it is 12 points wide and ZERO high,
     ink only from its own linewidth. Testing it as a 12x12 square claimed 8 px of height it does not
-    have, and reported every value label in a real figure as "sits on 1 mark(s)" — fourteen of them,
+    have, and reported every value label in one figure as "sits on 1 mark(s)" — all of them,
     each 0.5 px clear of the cap it was accused of touching.
     """
 
@@ -255,7 +256,7 @@ def data_points(ax: Axes) -> list[MarkCloud]:
 
     The defect this fixes: `errorbar` draws its caps as ONE marker-only Line2D per side, so the
     polyline ran diagonally across the whole panel and every value label in a bar panel came back
-    "sits on 2 mark(s)" — five confident complaints about a figure with nothing overlapping. The
+    "sits on 2 mark(s)" — confident complaints about a figure with nothing overlapping. The
     same flaw was latent for every scatter, where a dense jitter cloud hid it: the zigzag through
     the dots happens to cover roughly the area the dots do.
 
@@ -581,7 +582,10 @@ def text_over_data(fig: Figure) -> list[str]:
     GRIDLINE can stay where it is and knock the line out behind itself.
     """
     complaints: list[str] = []
-    for ax, text, struck in labels_on_the_marks(fig):
+    # Threaded through, so `labels_crossing_a_rule` does not redo the per-label sweep — the exact
+    # cost `on_the_marks` was added to spare `repair`, which this function was still paying.
+    on_the_marks = labels_on_the_marks(fig)
+    for ax, text, struck in on_the_marks:
         # The remedy depends on WHAT it sits on, and a consumer's first move is a knockout box,
         # which does nothing here: a box hides the artist, and this check is about a label standing
         # on the data rather than about what shows through it. When the thing underneath spans the
@@ -597,7 +601,9 @@ def text_over_data(fig: Figure) -> list[str]:
     complaints += [
         f"{quoted(text.get_text().strip())!r} crosses a gridline with nothing behind it — "
         "knock it out"
-        for _ax, text in labels_crossing_a_rule(fig)
+        for _ax, text in labels_crossing_a_rule(
+            fig, on_the_marks={id(text) for _ax, text, _struck in on_the_marks}
+        )
     ]
     return complaints
 

@@ -5,8 +5,10 @@ string and therefore on the font, the figure size and the data range — none of
 can reason about while writing the call. So measure it: draw the figure, take every visible text
 artist's window extent, and report any pair on one row that sits closer than `min_gap`.
 
-The threshold exists because tick labels and legend entries legitimately abut. A few percent of
-shared area is kerning; a fifth of a label buried under another is a defect.
+The threshold is a GAP in pixels along the row, `DEFAULT_MIN_GAP`, because tick labels and legend
+entries legitimately abut and two words with no space between them read as one. (A share-of-area
+rule used to live here too; it moved to `colliding_ink`, which counts the pixels two artists share,
+and `text_overlaps`'s docstring records why.)
 
 Ported from a sibling project, which introduced the check.
 """
@@ -147,7 +149,9 @@ def clipped_artists(fig: Figure) -> list[str]:
         frame = ax.get_window_extent(renderer)
         for line in ax.lines:
             vertices = np.asarray(line.get_path().vertices)
-            if not line.get_clip_on() or vertices.size == 0:
+            # Hidden lines draw nothing, so nothing of theirs is clipped; every other walker here
+            # filters on visibility and this one did not.
+            if not line.get_visible() or not line.get_clip_on() or vertices.size == 0:
                 continue
             box = line.get_window_extent(renderer)
             # Both directions, not one or the other. The `elif` here meant a line escaping the top

@@ -161,3 +161,34 @@ def test_type_too_small_is_silent_on_type_that_clears_the_floor() -> None:
     fig.canvas.draw()
     assert type_too_small(fig, column_width=6.0) == []
     plt.close(fig)
+
+
+def test_the_advisory_ratio_branch_reports_without_being_given_a_width() -> None:
+    """The no-argument branch had no test at all: every case passed `column_width`.
+
+    So the wording of the ratio complaint, the `CRAMPED_SHARE` comparison and the "would stack N
+    times" arithmetic were reached only through `audit`, where nothing states what they say. The
+    branch is the DEFAULT — it is what a caller who asks nothing gets.
+    """
+    from ogviz.qc.typography import CRAMPED_SHARE, type_too_small
+
+    fig, ax = plt.subplots(figsize=(12.0, 8.0))
+    ax.text(0.5, 0.5, "a note set very small indeed", fontsize=3.0)
+    fig.canvas.draw()
+
+    said = type_too_small(fig)
+    assert said, f"3 pt on an 8 in short side is under {CRAMPED_SHARE:.1%} of it"
+    assert "would stack" in said[0]
+    assert "column_width" in said[0], "the note has to point at the sharper question"
+    plt.close(fig)
+
+
+def test_the_advisory_branch_is_silent_on_comfortable_type() -> None:
+    """The other side of the same branch, which nothing exercised either."""
+    from ogviz.qc.typography import type_too_small
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    ax.text(0.5, 0.5, "a comfortable note", fontsize=14.0)
+    fig.canvas.draw()
+    assert type_too_small(fig) == []
+    plt.close(fig)

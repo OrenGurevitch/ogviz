@@ -7,6 +7,7 @@ single defensible answer:
   a label crossing a gridline           knock the line out behind it, rather than moving it
   a spine buried under the marks        raise it above them
   a threshold buried under the marks    raise it above them
+  an axis label centred on the box      re-centre it on the marks (`settle_axis_labels`)
 
 Everything else is reported and left alone, on purpose. Two series that merge under colour-vision
 deficiency need a marker, a dash or a different palette, and which one is a design decision. A

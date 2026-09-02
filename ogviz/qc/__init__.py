@@ -22,6 +22,13 @@ from typing import TYPE_CHECKING
 from ogviz.layout.bounds import text_off_canvas, text_wider_than_its_panel
 from ogviz.layout.caption import overflowing_text
 from ogviz.layout.collision import text_over_data
+
+# The FUNCTION, which otherwise loses its own name to the module holding it. `from ogviz.qc import
+# repair` returned `ogviz.qc.repair` the module — not callable — and the README promises
+# `repair(fig)` beside `audit(fig)` and `assert_clean(fig)`, which both work. Identical to the trap
+# recorded in `layout/panels.py`, where `ogviz.panels` shadowed a `panels()` listed in `__all__` and
+# documented as callable. `test_public_surface.py` is what stops it happening a third time.
+from ogviz.layout.density import dead_space
 from ogviz.layout.overlap import (
     DEFAULT_MIN_GAP,
     clipped_artists,
@@ -53,12 +60,6 @@ from ogviz.qc.reading import (
     knocked_out_over,
     orientation_of,
 )
-
-# The FUNCTION, which otherwise loses its own name to the module holding it. `from ogviz.qc import
-# repair` returned `ogviz.qc.repair` the module — not callable — and the README promises
-# `repair(fig)` beside `audit(fig)` and `assert_clean(fig)`, which both work. Identical to the trap
-# recorded in `layout/panels.py`, where `ogviz.panels` shadowed a `panels()` listed in `__all__` and
-# documented as callable. `test_public_surface.py` is what stops it happening a third time.
 from ogviz.qc.repair import repair
 from ogviz.qc.significance import significance_gaps, stack_spacing
 from ogviz.qc.typography import one_minus_sign, type_too_small, ungrouped_thousands
@@ -69,6 +70,7 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 __all__ = [
+    "ADVISORY_CHECKS",
     "CHECKS",
     "GAP_TOLERANCE_PX",
     "THOROUGH_CHECKS",
@@ -142,6 +144,10 @@ CHECKS = (
 
 THOROUGH_CHECKS = (drawn_but_invisible,)
 
+# Never fail a build. `guard(advise=True)` runs them and `--list-checks` names them; before this
+# tuple existed the guard listed the three by hand and the CLI could not name them at all.
+ADVISORY_CHECKS = (dead_space, type_too_small, header_crowds_the_panels)
+
 
 def _run(check: Callable[..., list[str]], fig: Figure, **settings: float) -> list[str]:
     """Call a check, handing it whichever settings its own signature declares.
@@ -164,11 +170,10 @@ def audit(fig: Figure, *, thorough: bool = False, min_gap: float = DEFAULT_MIN_G
 
     `min_gap` is the least space two labels on one row may have and still read as two words. The
     default catches labels that have run together; it does not catch a figure that is merely tight,
-    and three "this is too crowded" reports were caught by eye and by nothing else. A project that
-    wants breathing room enforced passes its own floor — 32 px is the number one project measured
-    its own comfortable figures against. It is a caller's number rather than a default because the
-    same figures run 59 complaints at 32 px and none at 5, and one project's comfortable is another
-    project's dense.
+    and "this is too crowded" has only ever been caught by eye. A project that wants breathing room
+    enforced passes its own floor. It is a caller's number rather than a default because a floor
+    generous enough to enforce comfort turns a figure the default passes clean into dozens of
+    complaints, and one project's comfortable is another project's dense.
 
     ONE RENDER for the whole set. Every check renders first, because every check has to work when
     called on its own; run as a set that meant the canvas was drawn once per check — measured at 22

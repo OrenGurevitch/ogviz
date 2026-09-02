@@ -13,6 +13,9 @@ from ogviz.panels.multiplicity import (
     multiplicity_ladder,
 )
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def test_bh_declares_the_largest_clearing_rank_not_the_first_failure() -> None:
     """The step that makes BH more powerful than a fixed cutoff, and the one a table hides.
@@ -129,7 +132,11 @@ def test_a_log_ladder_shows_the_two_rules_apart() -> None:
         plt.close(fig)
         return room
 
-    assert gap_px() == pytest.approx(gap_px(log=True), abs=0.5)
+    # Stated as what it is: both are ZERO, because rank 1's two thresholds are the same number.
+    # This read `gap_px() == approx(gap_px(log=True))`, which compares zero to zero and would hold
+    # with the whole function replaced by `return 0.0`. The real claim is below it.
+    assert gap_px() == pytest.approx(0.0, abs=0.5)
+    assert gap_px(log=True) == pytest.approx(0.0, abs=0.5)
     linear, logged = alpha_room_px(), alpha_room_px(log=True)
     assert linear < 30.0, f"the premise: linear crushes threshold to alpha into {linear:.0f} px"
     assert logged > 3 * linear, f"log spreads it to {logged:.0f} px, from {linear:.0f}"
@@ -147,3 +154,10 @@ def test_a_linear_ladder_still_accepts_a_p_of_zero() -> None:
     _fig, ax = plt.subplots()
     assert multiplicity_ladder(ax, [0.0, 0.02, 0.4]) >= 1
     assert ax.get_yscale() == "linear"
+
+
+def test_an_unsorted_family_is_refused_rather_than_ranked() -> None:
+    """The ramp only means anything against ascending p-values; an unsorted array returned a count
+    of declared findings with no error."""
+    with pytest.raises(AssertionError, match="sorted ascending"):
+        benjamini_hochberg_rank(np.array([0.045, 0.001, 0.040]))

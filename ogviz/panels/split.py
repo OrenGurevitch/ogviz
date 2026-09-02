@@ -19,7 +19,11 @@ import numpy as np
 from ogviz.layout import hairline_grid
 from ogviz.marks import (
     BOX_COLOR,
+    BOX_WIDTH,
     MEAN_HALF_WIDTH,
+    MEAN_LINEWIDTH,
+    MEDIAN_EDGE_WIDTH,
+    MEDIAN_SIZE,
     VIOLIN_ALPHA,
     Z_IQR,
     Z_MEAN_LINE,
@@ -28,6 +32,7 @@ from ogviz.marks import (
 )
 from ogviz.orientation import violin_orientation_kwarg
 from ogviz.panels.grid import align_mean_rows
+from ogviz.panels.violins import constant_span
 from ogviz.require import require
 from ogviz.tags import mark
 from ogviz.theme import KNOCKOUT_PAD, VALUE_LABEL_SIZE, page_color
@@ -104,17 +109,24 @@ def half_marks(
     """The IQR bar, mean line and median dot for one half, set off from the shared spine."""
     q1, median, q3 = (float(x) for x in np.percentile(values, [25, 50, 75]))
     at = position + side * offset
-    ax.plot([at, at], [q1, q3], color=BOX_COLOR, lw=5.0, zorder=Z_IQR, solid_capstyle="round")
+    ax.plot([at, at], [q1, q3], color=BOX_COLOR, lw=BOX_WIDTH, zorder=Z_IQR, solid_capstyle="round")
     ax.plot(
         [position, position + side * mean_half_width * 2],
         [float(np.mean(values))] * 2,
         color=color,
-        lw=3.0,
+        lw=MEAN_LINEWIDTH,
         solid_capstyle="round",
         zorder=Z_MEAN_LINE,
     )
     ax.plot(
-        [at], [median], "o", mfc=page_color(), mec=BOX_COLOR, mew=1.4, ms=7.0, zorder=Z_MEDIAN_DOT
+        [at],
+        [median],
+        "o",
+        mfc=page_color(),
+        mec=BOX_COLOR,
+        mew=MEDIAN_EDGE_WIDTH,
+        ms=MEDIAN_SIZE,
+        zorder=Z_MEDIAN_DOT,
     )
 
 
@@ -173,7 +185,7 @@ def split_violins(
     positions = np.arange(len(categories), dtype=float)
     every = np.concatenate([np.asarray(v, dtype=float) for v in (*left, *right)])
     low, high = float(every.min()), float(every.max())
-    span = max(high - low, 1e-9)
+    span = high - low or constant_span(high)
     ax.set_ylim(low - bottom_pad * span, high + headroom * span)
     ax.set_xlim(-0.5 - width / 2, positions[-1] + 0.5 + width / 2)
 
@@ -216,11 +228,11 @@ def _printed_pairs(
     scale: float,
 ) -> None:
     """Both means under each category, each in its own half's colour so neither is ambiguous."""
-    from ogviz.layout.ticks import auto_decimals, format_value
+    from ogviz.layout.ticks import format_value, row_decimals
 
     means = [float(np.mean(v)) * scale for v in (*left, *right)]
     if decimals is None:
-        decimals = auto_decimals(max((abs(m) for m in means if m), default=1.0))
+        decimals = row_decimals(means)
     for at, low_values, high_values in zip(positions, left, right, strict=True):
         for side, values, color in ((-1, low_values, left_color), (1, high_values, right_color)):
             printed = ax.text(

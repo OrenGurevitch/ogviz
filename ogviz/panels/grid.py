@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout import drawn_value_extent
+from ogviz.orientation import is_vertical
 from ogviz.require import require
 from ogviz.tags import mark, marked
 
@@ -60,17 +61,17 @@ def share_value_limits(
         panels,
         "share_value_limits needs at least one axes",
     )
-    reader = (lambda ax: ax.get_ylim()) if orientation == "vertical" else (lambda ax: ax.get_xlim())
+    reader = (lambda ax: ax.get_ylim()) if is_vertical(orientation) else (lambda ax: ax.get_xlim())
     spans = [reader(ax) for ax in panels]
     low = min(bounds[0] for bounds in spans)
     high = max(bounds[1] for bounds in spans)
     for ax in panels:
-        if orientation == "vertical":
+        if is_vertical(orientation):
             ax.set_ylim(low, high)
         else:
             ax.set_xlim(low, high)
         mark(ax, "shared_scale", len(panels))
-    if orientation == "vertical":
+    if is_vertical(orientation):
         # Both ends of the panel. A shared scale that leaves the brackets at six heights and the
         # printed means at six others is a shared scale in name only.
         align_brackets(panels)
@@ -101,7 +102,7 @@ def label_shared_scale_once(
         panels,
         "label_shared_scale_once needs at least one axes",
     )
-    upright = orientation == "vertical"
+    upright = is_vertical(orientation)
     kept: list[Axes] = []
     for ax in panels:
         spec = ax.get_subplotspec()
@@ -139,7 +140,7 @@ def align_ticks(axes: Iterable[Axes], *, orientation: Orientation = "vertical") 
         panels,
         "align_ticks needs at least one axes",
     )
-    upright = orientation == "vertical"
+    upright = is_vertical(orientation)
     reaches = [extent[1] for extent in (drawn_value_extent(ax) for ax in panels) if extent]
     if not reaches:
         return []
@@ -164,8 +165,13 @@ def align_ticks(axes: Iterable[Axes], *, orientation: Orientation = "vertical") 
     return chosen
 
 
-def align_brackets(axes: Iterable[Axes]) -> float | None:
+def align_brackets(axes: Iterable[Axes], *, orientation: Orientation = "vertical") -> float | None:
     """Put every panel's bracket stack on one line, and return where that line is.
+
+    `orientation` is which way the panels run: a horizontal panel's bracket crossbar lives on x,
+    and reading y there — which this did unconditionally — would have shifted every bracket along
+    the CATEGORY axis and dragged the stars with it. `share_value_limits` only ever called this on
+    a vertical grid, so the defect was latent; the function is public, so it could not stay so.
 
     The mean-row argument, at the other end of the panel. Each panel anchors its bracket to ITS OWN
     data, which is right for a panel read alone. On a shared scale it is not: the panel with the
@@ -183,11 +189,12 @@ def align_brackets(axes: Iterable[Axes]) -> float | None:
     # — often with a single-use `axes.flat`. This one happens to walk the argument exactly once, so
     # it is safe by accident rather than by construction, and `align_mean_rows` is the standing
     # proof of what a second walk costs: given a generator it silently placed nothing at all.
+    upright = is_vertical(orientation)
     stacks = []
     for ax in list(axes):
-        lines, stars = _bracket_artists(ax)
+        lines, stars = _bracket_artists(ax, upright=upright)
         if lines:
-            stacks.append((lines, stars, _bracket_top(lines[0])))
+            stacks.append((lines, stars, _bracket_top(lines[0], upright=upright)))
     if not stacks:
         return None
 
@@ -197,29 +204,35 @@ def align_brackets(axes: Iterable[Axes]) -> float | None:
         if abs(shift) < 1e-12:
             continue
         for bracket in lines:
-            bracket.set_ydata(np.asarray(bracket.get_ydata(), dtype=float) + shift)
+            if upright:
+                bracket.set_ydata(np.asarray(bracket.get_ydata(), dtype=float) + shift)
+            else:
+                bracket.set_xdata(np.asarray(bracket.get_xdata(), dtype=float) + shift)
         for star in stars:
             x, y = star.get_position()
-            star.set_position((x, float(y) + shift))
+            star.set_position((x, float(y) + shift) if upright else (float(x) + shift, y))
     return line
 
 
-def _bracket_top(bracket) -> float:
-    """The crossbar of a bracket — its highest point, the four-point path being down/across/down."""
-    return float(np.asarray(bracket.get_ydata(), dtype=float).max())
+def _bracket_top(bracket, *, upright: bool = True) -> float:
+    """The crossbar of a bracket — its highest VALUE, the four-point path being down/across/down."""
+    values = bracket.get_ydata() if upright else bracket.get_xdata()
+    return float(np.asarray(values, dtype=float).max())
 
 
-def _bracket_artists(ax: Axes) -> tuple[list, list]:
+def _bracket_artists(ax: Axes, *, upright: bool = True) -> tuple[list, list]:
     """This panel's bracket lines and their stars, lowest bracket first."""
     lines = sorted(
         (line for line in ax.lines if marked(line, "bracket")),
-        key=lambda line: float(np.asarray(line.get_ydata(), dtype=float).max()),
+        key=lambda line: _bracket_top(line, upright=upright),
     )
     stars = [text for text in ax.texts if marked(text, "bracket_star")]
     return lines, stars
 
 
-def align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float | None:
+def align_mean_rows(
+    axes: Iterable[Axes], *, floor: float, orientation: Orientation = "vertical"
+) -> float | None:
     """Put every panel's printed means on ONE line, and return that line.
 
     A panel places its means in the middle of the margin below its own data. Once the panels share
@@ -239,6 +252,14 @@ def align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float | None:
 
     That conversion is `ogviz.units.midpoint`, which exists to be the one place it is written, and
     was written out by hand here instead — the module had no callers at all.
+
+    `orientation` names which way the PANELS run, as everywhere else. It was absent, and every
+    step of the answer read y: the extent, the midpoint, and the coordinate the label was moved
+    along. On a horizontal panel that measured the CATEGORY axis, took the midpoint of a floor
+    from the other axis, and then moved each label vertically — three wrong answers composing
+    into one plausible-looking row. `printed_means` has placed a horizontal row correctly the
+    whole time, so this was the half of the pair that could not settle it, which is what made
+    `show_means=True` on a horizontal panel decline silently.
     """
     from ogviz.units import midpoint
 
@@ -250,7 +271,8 @@ def align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float | None:
     rows = [text for ax in panels for text in ax.texts if marked(text, "mean_row")]
     if not rows:
         return None
-    measured = [extent[0] for extent in map(drawn_value_extent, panels) if extent is not None]
+    extents = (drawn_value_extent(ax, orientation=orientation) for ax in panels)
+    measured = [extent[0] for extent in extents if extent is not None]
     if not measured:
         return None
     lowest = min(measured)
@@ -258,7 +280,8 @@ def align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float | None:
     figure = reference.get_figure()
     if figure is not None:
         figure.canvas.draw()
-    line = midpoint(reference, floor, lowest)
+    line = midpoint(reference, floor, lowest, orientation=orientation)
     for text in rows:
-        text.set_position((text.get_position()[0], line))
+        across, along = text.get_position()
+        text.set_position((line, along) if orientation == "horizontal" else (across, line))
     return line

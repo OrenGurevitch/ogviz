@@ -80,8 +80,17 @@ def colliding_ink(fig: Figure) -> list[str]:
                 artists[second], artists[first]
             ):
                 continue
+            # THE TEXT FIRST, and "shares … with …" rather than "A and B share …". Both are
+            # about `group_by_subject`, which folds every complaint about one label under that
+            # label and strips the label out of each line. On the old shape that left a dangling
+            # conjunction — "'0.341 units': and Rectangle share 412 px of ink" — and, where the
+            # text happened to be the second of the pair, an "and" stranded mid-sentence. It was
+            # visible in this package's own gallery plate of the gate's output. This shape reads
+            # correctly both grouped and alone, and at least one of the pair is always text
+            # because the loop above skips two marks.
+            subject, other = (first, second) if first in text_index else (second, first)
             complaints.append(
-                f"{artist_name(artists[first])} and {artist_name(artists[second])} "
-                f"share {shared} px of ink"
+                f"{artist_name(artists[subject])} shares {shared} px of ink "
+                f"with {artist_name(artists[other])}"
             )
     return complaints

@@ -118,7 +118,9 @@ def to_decibels(
     # Clipped BEFORE the logarithm, so a zero becomes the floor rather than a negative infinity that
     # then has to be repaired. The smallest representable ratio at this floor is what the clip is.
     smallest = peak * 10.0 ** (floor_db / 10.0)
-    return 10.0 * np.log10(np.clip(values, smallest, None) / peak)
+    # NaN as well as zero: `clip` leaves a NaN where it finds one, so the promise above — no cell
+    # reaches matplotlib non-finite — held for a silent bin and not for a missing one.
+    return 10.0 * np.log10(np.clip(np.nan_to_num(values, nan=smallest), smallest, None) / peak)
 
 
 def spectrogram(
@@ -186,7 +188,10 @@ def spectrogram(
         shading="nearest",  # the arrays are bin CENTRES, which is what an STFT reports
         vmin=vmin,
         vmax=vmax,
-        rasterized=True,  # see below
+        # RASTERISED: a spectrogram is thousands of cells, and as vector paths every one of them is
+        # an element in the SVG — a file of megabytes that renders slowly and diffs unreadably.
+        # The cells are pixels anyway; the axes, labels and colour scale stay vector.
+        rasterized=True,
     )
     ax.set_yscale(frequency_scale)
     # Held to the bins that exist. `shading="nearest"` widens the mesh by half a bin at each end, so

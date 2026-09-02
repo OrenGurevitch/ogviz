@@ -7,8 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from ogviz.panels.slopegraph import Strand, null_distance, slopegraph
+from ogviz.panels.slopegraph import Strand, crowded_ends, null_distance, slopegraph
 from ogviz.theme import SERIES
+
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
 
 STAGES = ("Baseline", "3 months", "6 months", "12 months")
 
@@ -87,3 +90,23 @@ def test_each_metric_is_measured_against_its_own_null() -> None:
 
     with pytest.raises(AssertionError, match="every metric needs its own null"):
         null_distance([0.31, 0.72], [0.0])
+
+
+def test_crowding_asked_before_the_panel_is_scaled_is_refused_not_guessed() -> None:
+    """`transData` on a fresh axes maps against the default 0-1 limits.
+
+    So the public call a caller can make returned pixel gaps computed against the wrong scale, in
+    the same shape as a real answer. The premise is that the answer really did differ: measured
+    against a drawn panel and against a fresh one, the same strands give different gaps.
+    """
+    strands = [
+        Strand("first", [10.0, 40.0, 70.0], "#2E7CE0"),
+        Strand("second", [12.0, 38.0, 70.4], "#EFA607"),
+    ]
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    with pytest.raises(AssertionError, match="crowded_ends measures in pixels"):
+        crowded_ends(strands, ax)
+
+    # Drawn, the same question has a meaningful answer.
+    assert slopegraph(ax, strands, ["one", "two", "three"]) != []
+    plt.close(fig)

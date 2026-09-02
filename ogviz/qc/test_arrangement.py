@@ -200,3 +200,26 @@ def test_a_shared_scale_is_not_reported_as_unused_headroom() -> None:
     assert empty > 0.40, f"the premise: the short panel is now {empty:.0%} empty and would fire"
     assert unused_value_headroom(fig) == []
     plt.close(fig)
+
+
+def test_headroom_is_judged_on_the_value_axis_of_a_horizontal_panel() -> None:
+    """`unused_value_headroom` read y unconditionally, so on a horizontal panel it measured the
+    CATEGORY axis and could never fire. Probed on 2026-09-01: bars to 0.5 on an axis run to 3.0,
+    no complaint."""
+    import numpy as np
+
+    from ogviz import Series, bar_panel
+    from ogviz.qc.arrangement import unused_value_headroom
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    bar_panel(
+        ax,
+        [Series("s", np.array([0.4, 0.5]), "#7C9A6E")],
+        ["A", "B"],
+        orientation="horizontal",
+        show_values=False,
+    )
+    ax.set_xlim(0.0, 3.0)
+    fig.canvas.draw()
+    assert unused_value_headroom(fig), "the value axis runs six times past the bars"
+    plt.close(fig)

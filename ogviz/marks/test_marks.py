@@ -213,3 +213,26 @@ def test_a_mark_name_it_does_not_know_is_refused() -> None:
     with pytest.raises(AssertionError, match="does not know the mark"):
         central_clearance(ax, np.array([1.0, 2.0, 3.0]), drawn={"whisker"})
     plt.close(fig)
+
+
+def test_a_width_that_is_not_a_number_is_refused_by_widths_of() -> None:
+    """`bool` is an `int`, so `box_width=True` reserved a 1.0 pt lane. An unknown KEY is still
+    passed over, which is the documented cost of accepting a whole kwargs mapping."""
+    from ogviz.marks import widths_of
+
+    with pytest.raises(AssertionError, match="box_width is a width"):
+        widths_of({"box_width": True})
+    assert widths_of({"box_wdith": 4.0, "color": "#000"}) == {}
+
+
+def test_iqr_box_accepts_a_plain_sequence_like_every_other_mark() -> None:
+    """It half-accepted one: `np.percentile` took a list and `values.min()` two lines later did not.
+
+    The premise is the sibling: `violin`, `points` and `central_clearance` all coerce, so a caller
+    handing a list to one mark and to the next got a mark and an `AttributeError`.
+    """
+    _fig, ax = plt.subplots()
+    iqr_box(ax, [1.0, 2.0, 3.0, 4.0, 9.0], 0.0)  # type: ignore[arg-type]
+    assert len(ax.lines) == 3  # the whisker, the box, and the median dot
+    with pytest.raises(AssertionError, match="at least one value"):
+        iqr_box(ax, [], 0.0)  # type: ignore[arg-type]

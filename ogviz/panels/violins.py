@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ogviz.layout import hairline_grid, ticks_over_data
+from ogviz.layout import drawn_value_extent, hairline_grid, ticks_over_data
 from ogviz.marks import VIOLIN_WIDTH, iqr_box, mean_line, points, violin, widths_of
 from ogviz.orientation import (
     category_limits,
@@ -55,6 +55,24 @@ SPAN_HEADROOM = 0.30  # extra top room for the FIRST bracket
 PLAIN_HEADROOM = 0.20
 BRACKET_INSET = 0.12  # first bracket, below the expanded top
 STACK_FIT_MARGIN = 0.02  # slack per attempt while growing the axis to fit a bracket stack
+# What a panel's value span becomes when every observation is the same number. A `max(high - low,
+# 1e-9)` floor kept the arithmetic safe and drew the figure into a line: the limits came out equal
+# to nine decimal places, every mark landed on one row of pixels, and the printed mean sat on the
+# frame. A constant group is ordinary data — an all-zero condition, a saturated measure — and the
+# panel still has to say WHAT the constant is, which needs an axis with height.
+#
+# A tenth of the magnitude, floored, in the spirit of matplotlib's own `nonsingular` (which
+# expands a degenerate range by 5% of the value, or to +/-1 at zero). It is a span, so this
+# module's own pads still apply on top of it. MEASURED on a plain panel: a constant series of 5.0
+# gives limits of 4.9 to 5.1 where they were 5.0 to 5.0, one of 0.0 gives -0.02 to 0.02, and one
+# of 1200.0 gives 1176 to 1224 — the mean row, the violin and the frame three distinct rows of
+# pixels in every case, and the axis ticks stating what the constant IS.
+CONSTANT_SPAN_FLOOR = 0.1
+
+
+def constant_span(value: float) -> float:
+    """The nominal span for a panel whose data is one repeated number."""
+    return max(abs(value) * 0.1, CONSTANT_SPAN_FLOOR)
 
 
 def printed_means(
@@ -83,14 +101,14 @@ def printed_means(
     Every label is tagged `ogviz_mean_row`, which is how `align_mean_rows` finds them and puts a
     grid's rows on one line.
     """
-    from ogviz.layout.ticks import auto_decimals, format_value
+    from ogviz.layout.ticks import format_value, row_decimals
 
     require(
         len(positions) == len(values),
         f"{len(positions)} positions for {len(values)} values",
     )
     if decimals is None:
-        decimals = auto_decimals(max((abs(value * scale) for value in values), default=1.0))
+        decimals = row_decimals(values, scale=scale)
     drawn: list[Text] = []
     for position, value in zip(positions, values, strict=True):
         horizontal, vertical = place_many(orientation, position, row)
@@ -136,7 +154,7 @@ def printed_means(
     return drawn
 
 
-def _finish(ax: Axes, high: float, orientation: Orientation, *, grid: bool) -> None:
+def _finish(ax: Axes, orientation: Orientation, *, grid: bool) -> None:
     """Tidy the ticks and the mean row, and check the limits survived it.
 
     A POST-CONDITION, not a style check. This function fitted the value axis to the data and its
@@ -178,9 +196,11 @@ def _settle_mean_row(ax: Axes, orientation: Orientation) -> None:
     tail — while a grid, which measured the rendered body, put it in the middle. Two ways of
     answering "midway" is how a single panel and a grid of panels came to disagree.
     """
-    if not is_vertical(orientation):
-        return  # a horizontal panel prints no mean row
-    align_mean_rows([ax], floor=ax.get_ylim()[0])
+    # Whichever way the panel runs. It returned early on a horizontal one, on the grounds that
+    # such a panel prints no mean row — true of the DEFAULT and not of `show_means=True`, which
+    # drew the row and then left it wherever the offset put it, out among the category tick
+    # labels. `align_mean_rows` reads the value axis now, so there is nothing to decline.
+    align_mean_rows([ax], floor=value_span(ax, orientation)[0], orientation=orientation)
 
 
 def _fit_bracket_stack(
@@ -356,7 +376,7 @@ def group_violins(
         series.append(np.array([anchor_value]))
     every = np.concatenate(series)
     low, high = float(every.min()), float(every.max())
-    span = max(high - low, 1e-9)
+    span = high - low or constant_span(high)
 
     # BOTH limits first, then marks. `points` sizes its central lane from the axes transform, so
     # the scale has to be final before a dot is placed. The category axis matters as much as the
@@ -431,8 +451,12 @@ def group_violins(
         )
 
     if not comparisons:
-        _finish(ax, high, orientation, grid=grid)
-        return high
+        _finish(ax, orientation, grid=grid)
+        # The topmost DRAWN value, as the docstring promises — not the data maximum, which sits
+        # below a violin body's top on any panel with a kernel body. With brackets the answer was
+        # the bracket ink's top; without them it was the data, so the same word meant two things.
+        drawn = drawn_value_extent(ax, orientation=orientation)
+        return drawn[1] if drawn is not None else high
     reached = bracket_stack(
         ax,
         comparisons,
@@ -449,5 +473,5 @@ def group_violins(
         "clips the bracket LINES and not their stars, so this would have shipped as stars "
         "floating over nothing. Raise `headroom`.",
     )
-    _finish(ax, high, orientation, grid=grid)
+    _finish(ax, orientation, grid=grid)
     return reached

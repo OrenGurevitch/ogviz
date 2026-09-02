@@ -101,7 +101,9 @@ def test_dots_on_the_marks_are_caught() -> None:
     scatter = ax.scatter(np.zeros(40), values, s=30)
     mark(scatter, "lane", np.full(40, 0.1))
     mark(scatter, "position", 0.0)
-    assert dots_off_the_marks(fig) == ["40 dot(s) sit on the central marks"]
+    # The group's own position is in the sentence: a grid of six violins used to report the same
+    # words six times with nothing to tell the panels or the groups apart.
+    assert dots_off_the_marks(fig) == ["40 dot(s) sit on the central marks of the group at 0"]
 
 
 def test_a_correct_panel_says_nothing() -> None:
@@ -272,7 +274,7 @@ def test_a_non_significant_label_is_checked_like_any_other() -> None:
 
 
 def test_a_hyphen_inside_a_name_is_not_a_minus_sign() -> None:
-    """`COMPASS-31` was reported as mixing two minus signs with matplotlib's own tick labels.
+    """`INDEX-31` was reported as mixing two minus signs with matplotlib's own tick labels.
 
     One complaint on one figure, and the kind that teaches a reader to skim the audit output.
     """
@@ -281,7 +283,7 @@ def test_a_hyphen_inside_a_name_is_not_a_minus_sign() -> None:
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
     ax.plot([0.0, 1.0], [-0.5, 0.5])
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(["COMPASS-31", "Diez-Cirarda"])
+    ax.set_xticklabels(["INDEX-31", "Ash-Willow"])
     fig.canvas.draw()
     assert not one_minus_sign(fig)
 
@@ -340,9 +342,9 @@ def test_an_ungrouped_thousand_is_caught_and_a_year_is_not() -> None:
 
 
 def test_a_digit_run_inside_a_hyphenated_identifier_is_not_a_quantity() -> None:
-    """`sub-1007` is a participant's name, and grouping it would print `sub-1,007`.
+    """`unit-1007` is an identifier, and grouping it would print `unit-1,007`.
 
-    Found blocking a real build: a brain-slice panel captioned with the subject it shows could not
+    Found blocking a build: a panel captioned with the identifier of the thing it shows could not
     be written at all, because the caption's identifier read as an ungrouped thousand. The rule is
     about numbers a reader counts; an identifier is read as a label. A bare quantity in the same
     string must still be caught, which is what the last two cases check.
@@ -351,7 +353,7 @@ def test_a_digit_run_inside_a_hyphenated_identifier_is_not_a_quantity() -> None:
 
     fig, ax = plt.subplots(figsize=(8.0, 4.0))
     ax.set_axis_off()
-    printed = ["sub-1007", "acq-1200", "ses-02 and 1200 ms", "n=1007"]
+    printed = ["unit-1007", "batch-1200", "run-02 and 1200 ms", "n=1007"]
     for index, line in enumerate(printed):
         ax.text(0.05, 0.9 - index * 0.15, line, transform=ax.transAxes)
     fig.canvas.draw()
@@ -706,3 +708,15 @@ def test_a_buried_threshold_is_named_on_a_panel_ogviz_did_not_draw() -> None:
     named = [one for one in buried_baselines(fig) if "reference line" in one]
     assert named and "at 0.52" in named[0], named
     plt.close(fig)
+
+
+def test_a_wide_bracket_joins_the_columns_of_every_narrow_one_it_spans() -> None:
+    """`_overlapping_columns` broke on the first column a span touched and never merged the
+    second, so `[(10, 0, 1), (11, 3, 4), (12, 0, 4)]` came back as two columns — the wide bracket
+    was never compared with the second narrow one under it. Its own docstring promised one."""
+    from ogviz.qc.significance import _overlapping_columns
+
+    columns = _overlapping_columns([(10.0, 0.0, 1.0), (11.0, 3.0, 4.0), (12.0, 0.0, 4.0)])
+    assert [sorted(column) for column in columns] == [[10.0, 11.0, 12.0]]
+    apart = _overlapping_columns([(10.0, 0.0, 1.0), (11.0, 3.0, 4.0)])
+    assert sorted(sorted(column) for column in apart) == [[10.0], [11.0]], "disjoint stays apart"

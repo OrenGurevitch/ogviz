@@ -249,3 +249,60 @@ def test_a_panel_labels_its_own_categories() -> None:
     positions = [float(tick) for tick in ax.get_xticks()]
     placed = dict(zip(positions, [t.get_text() for t in ax.get_xticklabels()], strict=True))
     assert placed == {0.0: "Shire", 1.0: "Bree", 2.0: "Moria"}, placed
+
+
+def test_a_misspelled_orientation_is_refused_by_the_grid_helpers() -> None:
+    """`orientation == "vertical"` made a typo mean "horizontal"; `is_vertical` refuses it, as
+    every other orientation-taking function here does."""
+    from ogviz.panels.grid import align_ticks, label_shared_scale_once, share_value_limits
+
+    fig, ax = plt.subplots()
+    for helper in (share_value_limits, align_ticks):
+        with pytest.raises(AssertionError, match="orientation"):
+            helper([ax], orientation="sideways")  # type: ignore[arg-type]
+    with pytest.raises(AssertionError, match="orientation"):
+        label_shared_scale_once([ax], orientation="sideways")  # type: ignore[arg-type]
+    plt.close(fig)
+
+
+def test_the_mean_rows_of_a_horizontal_grid_align_along_the_value_axis() -> None:
+    """Every step of the answer read y: the extent, the midpoint, and the coordinate moved.
+
+    On a horizontal panel that measures the CATEGORY axis, takes a midpoint of a floor belonging
+    to the other axis, and then moves each label across its own violin — three wrong answers
+    composing into a row that looks placed. `printed_means` has drawn a horizontal row correctly
+    since it was written, so this was the half of the pair that could not settle one, and it is
+    why `show_means=True` on a horizontal panel declined without saying so.
+    """
+    import numpy as np
+
+    from ogviz import group_violins
+    from ogviz.panels.grid import align_mean_rows
+
+    rng = np.random.default_rng(1)
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 5.0))
+    for ax, shift in zip(axes, (0.0, 3.0), strict=True):
+        group_violins(
+            ax,
+            [(0.0, rng.normal(5.0 + shift, 1.0, 40), "#E8A838", "#B97C10")],
+            orientation="horizontal",
+            show_means=True,
+        )
+        ax.set_xlim(0.0, 12.0)
+    fig.canvas.draw()
+
+    def rows() -> list[tuple[float, float]]:
+        return [t.get_position() for ax in axes for t in ax.texts if marked(t, "mean_row")]
+
+    before = rows()
+    assert before[0][0] != pytest.approx(before[1][0]), "premise: the two rows start apart"
+    categories = [position[1] for position in before]
+
+    line = align_mean_rows(axes, floor=0.0, orientation="horizontal")
+    assert line is not None
+    after = rows()
+    assert [position[0] for position in after] == pytest.approx([line, line])
+    assert [position[1] for position in after] == categories, (
+        "the category coordinate is not the row"
+    )
+    plt.close(fig)

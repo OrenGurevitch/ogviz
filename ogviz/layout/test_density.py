@@ -78,7 +78,7 @@ def test_an_axes_off_the_canvas_is_not_reported_as_a_full_panel() -> None:
     off = fig.add_axes((1.6, 0.1, 0.3, 0.3))
     panel = panel_emptiness(fig, off)
     assert panel["top"] == 1.0 and panel["left"] == 1.0
-    assert any("axes" in note for note in dead_space(fig))
+    assert any("of the panel is empty" in note for note in dead_space(fig))
 
 
 def test_a_horizontal_panel_is_told_which_limit_is_generous() -> None:
@@ -102,7 +102,7 @@ def test_a_horizontal_panel_is_told_which_limit_is_generous() -> None:
         span = ax.set_xlim if orientation == "horizontal" else ax.set_ylim
         span(0.0, 4.0)  # a generous VALUE limit, whichever way the panel runs
         for note in dead_space(fig):
-            if note.startswith("axes") and f"the {side} " in note:
+            if f"the {side} " in note and "of the panel is empty" in note:
                 return note.rsplit("— the ", 1)[1]
         raise AssertionError(f"no note about the {side} of a {orientation} panel")
 
@@ -144,7 +144,10 @@ def test_a_panel_on_a_shared_scale_is_not_told_to_tighten_it() -> None:
             ax.set_ylim(0.0, top)
         if share:
             share_value_limits(axes, label_edge=False)
-        notes = [n for n in dead_space(fig) if n.startswith("axes 0:") and " top " in n]
+        # "panel 0 of 2: " — untitled panels on a two-panel figure, which is what
+        # `panel_prefix` falls back to. It was `axes 0:`, one of the three conventions that
+        # function replaced.
+        notes = [n for n in dead_space(fig) if n.startswith("panel 0 of 2: ") and " top " in n]
         assert notes, "the premise: the short panel reports an empty top either way"
         return notes[0]
 
@@ -152,3 +155,18 @@ def test_a_panel_on_a_shared_scale_is_not_told_to_tighten_it() -> None:
     shared = note_for(share=True)
     assert "shares a value scale with 2 panels" in shared
     assert "limit is generous" not in shared
+
+
+def test_a_blank_figure_is_one_note_and_not_four_margins() -> None:
+    """Each band runs to the edge of the ink, and with no ink each is the whole canvas.
+
+    So the four notes described "the canvas past the left edge of the ink" on a page with no such
+    edge, and left and right each claimed the full width — the same emptiness counted twice per
+    axis. The premise is the measurement itself.
+    """
+    fig = plt.figure(figsize=(6.0, 4.0))
+    overall = measure(fig)
+    assert overall.coverage == 0.0
+    assert overall.left == overall.right, "premise: both sides claim the whole width"
+    assert dead_space(fig) == ["the figure has no ink on it"]
+    plt.close(fig)

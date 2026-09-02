@@ -118,9 +118,10 @@ def test_the_axis_keeps_one_tick_above_the_marks() -> None:
 def test_ticks_over_data_measures_the_drawn_marks_when_not_told() -> None:
     """Callers kept handing it the DATA maximum, which is not where a violin's body ends.
 
-    A kernel density body reaches past the largest observation, so the tick above that observation
-    is inside the violin — and dropping it is what left the top of a panel unlabelled. Measuring by
-    default means a caller cannot make that mistake.
+    The failure was real — a dropped tick left the top of a panel unlabelled — and the explanation
+    that used to sit here ("a kernel density body reaches past the largest observation") was
+    measured false: `ticks_over_data`'s docstring has the numbers. Measuring the drawn marks by
+    default means a caller cannot hand in the wrong number whatever the reason.
     """
 
     from ogviz.layout import drawn_value_extent, ticks_over_data

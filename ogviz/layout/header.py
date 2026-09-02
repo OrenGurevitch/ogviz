@@ -123,7 +123,8 @@ def fit_under_header(
 
     `tight_layout(rect=...)` treats the rect as room it may use, not a top edge it must reach: with
     a legend anchored below the axes it leaves a band of empty page between the panels and the
-    title — 92 px on a 680 px figure, which reads as a mistake rather than as breathing room. Doing
+    title — about an eighth of the figure's height, which reads as a mistake rather than as
+    breathing room. Doing
     the layout and then pinning the top closes it.
 
     RETURNS WHETHER THE PANELS WERE ACTUALLY LAID OUT, and there are two ways for that to be False.
@@ -157,17 +158,22 @@ def fit_under_header(
     if pinned and len(pinned) == len(fig.axes):
         # Not calling it at all. It is a no-op here by construction, and the only thing it produced
         # was a UserWarning in every consumer's build log about a figure that is laid out on
-        # purpose. The pinned margins stand; the top pin below still applies.
-        mark(fig, "layout_refused", "")
+        # purpose. The pinned margins stand; the top pin below still applies. Recorded under its
+        # OWN tag: this wrote `layout_refused` with an empty reason, so "pinned" and "refused" were
+        # one tag with two meanings, told apart by truthiness, and nothing ever read the reason.
+        mark(fig, "layout_pinned", f"all {len(fig.axes)} axes pin their own layout")
         _pin_top(fig, header_bottom, gap)
         return False
 
-    applied = True
+    # PARTLY pinned is still not laid out: `tight_layout` skips the pinned axes and moves the rest,
+    # and this returned True for that — the same wrong answer the branch above exists to stop,
+    # surviving for a grid with one hand-added axes beside it.
+    applied = not pinned
     with warnings.catch_warnings(record=True) as raised:
         warnings.simplefilter("always", UserWarning)
         fig.tight_layout(rect=(0.0, bottom, 1.0, header_bottom))
         refused = [one for one in raised if _is_a_refusal(str(one.message))]
-        applied = not refused
+        applied = applied and not refused
     # Everything else matplotlib said goes back out. Recording warnings SWALLOWS them, and this
     # consumed the whole batch to read one message — so any other complaint raised during the
     # layout, about a font, a deprecation, an axes it could not place, vanished silently. Only the
@@ -178,7 +184,10 @@ def fit_under_header(
     # Recorded on the figure as well as returned, because the return value went unread for a week
     # and the whole point was that this should not pass unnoticed. A REASON rather than a flag, so
     # the gate can say which of the two happened; `marked()` still reads it as the boolean it was.
-    mark(fig, "layout_refused", str(refused[0].message) if refused else "")
+    if refused:
+        mark(fig, "layout_refused", str(refused[0].message))
+    if pinned:
+        mark(fig, "layout_pinned", f"{len(pinned)} of {len(fig.axes)} axes pin their own layout")
     _pin_top(fig, header_bottom, gap)
     return applied
 

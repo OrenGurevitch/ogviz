@@ -11,12 +11,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ogviz.layout.axis import drawn_value_extent
+from ogviz.layout.bounds import panel_prefix
+from ogviz.layout.collision import quoted
 from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
     bracket_tops_px,
     orientation_of,
 )
-from ogviz.tags import marked
+from ogviz.tags import marked, value_of
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -24,8 +26,8 @@ if TYPE_CHECKING:
 
 
 def _draws_anything(ax: Axes) -> bool:
-    """Whether this axes carries marks of any kind, whatever kind they are."""
-    return bool(ax.collections or ax.patches or ax.lines)
+    """Whether this axes carries VISIBLE marks of any kind, whatever kind they are."""
+    return any(artist.get_visible() for artist in (*ax.collections, *ax.patches, *ax.lines))
 
 
 def mean_rows_unaligned(fig: Figure) -> list[str]:
@@ -52,7 +54,7 @@ def mean_rows_unaligned(fig: Figure) -> list[str]:
     }
     if len(scales) > 1:
         return []
-    heights = {round(float(text.get_position()[1]), 6) for _ax, text in rows}
+    heights = {round(_value_position(text, orientation_of(ax)), 6) for ax, text in rows}
     sizes = {round(float(text.get_fontsize()), 3) for _ax, text in rows}
     complaints = []
     if len(heights) > 1:
@@ -75,23 +77,22 @@ def rows_outside_their_panel(fig: Figure) -> list[str]:
 
     Cheap, and it asks the question directly rather than trusting the measurement that failed.
     """
-    from ogviz.layout import drawn_value_extent
-
     complaints: list[str] = []
     for ax in fig.axes:
         rows = [text for text in ax.texts if marked(text, "mean_row")]
         if not rows:
             continue
-        extent = drawn_value_extent(ax)
+        orientation = orientation_of(ax)
+        extent = drawn_value_extent(ax, orientation=orientation)
         if extent is None:
             continue
-        floor, _top = ax.get_ylim()
+        floor, _top = _value_span(ax)
         for text in rows:
-            where = float(text.get_position()[1])
+            where = _value_position(text, orientation)
             if not floor <= where <= extent[0]:
                 complaints.append(
-                    f"the printed mean {text.get_text()!r} sits at {where:g}, outside the band "
-                    f"between the frame ({floor:g}) and the lowest mark ({extent[0]:g})"
+                    f"the printed mean {quoted(text.get_text())!r} sits at {where:g}, outside "
+                    f"the band between the frame ({floor:g}) and the lowest mark ({extent[0]:g})"
                 )
     return complaints
 
@@ -108,17 +109,22 @@ def layout_not_applied(fig: Figure) -> list[str]:
     measure what was actually drawn. It is here because "nobody laid this out" should be a sentence
     someone reads, not a warning swallowed by a build log.
 
-    A figure whose gridspec PINS its own margins is deliberately NOT reported, and telling the two
-    apart is why the tag carries a reason rather than a flag. `panel_row` and `panel_grid` both
-    pin, `tight_layout` skips every axes when they do, and that is the arrangement working as
-    intended — a complaint would fire on every figure either of them builds. Whether those pinned
-    margins are wide ENOUGH is a different question, and `text_off_canvas` and `clipped_artists`
-    are the ones that ask it.
+    A figure whose gridspec PINS its own margins is deliberately NOT reported: it carries
+    `layout_pinned` rather than `layout_refused`. `panel_row` and `panel_grid` both pin,
+    `tight_layout` skips every axes when they do, and that is the arrangement working as intended —
+    a complaint would fire on every figure either of them builds. Whether those pinned margins are
+    wide ENOUGH is a different question, and `text_off_canvas` and `clipped_artists` are the ones
+    that ask it.
+
+    The complaint QUOTES matplotlib's reason. The tag carried one from the start "so the gate can
+    say which of the two happened", and the gate never read it.
     """
     if marked(fig, "layout_refused"):
+        reason = str(value_of(fig, "layout_refused", "")).strip()
         return [
             "the layout engine declined — the decorations do not fit, so this figure kept default "
             "margins. Give it more height, or shorten what grows out of the axes"
+            + (f" (matplotlib: {reason})" if reason else "")
         ]
     return []
 
@@ -160,11 +166,30 @@ def panels_disagree_about_ticks(fig: Figure) -> list[str]:
     return complaints
 
 
+def _value_span(ax: Axes) -> tuple[float, float]:
+    """The limits of the VALUE axis, whichever screen axis that is."""
+    return ax.get_ylim() if orientation_of(ax) == "vertical" else ax.get_xlim()
+
+
+def _value_ticks(ax: Axes) -> list[float]:
+    ticks = ax.get_yticks() if orientation_of(ax) == "vertical" else ax.get_xticks()
+    return [float(tick) for tick in ticks]
+
+
+def _value_position(text, orientation: str) -> float:
+    """The value coordinate of a text placed in data coordinates."""
+    x, y = text.get_position()
+    return float(y if orientation == "vertical" else x)
+
+
+def _sharing_the_value_axis(ax: Axes) -> list[Axes]:
+    group = ax.get_shared_y_axes() if orientation_of(ax) == "vertical" else ax.get_shared_x_axes()
+    return list(group.get_siblings(ax))
+
+
 def _data_reach(ax: Axes) -> float | None:
     """The highest value any mark reaches, or None where the panel draws no marks."""
-    from ogviz.layout import drawn_value_extent
-
-    extent = drawn_value_extent(ax)
+    extent = drawn_value_extent(ax, orientation=orientation_of(ax))
     return extent[1] if extent is not None else None
 
 
@@ -179,7 +204,8 @@ def ticks_in_the_headroom(fig: Figure) -> list[str]:
     ensure_rendered(fig)
     complaints: list[str] = []
     for ax in fig.axes:
-        if not bracket_tops_px(ax):
+        if not ax.axison or not bracket_tops_px(ax):
+            # A panel with its axis off shows no ticks to be in anyone's headroom.
             # No stack, so nothing is being held open. A scatter with a top margin is ordinary
             # breathing room, not reserved space, and ticks in it are the axis doing its job.
             continue
@@ -189,16 +215,14 @@ def ticks_in_the_headroom(fig: Figure) -> list[str]:
         # reach reported the right one for a tick the shared scale requires. The check survives:
         # a tick above ALL the shared data is still in the headroom.
         reaches = [
-            _data_reach(sibling)
-            for sibling in ax.get_shared_y_axes().get_siblings(ax)
-            if sibling.get_visible()
+            _data_reach(sibling) for sibling in _sharing_the_value_axis(ax) if sibling.get_visible()
         ]
         measured = [value for value in reaches if value is not None]
         if not measured:
             continue
         reach = max(measured)
-        _low, high = ax.get_ylim()
-        stray = [float(tick) for tick in ax.get_yticks() if reach + 1e-9 < float(tick) <= high]
+        _low, high = _value_span(ax)
+        stray = [tick for tick in _value_ticks(ax) if reach + 1e-9 < tick <= high]
         # One tick above the marks is the axis closing the data in, and is wanted: without it a
         # coarse axis leaves the top of a violin with nothing to read against. Two or more is a
         # ladder climbing through the space held open for brackets.
@@ -214,10 +238,10 @@ def ticks_in_the_headroom(fig: Figure) -> list[str]:
 # ADVISORY, and the number is this package's own — importing the one it was borrowed from would
 # have been wrong. Measured 2026-08-13 across the gallery, header bottom against the highest panel
 # text below it: the tightest shipped figure clears by 17.6 px, the next by 18.3, then 26.6 and
-# 36.4, with a median of 52. The idea came from a project whose tightest was 66 px and which set
-# its floor at 32 — and 32 here would complain about two figures that ship and are correct. So the
-# floor sits below everything shipped, as a regression guard rather than a target: a figure that
-# drops under 12 px has changed for a reason worth looking at.
+# 36.4, with a median of 52. The idea came from a project with roomier headers, whose own floor
+# would complain about two figures that ship here and are correct. So the floor sits below
+# everything shipped, as a regression guard rather than a target: a figure that drops under 12 px
+# has changed for a reason worth looking at.
 CROWDED_HEADER_PX = 12.0
 
 
@@ -304,7 +328,7 @@ def value_label_off_its_marks(fig: Figure, *, floor: float = LABEL_OFF_ITS_MARKS
 
     ensure_rendered(fig)
     complaints: list[str] = []
-    for index, ax in enumerate(fig.axes):
+    for ax in fig.axes:
         for axis, along, name in ((ax.xaxis, 0, "x"), (ax.yaxis, 1, "y")):
             label = axis.label
             if not label.get_text().strip() or not label.get_visible():
@@ -324,10 +348,10 @@ def value_label_off_its_marks(fig: Figure, *, floor: float = LABEL_OFF_ITS_MARKS
             else:
                 way = "above" if off > 0 else "below"
             complaints.append(
-                f"axes {index}: the {name}-label {label.get_text()[:40]!r} sits {abs(off):.0f} px "
-                f"{way} the middle of the marks it names — it is centred on the axes box, "
-                "which is not where the data is. `settle_axis_labels(fig)` moves it; `save` and "
-                "`repair` already do"
+                f"{panel_prefix(fig, ax)}the {name}-label {quoted(label.get_text())!r} sits "
+                f"{abs(off):.0f} px {way} the middle of the marks it names — it is centred on the "
+                "axes box, which is not where the data is. `settle_axis_labels(fig)` moves it; "
+                "`save` and `repair` already do"
             )
     return complaints
 
@@ -350,26 +374,36 @@ EMPTY_HEADROOM = 0.40
 
 def _same_scale(other: Axes, ax: Axes) -> bool:
     """Whether `other` is on the same value scale as `ax`, and drawing something."""
-    if not other.axison or drawn_value_extent(other, include_furniture=True) is None:
+    if not other.axison or _highest_drawn(other) is None:
         return False
-    return tuple(round(v, 9) for v in other.get_ylim()) == tuple(round(v, 9) for v in ax.get_ylim())
+    return tuple(round(v, 9) for v in _value_span(other)) == tuple(
+        round(v, 9) for v in _value_span(ax)
+    )
 
 
-def _highest_drawn(ax: Axes) -> float:
-    """The highest value anything in this panel occupies, marks and in-panel text alike.
+def _highest_drawn(ax: Axes) -> float | None:
+    """The highest value anything in this panel occupies, or None where nothing is drawn.
 
     In-panel TEXT counts as surely as a mark does — a printed mean, a bracket's star, an
     annotation. Left out, a panel whose top band holds a row of labels and nothing else read as
     empty, which is the shape `dead_space` gets wrong for a table.
+
+    ON THE VALUE AXIS, whichever screen axis that is. This and `unused_value_headroom` read y
+    unconditionally, so on a horizontal panel they measured the CATEGORY axis and could never fire:
+    a horizontal bar panel with bars to 0.5 on an axis run to 3.0 drew no complaint. Orientation is
+    what the neighbours in this module already ask.
     """
-    extent = drawn_value_extent(ax, include_furniture=True)
-    tops = [extent[1]] if extent is not None else []
+    orientation = orientation_of(ax)
+    extent = drawn_value_extent(ax, orientation=orientation, include_furniture=True)
+    if extent is None:
+        return None
+    tops = [extent[1]]
     tops += [
-        float(text.get_position()[1])
+        _value_position(text, orientation)
         for text in ax.texts
         if text.get_visible() and text.get_text().strip() and text.get_transform() is ax.transData
     ]
-    return max(tops) if tops else float(ax.get_ylim()[0])
+    return max(tops)
 
 
 def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list[str]:
@@ -386,17 +420,16 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
     """
     ensure_rendered(fig)
     complaints: list[str] = []
-    for index, ax in enumerate(fig.axes):
+    for ax in fig.axes:
         if not ax.axison:
-            continue
-        extent = drawn_value_extent(ax, include_furniture=True)
-        if extent is None:
             continue
         # In-panel TEXT occupies the axis as surely as a mark does — a printed mean, a bracket's
         # star, an annotation. Left out, a panel whose top band holds a row of labels and nothing
         # else was reported as empty, which is the shape `dead_space` gets wrong for a table.
-        tops = [_highest_drawn(ax)]
-        low, high = ax.get_ylim()
+        own_reach = _highest_drawn(ax)
+        if own_reach is None:
+            continue
+        low, high = _value_span(ax)
         if high <= low:
             continue
         # ON A SHARED SCALE, THE ROOM BELONGS TO THE TALLEST PANEL. A short panel beside a tall one
@@ -404,18 +437,20 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
         # the grid being comparable — the same distinction `dead_space` was taught to make, and
         # this check shipped without it. Measured against every panel on the same scale, so the
         # question becomes "does anything in this GROUP use the room", which is the honest one.
-        reach = max(tops)
+        reach = own_reach
         if marked(ax, "shared_scale"):
-            reach = max(
-                (_highest_drawn(other) for other in fig.axes if _same_scale(other, ax)),
-                default=reach,
-            )
+            group = (_highest_drawn(other) for other in fig.axes if _same_scale(other, ax))
+            reach = max((top for top in group if top is not None), default=reach)
         share = (high - reach) / (high - low)
         if share < floor:
             continue
+        # `reach`, the number the decision was made on — on a shared scale that is the group's
+        # tallest, and quoting this panel's own top beside a percentage computed from the group's
+        # did not add up.
         complaints.append(
-            f"axes {index}: {share:.0%} of the value axis is empty above everything drawn — it "
-            f"runs to {high:g} and nothing reaches past {max(tops):g}. Tighten the limit, or give "
+            f"{panel_prefix(fig, ax)}{share:.0%} of the value axis is empty above everything drawn "
+            f"— it "
+            f"runs to {high:g} and nothing reaches past {reach:g}. Tighten the limit, or give "
             "the room to something (a bracket stack, a reference level)"
         )
     return complaints

@@ -12,6 +12,9 @@ import pytest
 from ogviz.layout.stacking import place_end_labels, stack_without_overlap
 from ogviz.tags import marked
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def test_labels_that_do_not_compete_are_left_where_they_are() -> None:
     wanted = [0.0, 5.0, 10.0]

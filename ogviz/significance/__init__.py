@@ -1,7 +1,8 @@
 """Significance brackets whose stars belong to the line beneath them.
 
-The problem this module exists for: asterisks float high inside their layout box. At 18 pt the
-visible ink of `***` runs roughly 5-13 pt above the baseline while the box also covers a
+The problem this module exists for: asterisks float high inside their layout box. Measured at
+18 pt in a sans face (the house `STAR_SIZE` is 20; the proportions hold): the visible ink of
+`***` runs roughly 5-13 pt above the baseline while the box also covers a
 descender ~5 pt *below* it. Anchoring with `va="bottom"` therefore parks the glyph ~10 pt above
 its own bracket even when the box is one pixel away, and in a stack of brackets the star reads
 as belonging to the line ABOVE it. Nudging the y offset by hand fixes one figure and breaks the
@@ -154,7 +155,9 @@ def bracket_stack(
     worth — so measure it instead.
 
     ogviz owns where the label sits, never what it says: a project that writes "" for
-    non-significant where another writes "n.s." passes its own `label_for`.
+    non-significant where another writes "n.s." passes its own `label_for`. A BLANK label draws no
+    bracket at all and takes no room in the stack, so the two conventions give structurally
+    different figures rather than different text: writing "" is choosing to show only what cleared.
     """
     if not comparisons:
         return start

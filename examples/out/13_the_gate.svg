@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1008pt" height="432pt" viewBox="0 0 1008 432" xmlns="http://www.w3.org/2000/svg" version="1.1">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1001.296094pt" height="426.96pt" viewBox="0 0 1001.296094 426.96" xmlns="http://www.w3.org/2000/svg" version="1.1">
  <metadata>
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
@@ -20,19 +20,19 @@
  </defs>
  <g id="figure_1">
   <g id="patch_1">
-   <path d="M 0 432 
-L 1008 432 
-L 1008 0 
+   <path d="M 0 426.96 
+L 1001.296094 426.96 
+L 1001.296094 0 
 L 0 0 
 z
 " style="fill: #fcfcfa"/>
   </g>
   <g id="axes_1">
    <g id="patch_2">
-    <path d="M 56.244355 406.438281 
-L 509.978816 406.438281 
-L 509.978816 93.09215 
-L 56.244355 93.09215 
+    <path d="M 53.140449 404.998281 
+L 506.87491 404.998281 
+L 506.87491 91.65215 
+L 53.140449 91.65215 
 z
 " style="fill: #fcfcfa"/>
    </g>
@@ -40,40 +40,40 @@ z
     <g id="xtick_1">
      <g id="line2d_1"/>
      <g id="text_1">
-      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="113.364313" y="418.674609" transform="rotate(-0 113.364313 418.674609)">baseline</text>
+      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="110.260407" y="417.234609" transform="rotate(-0 110.260407 417.234609)">baseline</text>
      </g>
     </g>
     <g id="xtick_2">
      <g id="line2d_2"/>
      <g id="text_2">
-      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="198.237949" y="418.674609" transform="rotate(-0 198.237949 418.674609)">variant A</text>
+      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="195.134043" y="417.234609" transform="rotate(-0 195.134043 417.234609)">variant A</text>
      </g>
     </g>
     <g id="xtick_3">
      <g id="line2d_3"/>
      <g id="text_3">
-      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="283.111586" y="418.674609" transform="rotate(-0 283.111586 418.674609)">variant B</text>
+      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="280.00768" y="417.234609" transform="rotate(-0 280.00768 417.234609)">variant B</text>
      </g>
     </g>
     <g id="xtick_4">
      <g id="line2d_4"/>
      <g id="text_4">
-      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="367.985222" y="418.674609" transform="rotate(-0 367.985222 418.674609)">variant C</text>
+      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="364.881316" y="417.234609" transform="rotate(-0 364.881316 417.234609)">variant C</text>
      </g>
     </g>
     <g id="xtick_5">
      <g id="line2d_5"/>
      <g id="text_5">
-      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="452.858859" y="418.674609" transform="rotate(-0 452.858859 418.674609)">variant D</text>
+      <text style="font-size: 12px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="449.754953" y="417.234609" transform="rotate(-0 449.754953 417.234609)">variant D</text>
      </g>
     </g>
    </g>
    <g id="matplotlib.axis_2">
     <g id="ytick_1">
      <g id="line2d_6">
-      <path d="M 56.244355 406.438281 
-L 509.978816 406.438281 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
+      <path d="M 53.140449 404.998281 
+L 506.87491 404.998281 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
      </g>
      <g id="line2d_7">
       <defs>
@@ -82,330 +82,318 @@ L -4 0
 " style="stroke: #141413; stroke-width: 1.2"/>
       </defs>
       <g>
-       <use xlink:href="#m5bc738e78b" x="56.244355" y="406.438281" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
+       <use xlink:href="#m5bc738e78b" x="53.140449" y="404.998281" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
       </g>
      </g>
      <g id="text_6">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="48.744355" y="412.2625" transform="rotate(-0 48.744355 412.2625)">0.0</text>
+      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="45.640449" y="410.8225" transform="rotate(-0 45.640449 410.8225)">0.0</text>
      </g>
     </g>
     <g id="ytick_2">
      <g id="line2d_8">
-      <path d="M 56.244355 364.658797 
-L 509.978816 364.658797 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
+      <path d="M 53.140449 363.218797 
+L 506.87491 363.218797 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
      </g>
      <g id="line2d_9">
       <g>
-       <use xlink:href="#m5bc738e78b" x="56.244355" y="364.658797" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
+       <use xlink:href="#m5bc738e78b" x="53.140449" y="363.218797" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
       </g>
      </g>
      <g id="text_7">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="48.744355" y="370.483016" transform="rotate(-0 48.744355 370.483016)">0.2</text>
+      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="45.640449" y="369.043016" transform="rotate(-0 45.640449 369.043016)">0.2</text>
      </g>
     </g>
     <g id="ytick_3">
      <g id="line2d_10">
-      <path d="M 56.244355 322.879313 
-L 509.978816 322.879313 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
+      <path d="M 53.140449 321.439313 
+L 506.87491 321.439313 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
      </g>
      <g id="line2d_11">
       <g>
-       <use xlink:href="#m5bc738e78b" x="56.244355" y="322.879313" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
+       <use xlink:href="#m5bc738e78b" x="53.140449" y="321.439313" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
       </g>
      </g>
      <g id="text_8">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="48.744355" y="328.703532" transform="rotate(-0 48.744355 328.703532)">0.4</text>
+      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="45.640449" y="327.263532" transform="rotate(-0 45.640449 327.263532)">0.4</text>
      </g>
     </g>
     <g id="ytick_4">
      <g id="line2d_12">
-      <path d="M 56.244355 281.099829 
-L 509.978816 281.099829 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
+      <path d="M 53.140449 279.659829 
+L 506.87491 279.659829 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
      </g>
      <g id="line2d_13">
       <g>
-       <use xlink:href="#m5bc738e78b" x="56.244355" y="281.099829" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
+       <use xlink:href="#m5bc738e78b" x="53.140449" y="279.659829" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
       </g>
      </g>
      <g id="text_9">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="48.744355" y="286.924048" transform="rotate(-0 48.744355 286.924048)">0.6</text>
+      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="45.640449" y="285.484048" transform="rotate(-0 45.640449 285.484048)">0.6</text>
      </g>
     </g>
     <g id="ytick_5">
      <g id="line2d_14">
-      <path d="M 56.244355 239.320345 
-L 509.978816 239.320345 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
+      <path d="M 53.140449 237.880345 
+L 506.87491 237.880345 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
      </g>
      <g id="line2d_15">
       <g>
-       <use xlink:href="#m5bc738e78b" x="56.244355" y="239.320345" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
+       <use xlink:href="#m5bc738e78b" x="53.140449" y="237.880345" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
       </g>
      </g>
      <g id="text_10">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="48.744355" y="245.144564" transform="rotate(-0 48.744355 245.144564)">0.8</text>
+      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="45.640449" y="243.704564" transform="rotate(-0 45.640449 243.704564)">0.8</text>
      </g>
     </g>
     <g id="ytick_6">
      <g id="line2d_16">
-      <path d="M 56.244355 197.540861 
-L 509.978816 197.540861 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
+      <path d="M 53.140449 196.100861 
+L 506.87491 196.100861 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
      </g>
      <g id="line2d_17">
       <g>
-       <use xlink:href="#m5bc738e78b" x="56.244355" y="197.540861" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
+       <use xlink:href="#m5bc738e78b" x="53.140449" y="196.100861" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
       </g>
      </g>
      <g id="text_11">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="48.744355" y="203.365079" transform="rotate(-0 48.744355 203.365079)">1.0</text>
+      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="45.640449" y="201.925079" transform="rotate(-0 45.640449 201.925079)">1.0</text>
      </g>
     </g>
     <g id="ytick_7">
      <g id="line2d_18">
-      <path d="M 56.244355 155.761377 
-L 509.978816 155.761377 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
+      <path d="M 53.140449 154.321377 
+L 506.87491 154.321377 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
      </g>
      <g id="line2d_19">
       <g>
-       <use xlink:href="#m5bc738e78b" x="56.244355" y="155.761377" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
+       <use xlink:href="#m5bc738e78b" x="53.140449" y="154.321377" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
       </g>
      </g>
      <g id="text_12">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="48.744355" y="161.585595" transform="rotate(-0 48.744355 161.585595)">1.2</text>
+      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="45.640449" y="160.145595" transform="rotate(-0 45.640449 160.145595)">1.2</text>
      </g>
     </g>
     <g id="ytick_8">
      <g id="line2d_20">
-      <path d="M 56.244355 113.981892 
-L 509.978816 113.981892 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
+      <path d="M 53.140449 112.541892 
+L 506.87491 112.541892 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #e7e5dd; stroke-linecap: square"/>
      </g>
      <g id="line2d_21">
       <g>
-       <use xlink:href="#m5bc738e78b" x="56.244355" y="113.981892" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
+       <use xlink:href="#m5bc738e78b" x="53.140449" y="112.541892" style="fill: #141413; stroke: #141413; stroke-width: 1.2"/>
       </g>
      </g>
      <g id="text_13">
-      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="48.744355" y="119.806111" transform="rotate(-0 48.744355 119.806111)">1.4</text>
+      <text style="font-size: 16px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #141413" x="45.640449" y="118.366111" transform="rotate(-0 45.640449 118.366111)">1.4</text>
      </g>
     </g>
     <g id="text_14">
-     <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="19.768262" y="249.765216" transform="rotate(-90 19.768262 249.765216)">cost per task (USD)</text>
+     <text style="font-weight: 700; font-size: 13px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="16.664355" y="248.325216" transform="rotate(-90 16.664355 248.325216)">cost per task (USD)</text>
     </g>
    </g>
    <g id="line2d_22">
-    <path d="M 56.244355 297.811623 
-L 509.978816 297.811623 
-" clip-path="url(#p9583c2fc2c)" style="fill: none; stroke: #141413; stroke-width: 5; stroke-linecap: square"/>
+    <path d="M 53.140449 296.371623 
+L 506.87491 296.371623 
+" clip-path="url(#pfe6f970e24)" style="fill: none; stroke: #141413; stroke-width: 5; stroke-linecap: square"/>
    </g>
    <g id="patch_3">
-    <path d="M 56.244355 406.438281 
-L 56.244355 93.09215 
+    <path d="M 53.140449 404.998281 
+L 53.140449 91.65215 
 " style="fill: none; stroke: #141413; stroke-width: 1.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="patch_4">
-    <path d="M 56.244355 406.438281 
-L 509.978816 406.438281 
+    <path d="M 53.140449 404.998281 
+L 506.87491 404.998281 
 " style="fill: none; stroke: #141413; stroke-width: 1.6; stroke-linejoin: miter; stroke-linecap: square"/>
    </g>
    <g id="patch_5">
-    <path d="M 76.868649 406.438281 
-L 149.859977 406.438281 
-L 149.859977 335.204261 
-L 76.868649 335.204261 
+    <path d="M 73.764743 404.998281 
+L 146.75607 404.998281 
+L 146.75607 333.764261 
+L 73.764743 333.764261 
 z
-" clip-path="url(#p9583c2fc2c)" style="fill: #d62728"/>
+" clip-path="url(#pfe6f970e24)" style="fill: #d62728"/>
    </g>
    <g id="patch_6">
-    <path d="M 161.742286 406.438281 
-L 234.733613 406.438281 
-L 234.733613 306.585314 
-L 161.742286 306.585314 
+    <path d="M 158.638379 404.998281 
+L 231.629707 404.998281 
+L 231.629707 305.145314 
+L 158.638379 305.145314 
 z
-" clip-path="url(#p9583c2fc2c)" style="fill: #2ca02c"/>
+" clip-path="url(#pfe6f970e24)" style="fill: #2ca02c"/>
    </g>
    <g id="patch_7">
-    <path d="M 246.615922 406.438281 
-L 319.60725 406.438281 
-L 319.60725 289.664623 
-L 246.615922 289.664623 
+    <path d="M 243.512016 404.998281 
+L 316.503343 404.998281 
+L 316.503343 288.224623 
+L 243.512016 288.224623 
 z
-" clip-path="url(#p9583c2fc2c)" style="fill: #2ca02c"/>
+" clip-path="url(#pfe6f970e24)" style="fill: #2ca02c"/>
    </g>
    <g id="patch_8">
-    <path d="M 331.489559 406.438281 
-L 404.480886 406.438281 
-L 404.480886 278.59306 
-L 331.489559 278.59306 
+    <path d="M 328.385652 404.998281 
+L 401.37698 404.998281 
+L 401.37698 277.15306 
+L 328.385652 277.15306 
 z
-" clip-path="url(#p9583c2fc2c)" style="fill: #2ca02c"/>
+" clip-path="url(#pfe6f970e24)" style="fill: #2ca02c"/>
    </g>
    <g id="patch_9">
-    <path d="M 416.363195 406.438281 
-L 489.354523 406.438281 
-L 489.354523 271.490548 
-L 416.363195 271.490548 
+    <path d="M 413.259289 404.998281 
+L 486.250616 404.998281 
+L 486.250616 270.050548 
+L 413.259289 270.050548 
 z
-" clip-path="url(#p9583c2fc2c)" style="fill: #2ca02c"/>
+" clip-path="url(#pfe6f970e24)" style="fill: #2ca02c"/>
    </g>
    <g id="text_15">
-    <text style="font-weight: 700; font-size: 15px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="283.111586" y="83.09215" transform="rotate(-0 283.111586 83.09215)">the figure a project asked to save</text>
+    <text style="font-weight: 700; font-size: 15px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="280.00768" y="81.65215" transform="rotate(-0 280.00768 81.65215)">the figure a project asked to save</text>
    </g>
    <g id="text_16">
-    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="113.364313" y="341.658356" transform="rotate(-0 113.364313 341.658356)">0.341 units</text>
+    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="110.260407" y="340.218356" transform="rotate(-0 110.260407 340.218356)">0.341 units</text>
    </g>
    <g id="text_17">
-    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="198.237949" y="313.039409" transform="rotate(-0 198.237949 313.039409)">0.478 units</text>
+    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="195.134043" y="311.599409" transform="rotate(-0 195.134043 311.599409)">0.478 units</text>
    </g>
    <g id="text_18">
-    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="283.111586" y="296.118718" transform="rotate(-0 283.111586 296.118718)">0.559 units</text>
+    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="280.00768" y="294.678718" transform="rotate(-0 280.00768 294.678718)">0.559 units</text>
    </g>
    <g id="text_19">
-    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="367.985222" y="285.047155" transform="rotate(-0 367.985222 285.047155)">0.612 units</text>
+    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="364.881316" y="283.607155" transform="rotate(-0 364.881316 283.607155)">0.612 units</text>
    </g>
    <g id="text_20">
-    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="452.858859" y="277.944642" transform="rotate(-0 452.858859 277.944642)">0.646 units</text>
+    <text style="font-weight: 700; font-size: 14px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="449.754953" y="276.504642" transform="rotate(-0 449.754953 276.504642)">0.646 units</text>
    </g>
    <g id="legend_1">
     <g id="patch_10">
-     <path d="M 66.144355 111.000451 
-L 88.144355 111.000451 
-L 88.144355 103.300451 
-L 66.144355 103.300451 
+     <path d="M 63.040449 109.560451 
+L 85.040449 109.560451 
+L 85.040449 101.860451 
+L 63.040449 101.860451 
 z
 " style="fill: #d62728; stroke: #d62728; stroke-linejoin: miter"/>
     </g>
     <g id="text_21">
-     <text style="font-size: 11px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="96.944355" y="111.000451" transform="rotate(-0 96.944355 111.000451)">baseline</text>
+     <text style="font-size: 11px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="93.840449" y="109.560451" transform="rotate(-0 93.840449 109.560451)">baseline</text>
     </g>
     <g id="patch_11">
-     <path d="M 66.144355 126.823693 
-L 88.144355 126.823693 
-L 88.144355 119.123693 
-L 66.144355 119.123693 
+     <path d="M 63.040449 125.383693 
+L 85.040449 125.383693 
+L 85.040449 117.683693 
+L 63.040449 117.683693 
 z
 " style="fill: #2ca02c; stroke: #2ca02c; stroke-linejoin: miter"/>
     </g>
     <g id="text_22">
-     <text style="font-size: 11px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="96.944355" y="126.823693" transform="rotate(-0 96.944355 126.823693)">variants</text>
+     <text style="font-size: 11px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #141413" x="93.840449" y="125.383693" transform="rotate(-0 93.840449 125.383693)">variants</text>
     </g>
    </g>
   </g>
   <g id="axes_2">
    <g id="patch_12">
-    <path d="M 520.778816 406.438281 
-L 997.2 406.438281 
-L 997.2 93.09215 
-L 520.778816 93.09215 
+    <path d="M 517.67491 404.998281 
+L 994.096094 404.998281 
+L 994.096094 91.65215 
+L 517.67491 91.65215 
 z
-" clip-path="url(#p94491c3f25)" style="fill: #f3f2ec; stroke: #5c5b57; stroke-linejoin: miter"/>
+" clip-path="url(#pb8e2fad8b8)" style="fill: #f3f2ec; stroke: #5c5b57; stroke-linejoin: miter"/>
    </g>
    <g id="text_23">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="117.509683" transform="rotate(-0 537.453558 117.509683)">    save(fig, out_dir, "comparison")</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="116.933801" transform="rotate(-0 534.349651 116.933801)">    save(fig, out_dir, "comparison")</text>
    </g>
    <g id="text_24">
-    <text style="font-weight: 700; font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="136.285356" transform="rotate(-0 537.453558 136.285356)">AssertionError: figure QC:</text>
+    <text style="font-weight: 700; font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="138.598039" transform="rotate(-0 534.349651 138.598039)">AssertionError: figure QC:</text>
    </g>
    <g id="text_25">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="145.123413" transform="rotate(-0 537.453558 145.123413)">  - axes 0: the y-label 'cost per task (USD)' sits 132 px above the</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="148.795797" transform="rotate(-0 534.349651 148.795797)">  - panel 0 of 2: the y-label 'cost per task (USD)' sits 132 px</text>
    </g>
    <g id="text_26">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="154.314899" transform="rotate(-0 537.453558 154.314899)">    middle of the marks it names — it is centred on the axes box,</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="159.401358" transform="rotate(-0 534.349651 159.401358)">    above the middle of the marks it names — it is centred on the</text>
    </g>
    <g id="text_27">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="163.762796" transform="rotate(-0 537.453558 163.762796)">    which is not where the data is. `settle_axis_labels(fig)` moves</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="169.961608" transform="rotate(-0 534.349651 169.961608)">    axes box, which is not where the data is.</text>
    </g>
    <g id="text_28">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="172.954282" transform="rotate(-0 537.453558 172.954282)">    it; `save` and `repair` already do</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="180.908338" transform="rotate(-0 534.349651 180.908338)">    `settle_axis_labels(fig)` moves it; `save` and `repair` already</text>
    </g>
    <g id="text_29">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="181.889359" transform="rotate(-0 537.453558 181.889359)">  - 'baseline' and 'variants' are distinct now and 0.16 apart under</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="191.17273" transform="rotate(-0 534.349651 191.17273)">    do</text>
    </g>
    <g id="text_30">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="191.080845" transform="rotate(-0 537.453558 191.080845)">    deuteranopia — tell them apart by marker or dash as well as</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="201.823603" transform="rotate(-0 534.349651 201.823603)">  - 'baseline' and 'variants' are distinct now and 0.16 apart under</text>
    </g>
    <g id="text_31">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="200.272332" transform="rotate(-0 537.453558 200.272332)">    colour</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="212.429165" transform="rotate(-0 534.349651 212.429165)">    deuteranopia — tell them apart by marker or dash as well as</text>
    </g>
    <g id="text_32">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="209.463818" transform="rotate(-0 537.453558 209.463818)">  - '0.341 units': and Rectangle share 412 px of ink; sits on 2</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="223.034726" transform="rotate(-0 534.349651 223.034726)">    colour</text>
    </g>
    <g id="text_33">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="218.616035" transform="rotate(-0 537.453558 218.616035)">    mark(s) — it has to move</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="233.640287" transform="rotate(-0 534.349651 233.640287)">  - '0.341 units': shares 412 px of ink with Rectangle; sits on 2</text>
    </g>
    <g id="text_34">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="227.846791" transform="rotate(-0 537.453558 227.846791)">  - '0.478 units': and Rectangle share 410 px of ink; sits on 2</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="244.200537" transform="rotate(-0 534.349651 244.200537)">    mark(s) — it has to move</text>
    </g>
    <g id="text_35">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="236.999008" transform="rotate(-0 537.453558 236.999008)">    mark(s) — it has to move</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="254.85141" transform="rotate(-0 534.349651 254.85141)">  - '0.478 units': shares 410 px of ink with Rectangle; sits on 2</text>
    </g>
    <g id="text_36">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="246.229764" transform="rotate(-0 537.453558 246.229764)">  - '0.559 units': and Line2D share 50 px of ink; and Rectangle</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="265.41166" transform="rotate(-0 534.349651 265.41166)">    mark(s) — it has to move</text>
    </g>
    <g id="text_37">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="255.381981" transform="rotate(-0 537.453558 255.381981)">    share 454 px of ink; sits on 3 mark(s) — it has to move</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="276.017221" transform="rotate(-0 534.349651 276.017221)">  - '0.559 units': shares 50 px of ink with Line2D; shares 454 px of</text>
    </g>
    <g id="text_38">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="264.573467" transform="rotate(-0 537.453558 264.573467)">  - '0.612 units': and '0.646 units' share 5 px of ink; and</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="286.668094" transform="rotate(-0 534.349651 286.668094)">    ink with Rectangle; sits on 3 mark(s) — it has to move</text>
    </g>
    <g id="text_39">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="273.804224" transform="rotate(-0 537.453558 273.804224)">    Rectangle share 375 px of ink; sits on 3 mark(s) — it has to</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="297.228344" transform="rotate(-0 534.349651 297.228344)">  - '0.612 units': shares 5 px of ink with '0.646 units'; shares 375</text>
    </g>
    <g id="text_40">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="282.955863" transform="rotate(-0 537.453558 282.955863)">    move</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="307.879217" transform="rotate(-0 534.349651 307.879217)">    px of ink with Rectangle; sits on 3 mark(s) — it has to move</text>
    </g>
    <g id="text_41">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="292.187197" transform="rotate(-0 537.453558 292.187197)">  - '0.646 units': and Rectangle share 468 px of ink; sits on 2</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="318.484778" transform="rotate(-0 534.349651 318.484778)">  - '0.646 units': shares 468 px of ink with Rectangle; sits on 2</text>
    </g>
    <g id="text_42">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="301.339413" transform="rotate(-0 537.453558 301.339413)">    mark(s) — it has to move</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="329.045028" transform="rotate(-0 534.349651 329.045028)">    mark(s) — it has to move</text>
    </g>
    <g id="text_43">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="310.57017" transform="rotate(-0 537.453558 310.57017)">  - axes 0: 57% of the value axis is empty above everything drawn —</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="534.349651" y="339.695901" transform="rotate(-0 534.349651 339.695901)">  - panel 0 of 2: the bottom spine is covered by 5 mark(s) drawn</text>
    </g>
    <g id="text_44">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="319.722386" transform="rotate(-0 537.453558 319.722386)">    it runs to 1.5 and nothing reaches past 0.646. Tighten the</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="350.301462" transform="rotate(-0 534.349651 350.301462)">    over it (Rectangle at zorder 3, spine at 2.5) — a full-width</text>
    </g>
    <g id="text_45">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="328.953143" transform="rotate(-0 537.453558 328.953143)">    limit, or give the room to something (a bracket stack, a</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="360.907024" transform="rotate(-0 534.349651 360.907024)">    band belongs under the frame</text>
    </g>
    <g id="text_46">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="338.144629" transform="rotate(-0 537.453558 338.144629)">    reference level)</text>
+    <text style="font-size: 8.529231px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="534.349651" y="382.072835" transform="rotate(-0 534.349651 382.072835)">nothing was written.</text>
    </g>
    <g id="text_47">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #b3402f" x="537.453558" y="347.296846" transform="rotate(-0 537.453558 347.296846)">  - the bottom spine is covered by 5 mark(s) drawn over it</text>
-   </g>
-   <g id="text_48">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="356.527602" transform="rotate(-0 537.453558 356.527602)">    (Rectangle at zorder 3, spine at 2.5) — a full-width band</text>
-   </g>
-   <g id="text_49">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="365.719089" transform="rotate(-0 537.453558 365.719089)">    belongs under the frame</text>
-   </g>
-   <g id="text_50">
-    <text style="font-size: 7.392px; font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Computer Modern Typewriter', 'Andale Mono', 'Nimbus Mono L', 'Courier New', 'Courier', 'Fixed', 'Terminal', monospace; text-anchor: start; fill: #5c5b57" x="537.453558" y="384.062792" transform="rotate(-0 537.453558 384.062792)">nothing was written.</text>
-   </g>
-   <g id="text_51">
-    <text style="font-weight: 700; font-size: 15px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="758.989408" y="83.09215" transform="rotate(-0 758.989408 83.09215)">what it got instead</text>
+    <text style="font-weight: 700; font-size: 15px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="755.885502" y="81.65215" transform="rotate(-0 755.885502 81.65215)">what it got instead</text>
    </g>
   </g>
-  <g id="text_52">
-   <text style="font-weight: 700; font-size: 27px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="504" y="28.296738" transform="rotate(-0 504 28.296738)">It refuses to write, and says why</text>
+  <g id="text_48">
+   <text style="font-weight: 700; font-size: 27px; font-family: 'Arial', 'Verdana', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #141413" x="500.896094" y="26.856738" transform="rotate(-0 500.896094 26.856738)">It refuses to write, and says why</text>
   </g>
-  <g id="text_53">
-   <text style="font-size: 19px; font-family: 'Georgia', 'DejaVu Serif', serif; text-anchor: middle; fill: #5c5b57" x="504" y="56.761719" transform="rotate(-0 504 56.761719)">9 things wrong with it, in the words it refused them in</text>
+  <g id="text_49">
+   <text style="font-size: 19px; font-family: 'Georgia', 'DejaVu Serif', serif; text-anchor: middle; fill: #5c5b57" x="500.896094" y="55.321719" transform="rotate(-0 500.896094 55.321719)">8 things wrong with it, in the words it refused them in</text>
   </g>
  </g>
  <defs>
-  <clipPath id="p9583c2fc2c">
-   <rect x="56.244355" y="93.09215" width="453.734461" height="313.346131"/>
+  <clipPath id="pfe6f970e24">
+   <rect x="53.140449" y="91.65215" width="453.734461" height="313.346131"/>
   </clipPath>
-  <clipPath id="p94491c3f25">
-   <rect x="520.778816" y="93.09215" width="476.421184" height="313.346131"/>
+  <clipPath id="pb8e2fad8b8">
+   <rect x="517.67491" y="91.65215" width="476.421184" height="313.346131"/>
   </clipPath>
  </defs>
 </svg>

@@ -23,8 +23,10 @@ from ogviz.tags import marked, value_of
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
+    from ogviz.orientation import Orientation
 
-def orientation_of(ax: Axes) -> str:
+
+def orientation_of(ax: Axes) -> Orientation:
     """The panel's orientation: what it recorded, or failing that what its marks suggest.
 
     The marks are a fallback for a figure this package did not draw. Inferring it where the answer

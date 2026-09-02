@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout.bounds import panel_prefix
 from ogviz.layout.raster import INK_TOLERANCE, frame_rgb, ink_of
 from ogviz.require import require
 from ogviz.tags import value_of
@@ -83,7 +84,14 @@ class Density:
 
 
 def measure(fig: Figure) -> Density:
-    """Ink coverage and the unused band on each side of the canvas, in pixels."""
+    """Ink coverage and the unused band on each side of the canvas, in pixels.
+
+    Each band runs from that edge of the canvas to that edge of the INK, so on a figure with no ink
+    the four bands are each the whole canvas and they overlap: left and right both read the full
+    width, top and bottom both the full height. They are not summable there, and a caller that
+    sums them concludes the figure is twice its own size. `figure_margins` answers None for that
+    case and `dead_space` names it in one note; nothing should read these four for a blank page.
+    """
     mask = ink_mask(fig)
     height, width = mask.shape
     bounds = _ink_bounds(mask)
@@ -173,16 +181,26 @@ def dead_space(fig: Figure) -> list[str]:
     """
     notes: list[str] = []
     overall = measure(fig)
-    for side in ("left", "right", "top", "bottom"):
-        unused = getattr(overall, side)
-        if unused > LOOSE_MARGIN_PX:
-            notes.append(f"{unused:.0f} px of the canvas past the {side} edge of the ink is unused")
-    for index, ax in enumerate(fig.axes):
+    if overall.coverage == 0.0:
+        # ONE note, not four. Every band is measured to the edge of the ink, so with no ink each
+        # of the four is the whole canvas — and the four notes then said "the canvas past the left
+        # edge of the ink is unused" about an edge that does not exist, twice over per axis. The
+        # fact is a single one and it is not about margins. The PANEL loop still runs: an axes
+        # placed off the canvas leaves a blank page and is exactly the case worth reporting.
+        notes.append("the figure has no ink on it")
+    else:
+        for side in ("left", "right", "top", "bottom"):
+            unused = getattr(overall, side)
+            if unused > LOOSE_MARGIN_PX:
+                notes.append(
+                    f"{unused:.0f} px of the canvas past the {side} edge of the ink is unused"
+                )
+    for ax in fig.axes:
         panel = panel_emptiness(fig, ax)
         shared = value_of(ax, "shared_scale")
         for side in ("left", "right", "top", "bottom"):
             if panel[side] > GENEROUS_BAND:
-                where = f"axes {index}: the {side} {panel[side]:.0%} of the panel is empty"
+                where = f"{panel_prefix(fig, ax)}the {side} {panel[side]:.0%} of the panel is empty"
                 # A panel on a SHARED scale is empty at one end by construction — the tallest panel
                 # in the grid set the limit. Reported in the same words as a loose limit, the note
                 # told a reader to tighten the one axis that must not be tightened, since doing so

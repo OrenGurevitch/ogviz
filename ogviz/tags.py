@@ -55,8 +55,12 @@ Tag = Literal[
     # action from a panel whose limits are simply loose — `dead_space` reported both in the same
     # words, so the note read as "tighten this" on the one figure where tightening is wrong.
     "shared_scale",
-    # Set on the FIGURE when `tight_layout` declined to lay it out.
+    # Set on the FIGURE when `tight_layout` declined to lay it out; the value is its reason.
     "layout_refused",
+    # Set on the FIGURE when some or all of its axes pin their own layout, so `tight_layout` skipped
+    # them; the value says how many. Separate from a refusal because the gate reports one and not
+    # the other: a pinned grid is the arrangement working as intended.
+    "layout_pinned",
     # Set on the FIGURE by `panel_grid`: the shape it built and the page it was sized for, so
     # `grid_warnings` can say what that shape will cost without being told again.
     "grid_page",

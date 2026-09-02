@@ -16,8 +16,6 @@ from matplotlib.figure import Figure
 
 from ogviz.layout.render import ensure_rendered, one_render
 
-pytestmark = pytest.mark.usefixtures("pinned_font")
-
 
 def _counting(fig):
     """Wrap the canvas draw so the renders can be counted."""

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout.bounds import panel_prefix
 from ogviz.layout.collision import point_offsets
 from ogviz.tags import marked
 
@@ -272,7 +273,7 @@ def settle_axis_labels(fig: Figure, *, drift: float = LABEL_DRIFT_PX) -> list[st
 
     ensure_rendered(fig)
     moved: list[str] = []
-    for index, ax in enumerate(fig.axes):
+    for ax in fig.axes:
         for axis, along in ((ax.xaxis, 0), (ax.yaxis, 1)):
             label = axis.label
             if not label.get_text().strip() or not label.get_visible():
@@ -295,7 +296,7 @@ def settle_axis_labels(fig: Figure, *, drift: float = LABEL_DRIFT_PX) -> list[st
             # on the next draw anyway; passing it through unchanged is what keeps that true.
             label.set_position((current[0], target) if along else (target, current[1]))
             moved.append(
-                f"axes {index}: centred {label.get_text()[:40]!r} on the marks, "
+                f"{panel_prefix(fig, ax)}centred {label.get_text()[:40]!r} on the marks, "
                 f"{at - middle:+.0f} px from where the axes box put it"
             )
     return moved

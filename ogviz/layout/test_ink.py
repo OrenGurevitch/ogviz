@@ -4,8 +4,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import pytest
 
 from ogviz.layout.ink import artist_ink, exact_overlaps
+
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
 
 
 def test_boxes_that_touch_while_no_glyph_does_are_not_a_collision() -> None:
@@ -14,11 +18,18 @@ def test_boxes_that_touch_while_no_glyph_does_are_not_a_collision() -> None:
     A descender and a following digit interleave their boxes without a shared pixel. A box test
     calls that a collision and a reader sees two perfectly legible strings.
     """
+    # MEASURED to hold under the pinned font (2026-09-01): "Ay" on its baseline at y = 0.5 puts the
+    # y's descender box below the line, where "1.42" hangs from its top, and a hundredth of the
+    # axes of horizontal overlap makes the two boxes intersect while no glyph meets another. The
+    # first spelling put the boxes 0.02 apart, so they never overlapped at all — and the assertion
+    # below ended in `or True`, which is how a premise that was false stayed green.
     fig, ax = plt.subplots(figsize=(6.0, 4.0))
-    left = ax.text(0.30, 0.50, "Ay", fontsize=30, ha="right", va="bottom")
-    right = ax.text(0.32, 0.50, "1.42", fontsize=30, ha="left", va="top")
+    left = ax.text(0.30, 0.50, "Ay", fontsize=30, ha="right", va="baseline")
+    right = ax.text(0.29, 0.50, "1.42", fontsize=30, ha="left", va="top")
     fig.canvas.draw()
-    assert left.get_window_extent().overlaps(right.get_window_extent()) or True
+    assert left.get_window_extent().overlaps(right.get_window_extent()), (
+        "the premise: the two BOXES do overlap, so only the ink can tell them apart"
+    )
     assert not exact_overlaps(fig, [left, right]), "no glyph of one touches a glyph of the other"
 
 

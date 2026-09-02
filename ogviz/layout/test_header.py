@@ -89,3 +89,18 @@ def test_a_genuine_refusal_is_still_caught_and_named() -> None:
     assert "not applied" in str(value_of(fig, "layout_refused")).lower()
     assert layout_not_applied(fig), "and the gate says it out loud"
     plt.close(fig)
+
+
+def test_a_partly_pinned_figure_is_not_reported_as_laid_out() -> None:
+    """The skip fired only when EVERY axes was pinned; two free subplots beside one hand-added axes
+    (which `tight_layout` skips outright) ran the layout, moved the two, and returned True."""
+    from ogviz.tags import value_of
+
+    fig, _axes = plt.subplots(1, 2)
+    fig.add_axes((0.8, 0.8, 0.1, 0.1))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        applied = fit_under_header(fig, 0.9)
+    assert applied is False
+    assert "1 of 3 axes pin their own layout" in str(value_of(fig, "layout_pinned"))
+    plt.close(fig)

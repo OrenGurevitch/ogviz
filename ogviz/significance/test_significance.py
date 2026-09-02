@@ -16,6 +16,9 @@ from ogviz.significance import (
 )
 from ogviz.tags import marked
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def test_stars_thresholds() -> None:
     assert stars(0.0009) == "***"

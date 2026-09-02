@@ -63,6 +63,13 @@ def benjamini_hochberg_rank(sorted_p: NDArray[np.float64], *, alpha: float = ALP
         count > 0,
         "a family needs at least one test",
     )
+    # The ramp only means anything against ASCENDING p-values, and the parameter's name is not a
+    # check: an unsorted family returned a count with no error, which is a wrong number of declared
+    # findings, silently. `multiplicity_ladder` sorts before calling; a direct caller may not.
+    require(
+        bool(np.all(np.diff(sorted_p) >= 0)),
+        "benjamini_hochberg_rank needs the p-values sorted ascending; sort them first",
+    )
     ramp = alpha * np.arange(1, count + 1) / count
     clearing = np.nonzero(sorted_p <= ramp)[0]
     return int(clearing[-1]) + 1 if clearing.size else 0
@@ -92,8 +99,10 @@ def multiplicity_ladder(
     `log` PUTS THE DECISION WHERE IT CAN BE SEEN. On a linear axis every threshold this panel draws
     lives below alpha, so at alpha = 0.05 the whole comparison is squeezed into the bottom twentieth
     of the axis and the remaining 95% shows p-values nobody is deciding anything about: measured on
-    a family of 15, the Bonferroni line at 0.0033 and the BH ramp's first rung at 0.0033 landed 0.4
-    px apart, and the two rules a reader is here to tell apart were one line. A log axis spends its
+    a family of 15, the Bonferroni line at 0.0033 and the BH ramp's first rung at 0.0033 are THE
+    SAME NUMBER — alpha/n either way, so no scale separates them — and the two rules a reader is
+    here to tell apart met at one point with the rest of the ramp crushed above it. A log axis
+    spends its
     room in proportion to how small the numbers are, which is how p-values are read.
 
     It is not the default because a family can contain a p of exactly 0 — an exact test, or a

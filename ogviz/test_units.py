@@ -6,6 +6,7 @@ source — a `dpi / 72.0` written out somewhere else is the module failing at it
 preference, and it went unnoticed for as long as it did because nothing asked.
 """
 
+import re
 from pathlib import Path
 
 import matplotlib
@@ -65,7 +66,10 @@ def test_a_data_value_survives_the_round_trip_through_pixels() -> None:
 
 
 # The conversions this module owns, as they look when written out by hand.
-HAND_ROLLED = ("dpi / 72.0", "dpi/72", "/ 72.0 *", "* 72.0")
+# A REGEX, not substrings: the substring list missed `/ 72.0) * len(` in `layout/panels.py` on a
+# closing parenthesis, and the test passed while a conversion sat written out. Any bare 72 next to
+# a `*` or `/` is a points conversion; the one place allowed to write it is `units.py`.
+HAND_ROLLED = re.compile(r"(?:[*/]\s*72(?:\.0)?(?![\d.]))|(?:(?<![\d.])72(?:\.0)?\s*[*/])")
 # `units.py` is where they belong. The theme's `WORD_LABEL_RATIO`-style arithmetic on type sizes is
 # not a coordinate conversion and never involves a dpi, so nothing else is excused here.
 ALLOWED = {"units.py"}
@@ -85,7 +89,7 @@ def test_no_module_writes_a_points_conversion_out_by_hand() -> None:
             continue
         for number, line in enumerate(path.read_text().splitlines(), start=1):
             code = line.split("#")[0]
-            if any(pattern in code for pattern in HAND_ROLLED):
+            if HAND_ROLLED.search(code):
                 offenders.append(f"{path.relative_to(root)}:{number}: {line.strip()}")
     assert not offenders, (
         "points conversions written out instead of using ogviz.units:\n" + "\n".join(offenders)
@@ -100,9 +104,9 @@ def test_panel_px_measures_the_axis_the_orientation_names() -> None:
     someone quietly. Specified instead — an unused helper that is pinned is a helper; an unused
     helper that is unpinned is a liability, and the difference is this test.
 
-    What the entry in FIXME says about it stands: naming the long side "vertical" reads as the
-    panel's orientation and means the VALUE axis, which is why the nearest candidate caller wanted
-    the width regardless of orientation and did not use this. That is an API opinion; the behaviour
+    One API opinion, recorded here because it is why the helper has no caller: naming the long side
+    "vertical" reads as the panel's orientation and means the VALUE axis, which is why the nearest
+    candidate caller wanted the width regardless of orientation and did not use this. The behaviour
     below is what it does today.
     """
     fig, ax = plt.subplots(figsize=(8.0, 2.0), dpi=100.0)
@@ -115,3 +119,13 @@ def test_panel_px_measures_the_axis_the_orientation_names() -> None:
     assert units.panel_px(ax, orientation="horizontal") > units.panel_px(ax), (
         "this panel is four times wider than it is tall, so the two answers must differ"
     )
+
+
+def test_an_unknown_unit_is_refused_by_name() -> None:
+    """It fell through to the em branch: a typo was reported as a missing type size, and with
+    `em=` given it returned a number in no unit at all."""
+    fig = plt.figure(dpi=100)
+    with pytest.raises(AssertionError, match="unknown unit 'furlong'"):
+        units.to_px(3.0, "furlong", fig=fig)  # type: ignore[arg-type]
+    with pytest.raises(AssertionError, match="unknown unit"):
+        units.to_px(3.0, "furlong", fig=fig, em=12.0)  # type: ignore[arg-type]

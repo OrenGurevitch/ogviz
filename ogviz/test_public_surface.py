@@ -24,6 +24,17 @@ import pytest
 PACKAGES = ("ogviz", "ogviz.layout", "ogviz.qc", "ogviz.panels", "ogviz.marks")
 
 
+def _all_of(module) -> list[str]:
+    """The package's `__all__`, and a FAILURE if it has none.
+
+    `getattr(module, "__all__", ())` made both tests below `[] == []` for `ogviz.marks`, which had
+    no `__all__`: two green parametrised cases that checked nothing, and the same silence for any
+    package added to `PACKAGES` later.
+    """
+    assert hasattr(module, "__all__"), f"{module.__name__} has no __all__, so nothing is checked"
+    return list(module.__all__)
+
+
 @pytest.mark.parametrize("package", PACKAGES)
 def test_no_exported_name_resolves_to_a_module(package: str) -> None:
     """A name in `__all__` that comes back as a module is a shadowed function.
@@ -33,7 +44,7 @@ def test_no_exported_name_resolves_to_a_module(package: str) -> None:
     the `__init__` that caused it.
     """
     module = importlib.import_module(package)
-    exported = getattr(module, "__all__", ())
+    exported = _all_of(module)
     shadowed = [
         name for name in exported if isinstance(getattr(module, name, None), types.ModuleType)
     ]
@@ -47,7 +58,7 @@ def test_no_exported_name_resolves_to_a_module(package: str) -> None:
 def test_every_exported_name_exists(package: str) -> None:
     """`__all__` is a promise; an entry naming nothing breaks `from ... import *` outright."""
     module = importlib.import_module(package)
-    missing = [name for name in getattr(module, "__all__", ()) if not hasattr(module, name)]
+    missing = [name for name in _all_of(module) if not hasattr(module, name)]
     assert missing == [], f"{package}.__all__ names {missing}, which do not exist"
 
 
@@ -70,11 +81,15 @@ def test_the_post_render_passes_are_reachable_from_the_package_root() -> None:
         assert callable(getattr(ogviz, name, None)), f"ogviz.{name} is not callable"
 
 
-def test_the_three_names_the_readme_offers_from_python_all_work() -> None:
-    """The README says: "From Python: `audit(fig)`, `repair(fig)`, `assert_clean(fig)`"."""
-    from ogviz.qc import assert_clean, audit, repair
+def test_the_names_the_readme_offers_from_python_all_work() -> None:
+    """The README says: "From Python: `audit(fig)`, `repair(fig)`, `assert_clean(fig)`, and
+    `type_too_small(fig, column_width=...)`", and says where — `ogviz.qc`. Two of the four are
+    also at the top level; the README used to imply all four were."""
+    import ogviz
+    from ogviz.qc import assert_clean, audit, repair, type_too_small
 
-    assert all(callable(one) for one in (audit, repair, assert_clean))
+    assert all(callable(one) for one in (audit, repair, assert_clean, type_too_small))
+    assert callable(ogviz.audit) and callable(ogviz.assert_clean)
 
 
 def test_a_complaint_that_names_a_function_names_one_a_reader_can_import() -> None:

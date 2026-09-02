@@ -14,7 +14,12 @@ import numpy as np
 import pytest
 
 from ogviz import Series, bar_panel
-from ogviz.panels.reference import Z_BAND_FILL, reference_band, reference_line
+from ogviz.panels.reference import (
+    Z_BAND_FILL,
+    reference_band,
+    reference_line,
+    slide_label_clear,
+)
 from ogviz.tags import marked
 
 pytestmark = pytest.mark.usefixtures("pinned_font")
@@ -119,3 +124,38 @@ def test_the_panel_passes_its_own_gate_with_both() -> None:
     fig.canvas.draw()
     assert audit(fig) == []
     plt.close(fig)
+
+
+def test_a_backdrop_is_not_something_a_threshold_label_must_avoid() -> None:
+    """A backdrop is what a label may sit ON, and it was counted as something to slide away from.
+
+    Tested against `slide_label_clear` directly, with a tint covering the panel and nothing else
+    on it, because on a whole `bar_panel` the answer also depends on where the bars and the value
+    labels fall — which is a different question and one the font changes. Here the tint is the
+    only artist, so the two runs differ in exactly the rule under test: excused, the label takes
+    the first slot; counted, no slot is clear and it goes to the 1.012 fallback outside the axes.
+    """
+    import ogviz.panels.reference as reference_module
+    from ogviz.tags import mark
+
+    def label_fraction(*, count_backdrops: bool) -> float:
+        real = reference_module.is_backdrop
+        if count_backdrops:
+            reference_module.is_backdrop = lambda _artist: False
+        try:
+            fig, ax = plt.subplots(figsize=(7.0, 4.0))
+            ax.set_xlim(0.0, 1.0)
+            ax.set_ylim(0.0, 1.0)
+            tint = ax.axhspan(0.0, 1.0, color="#EFEFEF", zorder=0)
+            mark(tint, "backdrop")
+            label = reference_line(ax, 0.5, "target")
+            fig.canvas.draw()
+            slide_label_clear(ax, label)
+            fraction = float(label.get_position()[0])
+        finally:
+            reference_module.is_backdrop = real
+            plt.close("all")
+        return fraction
+
+    assert label_fraction(count_backdrops=True) > 1.0, "premise: counting the tint exiles the label"
+    assert label_fraction(count_backdrops=False) < 1.0

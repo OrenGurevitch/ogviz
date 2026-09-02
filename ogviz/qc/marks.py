@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ogviz.layout.bounds import panel_prefix
 from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
     filled_marks_over,
@@ -44,10 +45,28 @@ def dots_off_the_marks(fig: Figure) -> list[str]:
                 continue
             offsets = np.asarray(collection.get_offsets(), dtype=float)
             if offsets.shape[0] != np.asarray(lane).shape[0]:
+                # A stale tag is a defect, not a reason to go quiet: the lane was recorded for a
+                # different number of dots than the collection now holds, so the check cannot be
+                # made and used to return clean instead of saying so.
+                complaints.append(
+                    f"{panel_prefix(fig, ax)}a point cloud's recorded lane has "
+                    f"{np.asarray(lane).shape[0]} entries for {offsets.shape[0]} dots — it was "
+                    "tagged before the dots changed"
+                )
                 continue
+            # Strictly inside, with a hair of tolerance: a dot placed exactly AT the lane's edge by
+            # `jitter_x` is clear, and `<` against the same float arithmetic was reporting it.
             inside = int(np.count_nonzero(np.abs(offsets[:, across] - position) < lane * 0.999))
             if inside:
-                complaints.append(f"{inside} dot(s) sit on the central marks")
+                # NAMED, because this is a per-panel defect and the complaint used to identify no
+                # panel at all: a grid of six violins reported "3 dot(s) sit on the central marks"
+                # six times over with nothing to tell them apart, and neither the panel nor the
+                # position was in the sentence. `panel_prefix` is the one convention for the first
+                # half; the group's own position on the category axis is the second.
+                complaints.append(
+                    f"{panel_prefix(fig, ax)}{inside} dot(s) sit on the central marks of the "
+                    f"group at {float(position):g}"
+                )
     return complaints
 
 
@@ -105,7 +124,8 @@ def buried_baselines(fig: Figure) -> list[str]:
                 which = ", ".join(sorted({type(patch).__name__ for patch in buried}))
                 highest = max(patch.get_zorder() for patch in buried)
                 complaints.append(
-                    f"the {side} spine is covered by {len(buried)} mark(s) drawn over it "
+                    f"{panel_prefix(fig, ax)}the {side} spine is covered by {len(buried)} "
+                    f"mark(s) drawn over it "
                     f"({which} at zorder {highest:g}, spine at {spine_z:g}) — a full-width band "
                     "belongs under the frame"
                 )
@@ -123,7 +143,8 @@ def buried_baselines(fig: Figure) -> list[str]:
             if over:
                 value = _level_of(line, upright=upright)
                 complaints.append(
-                    f"the reference line at {value:g} is behind {len(over)} mark(s) — "
+                    f"{panel_prefix(fig, ax)}the reference line at {value:g} is behind "
+                    f"{len(over)} mark(s) — "
                     "a threshold has to stay readable across the panel"
                 )
     return complaints

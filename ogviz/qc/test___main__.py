@@ -122,3 +122,85 @@ def test_fix_output_does_not_carry_the_matplotlib_version(tmp_path) -> None:
 def test_list_checks_prints_and_stops() -> None:
     """`--list-checks` needs no target, and must exit 0 rather than falling into the audit path."""
     assert main(["--list-checks"]) == 0
+
+
+def test_list_checks_names_every_tier(capsys) -> None:
+    """It printed `CHECKS` alone, so the check `--thorough` adds and the three advisories
+    `guard(advise=True)` runs were promised by the help and named nowhere."""
+    from ogviz.qc import ADVISORY_CHECKS, CHECKS, THOROUGH_CHECKS
+
+    assert main(["--list-checks"]) == 0
+    printed = capsys.readouterr().out
+    for check in (*CHECKS, *THOROUGH_CHECKS, *ADVISORY_CHECKS):
+        assert check.__name__ in printed, check.__name__
+    assert "[advisory]" in printed and "[--thorough]" in printed
+
+
+def test_fix_still_exits_nonzero_for_a_figure_that_arrived_broken(tmp_path) -> None:
+    """The status was the POST-repair count, so a run whose every figure was repairable exited 0
+    while the originals on disk were still broken."""
+    assert _run(tmp_path, "run", tmp_path / "out") == 1
+
+
+def test_a_builder_returning_a_tuple_with_no_figure_is_refused() -> None:
+    """`(ax1, ax2)` fell through to "every open figure", which the docstring said was no longer
+    possible."""
+    fig, ax = plt.subplots()
+    with pytest.raises(AssertionError, match="no Figure in it"):
+        _figures_from((ax, ax), plt)
+    plt.close(fig)
+
+
+def test_two_figures_sharing_a_label_get_two_files(tmp_path) -> None:
+    """One `--fix` write silently overwrote the other, and the report described both.
+
+    Three figures labelled the same is not exotic — the shape a builder loop produces — and the
+    directory held the last one while the run said three. The FIRST claim keeps the plain name, so
+    a project whose labels are already distinct sees the filenames it saw before.
+    """
+    import sys
+
+    source = tmp_path / "twins.py"
+    source.write_text(
+        "import matplotlib\n"
+        "matplotlib.use('Agg')\n"
+        "import matplotlib.pyplot as plt\n"
+        "def build():\n"
+        "    made = []\n"
+        "    for _ in range(3):\n"
+        "        fig, ax = plt.subplots(figsize=(4.0, 3.0))\n"
+        "        fig.set_label('panel A')\n"
+        "        ax.plot([0.0, 1.0], [0.0, 1.0])\n"
+        "        made.append(fig)\n"
+        "    return made\n"
+    )
+    out = tmp_path / "out"
+    sys.path.insert(0, str(tmp_path))
+    try:
+        main(["twins:build", "--fix", str(out)])
+    finally:
+        sys.path.remove(str(tmp_path))
+        sys.modules.pop("twins", None)
+        plt.close("all")
+
+    written = sorted(path.name for path in out.glob("*.png"))
+    assert written == ["panel A.png", "panel A_2.png", "panel A_3.png"]
+
+
+def test_a_target_that_produces_no_figures_says_so_and_exits_nonzero(tmp_path, capsys) -> None:
+    """Untested: the branch a mistyped target or a builder that drew nothing lands in.
+
+    It is the one outcome where there is nothing to report per figure, so the exit status has to
+    come from somewhere else — and a run that checked zero figures must not read as a clean one.
+    """
+    import sys
+
+    source = tmp_path / "empty.py"
+    source.write_text("x = 1\n")
+    sys.path.insert(0, str(tmp_path))
+    try:
+        assert main([str(source)]) == 1
+    finally:
+        sys.path.remove(str(tmp_path))
+        plt.close("all")
+    assert "produced no figures" in capsys.readouterr().out

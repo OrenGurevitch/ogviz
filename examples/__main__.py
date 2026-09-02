@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, NullFormatter
+from scipy.stats import t as t_distribution
 
 from examples.data import (
     ARM_LABELS,
@@ -231,12 +232,17 @@ def power_spectrum() -> None:
 
     The ribbon is a 95% CI OF THE MEAN, and the subtitle says so because the alternative is a
     different claim, not a different style: a 95% interval across subjects is wider by the root of
-    n — 4.9 times, here — and a reader who takes one for the other draws the opposite conclusion
-    about whether the conditions differ. Computed in log power, since the spectra are log-normal
-    and an interval built on the raw values would run negative at the quiet end.
+    n — about five times, here — and a reader who takes one for the other draws the opposite
+    conclusion about whether the conditions differ. Computed in log power, since the spectra are
+    log-normal and an interval built on the raw values would run negative at the quiet end.
     """
     frequencies, spectra = heart_rate_spectra()
     palette = series_colors(3)
+    # DERIVED from the cohort, not written out: the subtitle's n, the t multiplier and the
+    # root-of-n factor above all said 24 subjects after `COHORT` had moved to 26. Three numbers
+    # that have to agree with one constant are three numbers to compute from it.
+    cohort = next(iter(spectra.values())).shape[0]
+    t_multiplier = float(t_distribution.ppf(0.975, cohort - 1))
     fig, ax = plt.subplots(figsize=(11.5, 6.8))
 
     for label, low, high, tone in SPECTRAL_BANDS:
@@ -260,7 +266,7 @@ def power_spectrum() -> None:
     for (label, rows), color in zip(spectra.items(), palette, strict=True):
         logs = np.log(rows)
         middle = np.exp(logs.mean(axis=0))
-        half = 2.069 * logs.std(axis=0, ddof=1) / np.sqrt(rows.shape[0])  # t, 23 d.f.
+        half = t_multiplier * logs.std(axis=0, ddof=1) / np.sqrt(rows.shape[0])
         # UNDER the frame: a ribbon that reaches the left limit is drawn over the spine, and the
         # gate reports a buried axis. The line stays above it.
         ax.fill_between(
@@ -307,7 +313,9 @@ def power_spectrum() -> None:
     header_bottom = titled(
         fig,
         "Where the power sits",
-        subtitle="invented spectra, 24 subjects; the ribbon is a 95% CI of the geometric mean",
+        subtitle=(
+            f"invented spectra, {cohort} subjects; the ribbon is a 95% CI of the geometric mean"
+        ),
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     render(fig, "06_power_spectrum")
@@ -790,10 +798,14 @@ def the_gate() -> None:
     )
     fit_under_header(fig, header_bottom, bottom=0.0)
     _assert_shows_the_defect(build)
+    # Bypassing `save` also bypassed what it does around the write: the directory it creates,
+    # and the tight crop every other gallery image gets. Both restored here, so this image is
+    # cropped like its seventeen neighbours and the function can run first.
+    OUT.mkdir(parents=True, exist_ok=True)
     with glyphs_must_render():
         for suffix, kwargs in ((".png", {"dpi": 200}), (".svg", {})):
             path = OUT / f"13_the_gate{suffix}"
-            fig.savefig(path, metadata=reproducible_metadata(path), **kwargs)
+            fig.savefig(path, metadata=reproducible_metadata(path), bbox_inches="tight", **kwargs)
     plt.close(fig)
 
 

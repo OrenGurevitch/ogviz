@@ -137,3 +137,42 @@ def test_a_leg_without_estimates_leaves_no_hole_under_it() -> None:
     assert tall.get_window_extent().height > short.get_window_extent().height * 1.5, (
         "the scatter with no strip under it takes the whole column"
     )
+
+
+def test_a_misspelled_sort_order_is_refused_rather_than_sorted_by_value() -> None:
+    """The `Literal` is not enforced at runtime; anything but "given" and "magnitude" sorted by
+    signed value — the ordering the parameter exists to keep a caller from getting by accident."""
+    from ogviz.panels.coupling import Estimate, estimate_strip
+
+    fig, ax = plt.subplots()
+    with pytest.raises(AssertionError, match="sort_by"):
+        estimate_strip(
+            ax,
+            [Estimate("a", 0.2, (0.1, 0.3), "#7C9A6E")],
+            limits=(0.0, 1.0),
+            sort_by="largest-first",  # type: ignore[arg-type]
+        )
+    plt.close(fig)
+
+
+def test_a_trend_that_could_not_be_fitted_is_reported_not_dropped() -> None:
+    """`Cloud(trend=True)` is a request, and `trend_line` returns None for two inputs it declines.
+
+    Both returns were dropped on the floor, so the request could go unanswered without a word: the
+    panel draws, the gate passes, and the guide the figure is read with is absent. A line never
+    drawn leaves no ink, so no check downstream can find it.
+    """
+    from ogviz.panels.coupling import MINIMUM_FOR_A_TREND, scatter_panel
+    from ogviz.theme import SERIES
+
+    stacked = Cloud(np.full(8, 1.0), np.arange(8.0), SERIES[0], SERIES[0], "one x", trend=True)
+    _fig, ax = plt.subplots(figsize=(5.0, 4.0))
+    assert scatter_panel(ax, Leg("x", "y", [stacked]), pooled_color=None) == [
+        f"'one x' asked for a trend and has none: fewer than {MINIMUM_FOR_A_TREND} finite pairs, "
+        "or every point on one x"
+    ]
+
+    fitted = Cloud(np.arange(20.0), np.arange(20.0) * 2.0, SERIES[0], SERIES[0], "fine")
+    _fig2, ax2 = plt.subplots(figsize=(5.0, 4.0))
+    assert scatter_panel(ax2, Leg("x", "y", [fitted])) == []
+    plt.close("all")

@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING
 
 from matplotlib.figure import Figure
 
+from ogviz.layout.write import plain_filename as _filename
 from ogviz.layout.write import reproducible_metadata
-from ogviz.qc import CHECKS, audit
+from ogviz.qc import ADVISORY_CHECKS, CHECKS, THOROUGH_CHECKS, audit
 from ogviz.qc.repair import repair
 from ogviz.qc.report import group_by_subject
 from ogviz.require import require
@@ -38,8 +39,15 @@ def _figures_from(produced: object, plt) -> list[Figure]:
         return [produced]
     if isinstance(produced, (tuple, list)):
         found = [item for item in produced if isinstance(item, Figure)]
-        if found:
-            return found
+        # A tuple or list WITH NO FIGURE IN IT is the "returned the wrong thing" case, and it fell
+        # through to the open figures like a builder that returned nothing — which the docstring
+        # above said could no longer happen. `(ax1, ax2)` and `["out.png"]` are the shapes.
+        require(
+            found,
+            f"the builder returned a {type(produced).__name__} with no Figure in it: "
+            f"{produced!r}. Return the figure, `(fig, ax)`, a list of figures, or nothing.",
+        )
+        return found
     return [plt.figure(number) for number in plt.get_fignums()]
 
 
@@ -62,7 +70,13 @@ def _load_figures(target: str) -> list[Figure]:
     plt.close("all")
     if ":" in target:
         module_name, _, attribute = target.partition(":")
-        module = importlib.import_module(module_name)
+        try:
+            module = importlib.import_module(module_name)
+        except ModuleNotFoundError as missing:
+            # A sentence, not a traceback: this is the boundary where a typed name comes in.
+            raise AssertionError(
+                f"{target}: cannot import {module_name!r} ({missing}). Is the project on sys.path?"
+            ) from missing
         builder = getattr(module, attribute, None)
         # Written out rather than sent through `require`, here and at the four other places like
         # it, because this one also NARROWS: the type checker learns `builder` is callable from the
@@ -77,22 +91,35 @@ def _load_figures(target: str) -> list[Figure]:
     return [plt.figure(number) for number in plt.get_fignums()]
 
 
-def _filename(label: str) -> str:
-    """A figure label made safe to join onto a directory.
+def _unique_filenames(figures: Sequence[Figure]) -> list[str]:
+    """One distinct filename per figure, in order — the names `--fix` writes to.
 
-    A label is arbitrary caller text and this builds a path out of it. One containing a separator
-    wrote OUTSIDE the directory the user named — `--fix out/` and a label of `../escaped` puts the
-    file a level up — which contradicts the help text's promise that the originals are not touched.
-    Everything that is not a plain filename character becomes an underscore, and a label that is
-    nothing but separators still has to produce a name, so it falls back to `figure`.
+    A label is arbitrary caller text and two figures may carry the same one, or none: three bare
+    `plt.figure()` calls all label themselves `""`. That went through `_filename`'s fallback to
+    `figure` for every one of them, so `--fix out/` wrote `out/figure.png` three times and the
+    directory held the LAST figure while the report described three. Silent, and exactly the kind
+    of thing `--fix` is used to avoid.
+
+    The first claim on a name keeps it, so a project whose figures are labelled — which is every
+    figure this package builds — sees the filenames it saw before. Only a collision is suffixed.
     """
-    safe = "".join(
-        character if character.isalnum() or character in "-_. " else "_" for character in label
-    ).strip(" .")
-    return safe or "figure"
+    chosen: list[str] = []
+    taken: set[str] = set()
+    for index, figure in enumerate(figures):
+        # `str(...)`: the stubs type a figure label as `object`, and this one is joined onto a path.
+        stem = _filename(str(figure.get_label() or f"figure_{index + 1}"))
+        name, attempt = stem, 1
+        while name in taken:
+            attempt += 1
+            name = f"{stem}_{attempt}"
+        taken.add(name)
+        chosen.append(name)
+    return chosen
 
 
-def _report_one(figure: Figure, index: int, *, thorough: bool, destination: Path | None) -> int:
+def _report_one(
+    figure: Figure, index: int, *, thorough: bool, destination: Path | None, filename: str
+) -> int:
     """Audit one figure, say what is wrong with it, and return how much is left outstanding.
 
     Split out of `main`, which did argument parsing, loading, auditing, repair, writing and
@@ -103,8 +130,9 @@ def _report_one(figure: Figure, index: int, *, thorough: bool, destination: Path
     status. It was called twice, once per use, which on `--thorough` is a second full
     render-per-artist pass over every figure for an answer already in hand.
     """
-    # `str(...)`: the stubs type a figure label as `object`, and this one is joined onto a
-    # path and printed. Coerced here rather than ignored at each use.
+    # `str(...)`: the stubs type a figure label as `object`, and this one is printed. The name it
+    # is WRITTEN under comes in from `_unique_filenames`, which is the only place that can see
+    # whether another figure claimed it first.
     label = str(figure.get_label() or f"figure_{index + 1}")
     print(f"{label}:")
     found = audit(figure, thorough=thorough)
@@ -116,7 +144,7 @@ def _report_one(figure: Figure, index: int, *, thorough: bool, destination: Path
 
     for change in repair(figure):
         print(f"  fixed: {change}")
-    written = destination / f"{_filename(label)}.png"
+    written = destination / f"{filename}.png"
     # `reproducible_metadata`, because this does not go through `save` — `save` refuses a figure
     # with complaints, and the whole point here is to write one that had them.
     #
@@ -132,7 +160,11 @@ def _report_one(figure: Figure, index: int, *, thorough: bool, destination: Path
     remaining = audit(figure, thorough=thorough)
     for line in group_by_subject(remaining):
         print(f"  still needs a person: {line}")
-    return len(remaining)
+    # THE EXIT STATUS IS ABOUT WHAT ARRIVED, not about the copy just written. Returning the
+    # post-repair count made a run whose every figure was repairable exit 0 while the originals on
+    # disk — the ones the project ships — were still broken, and `main` says the status "drops into
+    # CI beside a test run". The repaired copies are a convenience; they do not make the build pass.
+    return len(found)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -178,9 +210,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.list_checks:
-        for check in CHECKS:
-            summary = (check.__doc__ or "").strip().splitlines()[0]
-            print(f"  {check.__name__:28s} {summary}")
+        # Every tier, labelled — this printed `CHECKS` alone, so the check `--thorough` adds and the
+        # three advisories `guard(advise=True)` runs were promised by the help text and named
+        # nowhere.
+        tiers = (
+            ("gate", CHECKS),
+            ("--thorough", THOROUGH_CHECKS),
+            ("advisory", ADVISORY_CHECKS),
+        )
+        for tier, checks in tiers:
+            for check in checks:
+                summary = (check.__doc__ or "").strip().splitlines()[0]
+                print(f"  {check.__name__:28s} [{tier}] {summary}")
         return 0
 
     if args.target is None:
@@ -193,9 +234,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if destination is not None:
         destination.mkdir(parents=True, exist_ok=True)
 
+    names = _unique_filenames(figures)
     outstanding = sum(
-        _report_one(figure, index, thorough=args.thorough, destination=destination)
-        for index, figure in enumerate(figures)
+        _report_one(
+            figure,
+            index,
+            thorough=args.thorough,
+            destination=destination,
+            filename=name,
+        )
+        for index, (figure, name) in enumerate(zip(figures, names, strict=True))
     )
     tail = "outstanding" if destination is not None else ""
     print(f"\n{len(figures)} figure(s), {outstanding} complaint(s) {tail}".rstrip())

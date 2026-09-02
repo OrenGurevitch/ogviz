@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz import units
+from ogviz.layout.collision import quoted
 from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
     GAP_TOLERANCE_PX,
@@ -90,12 +91,14 @@ def significance_gaps(fig: Figure) -> list[str]:
             ink_bottom_px = baseline_px + ink_low * px_per_point
             below = [t for t in tops if t <= ink_bottom_px + GAP_TOLERANCE_PX]
             if not below:
-                complaints.append(f"the star {star.get_text()!r} has no bracket under it")
+                complaints.append(f"the star {quoted(star.get_text())!r} has no bracket under it")
                 continue
             gaps.append((star.get_text(), ink_bottom_px - max(below)))
         for label, gap in gaps:
             if gap < MIN_STAR_GAP_PX:
-                complaints.append(f"the star {label!r} is {gap:.1f} px from its bracket — touching")
+                complaints.append(
+                    f"the star {quoted(label)!r} is {gap:.1f} px from its bracket — touching"
+                )
         if len(gaps) > 1:
             spread = max(g for _l, g in gaps) - min(g for _l, g in gaps)
             if spread > GAP_TOLERANCE_PX:
@@ -157,15 +160,22 @@ def _overlapping_columns(spans: list[tuple[float, float, float]]) -> list[list[f
     A bracket joins a column when it overlaps ANY bracket already in it, so a wide bracket spanning
     two narrow ones below it puts all three in one column — which is right, since the wide one has
     to clear both.
+
+    MERGED TRANSITIVELY. The first spelling stopped at the first column a span touched, so a wide
+    bracket arriving after two disjoint narrow ones joined the first and was never compared with
+    the second: `[(10, 0, 1), (11, 3, 4), (12, 0, 4)]` came back as two columns, `[10, 12]` and
+    `[11]`, and the docstring above described what the code did not do. Every column the new span
+    touches is folded into one.
     """
     columns: list[tuple[float, float, list[float]]] = []
     for top, near, far in spans:
-        joined = False
-        for index, (low, high, tops) in enumerate(columns):
-            if near <= high and low <= far:
-                columns[index] = (min(low, near), max(high, far), [*tops, top])
-                joined = True
-                break
-        if not joined:
-            columns.append((near, far, [top]))
+        touching = [
+            index for index, (low, high, _) in enumerate(columns) if near <= high and low <= far
+        ]
+        merged_low, merged_high, merged_tops = near, far, [top]
+        for index in reversed(touching):
+            low, high, tops = columns.pop(index)
+            merged_low, merged_high = min(merged_low, low), max(merged_high, high)
+            merged_tops = [*tops, *merged_tops]
+        columns.append((merged_low, merged_high, merged_tops))
     return [tops for _low, _high, tops in columns]

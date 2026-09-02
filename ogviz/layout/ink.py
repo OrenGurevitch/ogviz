@@ -13,11 +13,13 @@ thousands of times and can only afford a cheap test; Theophil and Schödl's scat
 in the Handbook of Graph Drawing surveys the same split. The cheap test decides what MIGHT collide;
 something exact decides what DOES.
 
-Here the exact step is the renderer itself. `artist_ink` draws the figure twice — once with an
-artist and once without — and the difference is exactly the pixels that artist contributes, through
-antialiasing, alpha, clipping, dash patterns and font hinting, none of which a geometric model
-reproduces faithfully. Two artists collide when those pixel sets intersect. There is nothing to
-tune, and the answer cannot disagree with the image.
+Here the exact step is the renderer itself. `artist_ink` renders the artist ALONE on the bare
+figure — its footprint, not its marginal contribution — through antialiasing, alpha, clipping, dash
+patterns and font hinting, none of which a geometric model reproduces faithfully. Two artists
+collide when those footprints intersect. There is nothing to tune, and the answer cannot disagree
+with the image. (This paragraph described the difference method — with and without — for some time
+after `artist_ink` had stopped using it; its own docstring says why a difference reports the most
+complete overlap as no overlap at all.)
 
 It costs one render per artist, so it is not run over everything: `exact_overlaps` uses boxes to
 find candidate pairs and pays for ink only on those. On a figure where nothing is close, that is

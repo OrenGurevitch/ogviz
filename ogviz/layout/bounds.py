@@ -94,12 +94,48 @@ def figure_text(
                 yield text, ax
 
 
+def panel_prefix(fig: Figure, ax: Axes) -> str:
+    """How a complaint about one panel opens, INCLUDING its trailing separator. May be empty.
+
+    Three conventions for this existed. `_panel_name` below identified a panel by its title and
+    fell back to a reading-order index; four other checks — in `qc/arrangement.py`,
+    `layout/axis.py` and `layout/density.py` — wrote an `axes <index>:` prefix regardless; and
+    every check in `qc/marks.py`, `qc/significance.py` and `qc/ink.py` named no panel at all,
+    including `dots_off_the_marks`, which named neither the panel nor the group whose marks the
+    dots were on. So one report could open three ways
+    about the same panel, and `axes 3` is a number a reader has to count out for themselves while
+    the panel above it says its own name in the figure.
+
+    A TITLE when the panel has one, because that is what a person reads off the picture. An index
+    only when it does not, and only on a figure with more than one panel: `axes 0:` on a
+    single-panel figure is a prefix that identifies nothing, and it was on every complaint those
+    four checks raised about the commonest kind of figure there is.
+
+    The separator is included so a caller writes `f"{panel_prefix(fig, ax)}the label sits …"` and
+    gets a sentence either way, rather than an orphaned `": "` on the figures where there is
+    nothing to say.
+    """
+    title = ax.get_title().strip()
+    if title:
+        return f"panel {quoted(title)!r}: "
+    if len(fig.axes) == 1:
+        return ""
+    try:
+        return f"panel {fig.axes.index(ax)} of {len(fig.axes)}: "
+    except ValueError:  # an axes not on this figure; nothing useful to say
+        return ""
+
+
 def _panel_name(fig: Figure, ax: Axes, text: Text) -> str:
-    """Which panel, said in the way a reader can act on.
+    """Which panel, said in the way a reader can act on — the POSSESSIVE form.
 
     "wider than the panel it belongs to" leaves someone with a six-panel mosaic grepping for the
     string, and a label repeated across panels is ambiguous outright. A title identifies a panel to
     a person; an index identifies it to anyone counting in reading order.
+
+    Separate from `panel_prefix` above because the two go in different places in a sentence — this
+    one completes "X is wider than …" and cannot be a prefix — and because of the next paragraph,
+    which is a rule only this form needs.
 
     The title is NOT used when the offending label is that title, which is the commonest case of
     this complaint: naming the panel by the string already being quoted produces "X is wider than
@@ -175,7 +211,7 @@ def text_wider_than_its_panel(fig: Figure) -> list[str]:
     """Any label an axes owns that is wider than the axes itself.
 
     A panel's own title or annotation reaching past its panel is legible and lands on its
-    neighbour — a 356 px sub-line crossed the panel next door in a real figure while every
+    neighbour — a long sub-line crossed the panel next door in one figure while every
     position-based check passed.
 
     """

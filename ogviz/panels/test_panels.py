@@ -11,6 +11,9 @@ from ogviz.layout.ticks import MINUS
 from ogviz.panels import group_violins
 from ogviz.tags import marked
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 CONTROL, TREATED = ("#E8A838", "#B97C10"), ("#7C9A6E", "#4A6136")
 
 
@@ -36,7 +39,12 @@ def test_bracket_clears_the_highest_observation() -> None:
 
 
 def test_an_annotated_panel_reserves_more_headroom_than_a_plain_one() -> None:
-    rng = np.random.default_rng(1)
+    """One generator PER panel, so the two differ only in the brackets.
+
+    A single `rng` built here and never used sat above this, with `assert rng is not None` closing
+    the test — an assertion about a local that cannot fail, guarding a name the loop shadows with
+    a fresh generator of the same seed. What the test is actually about is the headroom.
+    """
     tops = []
     for comparisons in ((), [(0.0, 1.0, 0.01)]):
         _fig, ax = plt.subplots()
@@ -44,7 +52,6 @@ def test_an_annotated_panel_reserves_more_headroom_than_a_plain_one() -> None:
         tops.append(ax.get_ylim()[1])
         plt.close("all")
     assert tops[1] > tops[0]
-    assert rng is not None
 
 
 def test_printed_means_land_below_every_observation() -> None:

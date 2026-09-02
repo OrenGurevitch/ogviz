@@ -65,7 +65,7 @@ def test_glyph_guard_fails_on_a_character_the_font_cannot_draw() -> None:
 
 
 def test_the_pinned_font_really_lacks_the_glyph() -> None:
-    """Guards the test above: if `cmr10` ever gained U+207B it would pass by proving nothing."""
+    """Guards the test above: if STIXGeneral ever gained U+207B it would pass by proving nothing."""
     from matplotlib.font_manager import FontProperties, findfont
     from matplotlib.ft2font import FT2Font
 
@@ -157,18 +157,30 @@ def test_the_two_halves_are_exactly_the_whole() -> None:
 
 
 def test_the_halves_do_not_overlap() -> None:
-    """Ink and type are separable only while neither writes the other's keys."""
+    """Ink and type are separable only while neither writes the other's keys.
+
+    Measured from MATPLOTLIB'S DEFAULTS, not from the rcParams in force. The autouse `house_style`
+    fixture has already applied both halves before this test runs, so a snapshot taken then already
+    holds every house value and a key a half re-writes to the same value never registers as
+    changed. Under that harness the test passed while the halves overlapped on two keys — the exact
+    trap CLAUDE.md records — and it could not have caught a third.
+
+    The two keys they DO share are `use_reproducible_svg`'s, which both halves call on purpose (its
+    docstring says why). So the invariant is not "no overlap" but "the overlap is exactly that
+    call", asserted as a set so a new shared key fails by name.
+    """
     import matplotlib as mpl
 
     from ogviz.theme import use_house_ink, use_house_type
 
     def keys(apply) -> set[str]:
         with mpl.rc_context():
+            mpl.rcdefaults()
             before = {key: repr(value) for key, value in mpl.rcParams.items()}
             apply()
             return {key for key, value in mpl.rcParams.items() if repr(value) != before.get(key)}
 
-    assert not keys(use_house_ink) & keys(use_house_type)
+    assert keys(use_house_ink) & keys(use_house_type) == {"svg.hashsalt", "svg.fonttype"}
 
 
 def test_a_project_can_take_the_ink_and_keep_its_own_font() -> None:
@@ -182,3 +194,35 @@ def test_a_project_can_take_the_ink_and_keep_its_own_font() -> None:
         use_house_ink()
         assert mpl.rcParams["font.sans-serif"] == ["DejaVu Sans"], "its font is untouched"
         assert mpl.rcParams["text.color"] == INK, "and it gets the house ink"
+
+
+def test_glyphs_must_render_leaves_the_callers_warning_filters_in_force() -> None:
+    """A `simplefilter("always")` inside the block replaced `-W error::DeprecationWarning`, so a
+    deprecation raised during a save did not raise where it happened — and was lost outright when a
+    glyph was also missing. Only the glyph message is forced now."""
+    import warnings
+
+    from ogviz.theme import glyphs_must_render
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        with pytest.raises(DeprecationWarning), glyphs_must_render():
+            warnings.warn("renamed", DeprecationWarning, stacklevel=1)
+
+
+def test_identity_colors_refuses_zero_as_series_colors_does() -> None:
+    """It returned `()`, which reads as a palette rather than as a mistake.
+
+    A caller looping over the result draws nothing and nothing says why. The two functions answer
+    the same shape of question and disagreed about the empty case.
+    """
+    import pytest
+
+    from ogviz.panels.lines import series_colors
+    from ogviz.theme import identity_colors
+
+    with pytest.raises(AssertionError, match="at least one"):
+        identity_colors(0)
+    with pytest.raises(AssertionError, match="at least one"):
+        series_colors(0)
+    assert len(identity_colors(1)) == 1

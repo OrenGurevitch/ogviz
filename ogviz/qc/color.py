@@ -49,6 +49,10 @@ def _handle_color(handle) -> str | None:
             continue
         value = found()
         flat = np.asarray(value, dtype=object).ravel()
+        # A fully transparent handle paints nothing, so it is not a colour a reader is asked to
+        # tell apart; `to_hex` would have dropped the alpha and compared it as if painted.
+        if flat.size == 4 and isinstance(flat[3], (int, float)) and float(flat[3]) == 0.0:
+            return None
         if flat.size in (3, 4) and all(isinstance(v, (int, float)) for v in flat):
             red, green, blue = (float(flat[index]) for index in range(3))
             return to_hex((red, green, blue))
@@ -75,6 +79,9 @@ def legend_colors(fig: Figure) -> dict[str, str]:
     """
     entries: dict[str, str] = {}
     for legend in _legends(fig):
+        # Keyed by label text, so one label in two legends keeps the LAST colour seen. The gate
+        # (`series_confusable_under_cvd`) works per legend and is unaffected; a caller picking a new
+        # colour against this set should know it is the union of labels, not of colours.
         entries.update(_entries(legend))
     return entries
 

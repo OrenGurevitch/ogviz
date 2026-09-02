@@ -34,8 +34,9 @@ Three things the names do not give away:
 - **`save` runs the gate and raises instead of writing.** It also closes the figure.
 - **`titled` returns a float** — where the header ends. `fit_under_header` needs it, or the panels
   grow into the title.
-- **`use_house_style()` once per process.** Pass `PAPER_WHITE` for a manuscript; the default page is
-  a warm off-white that composites as a grey rectangle on a journal's white.
+- **`use_house_style()` once per process** — a second call resets the font family, so a project
+  that pins its own font after the first call loses the pin. Pass `PAPER_WHITE` for a manuscript;
+  the default page is a warm off-white that composites as a grey rectangle on a journal's white.
 
 Everything else is documented where it lives: each function's docstring carries the reasoning and
 the measurement behind it. Requires Python ≥ 3.12 and matplotlib ≥ 3.10.
@@ -121,8 +122,8 @@ the same with no code change. Both also refuse a tofu box — text with no glyph
 It catches colliding text, labels sitting on the marks, an axis title centred on room the data
 never reaches, an axis run so far past the data that nothing uses the space, clipped ink, buried
 spines and thresholds, stars at uneven distances, dots on the mean line, ungrouped thousands, mixed
-minus signs, and two legend series that merge under colour-vision deficiency. `--list-checks`
-prints the current set.
+minus signs, a grid with an empty slot, and two legend series that merge under colour-vision
+deficiency — among others. `--list-checks` prints the current set.
 
 Where a linter reads a chart specification, these read the RENDERED figure — so they work on any
 matplotlib figure, from any project:
@@ -135,9 +136,10 @@ uv run python -m ogviz.qc --list-checks
 ```
 
 Exit 0 when clean, 1 otherwise. `--fix` changes presentation only — a label moved, a knockout added,
-a buried line raised — and leaves what it cannot decide. From Python: `audit(fig)`, `repair(fig)`,
-`assert_clean(fig)`, and `type_too_small(fig, column_width=...)` for whether the smallest type still
-clears 5 pt at the width the figure will be printed at.
+a buried line raised — and leaves what it cannot decide. From Python, all in `ogviz.qc`:
+`audit(fig)`, `repair(fig)`, `assert_clean(fig)`, and `type_too_small(fig, column_width=...)` for
+whether the smallest type still clears 5 pt at the width the figure will be printed at. `audit` and
+`assert_clean` are also at the top level.
 
 ## Testing
 
@@ -158,6 +160,7 @@ ogviz
 ├── guard
 │   ├── FigureQuality(*args, **kwargs)
 │   ├── FigureRejectedError(*args, **kwargs)
+│   ├── gate_already_run() -> Iterator[None]
 │   ├── guard(*, mode: Mode, min_gap: float | None, advise: bool) -> None
 │   ├── guard_from_environment() -> bool
 │   ├── guarded(**settings: object) -> Iterator[None]
@@ -171,6 +174,7 @@ ogviz
 │   │   └── ticks_over_data(...) -> ...
 │   ├── bounds
 │   │   ├── figure_text(...) -> ...
+│   │   ├── panel_prefix(fig: Figure, ax: Axes) -> str
 │   │   ├── panel_text(ax: Axes, *, ticks: bool, legend: bool) -> Iterator[Text]
 │   │   ├── text_off_canvas(fig: Figure) -> list[str]
 │   │   └── text_wider_than_its_panel(fig: Figure) -> list[str]
@@ -213,7 +217,7 @@ ogviz
 │   │   ├── label_rows(...) -> ...
 │   │   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
 │   │   ├── pill_frame(legend: Legend) -> Legend
-│   │   └── zero_baseline(ax: Axes) -> None
+│   │   └── zero_baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
 │   ├── header
 │   │   ├── fit_under_header(...) -> ...
 │   │   ├── panel_left_edge(fig: Figure) -> float
@@ -256,10 +260,12 @@ ogviz
 │   │   ├── auto_decimals(value: float) -> int
 │   │   ├── format_value(...) -> ...
 │   │   ├── round_ticks(low: float, high: float, count: int) -> list[float]
-│   │   ├── settle_corner_tick(ax) -> bool
+│   │   ├── row_decimals(values: Iterable[float], *, scale: float) -> int
+│   │   ├── settle_corner_tick(ax: Axes) -> bool
 │   │   ├── typeset(text: str) -> str
 │   │   └── value_ticks(...) -> ...
 │   └── write
+│       ├── plain_filename(name: str) -> str
 │       ├── reproducible_metadata(path: Path) -> dict[str, None]
 │       └── save(...) -> ...
 ├── marks
@@ -304,8 +310,8 @@ ogviz
 │   │   ├── shared_limits(...) -> ...
 │   │   └── trend_line(...) -> ...
 │   ├── grid
-│   │   ├── align_brackets(axes: Iterable[Axes]) -> float | None
-│   │   ├── align_mean_rows(axes: Iterable[Axes], *, floor: float) -> float | None
+│   │   ├── align_brackets(axes: Iterable[Axes], *, orientation: Orientation) -> float | None
+│   │   ├── align_mean_rows(...) -> ...
 │   │   ├── align_ticks(axes: Iterable[Axes], *, orientation: Orientation) -> list[float]
 │   │   ├── label_shared_scale_once(...) -> ...
 │   │   └── share_value_limits(...) -> ...
@@ -346,6 +352,7 @@ ogviz
 │   │   ├── table_panel(...) -> ...
 │   │   └── tint(color: str, *, strength: float) -> tuple[float, float, float, float]
 │   └── violins
+│       ├── constant_span(value: float) -> float
 │       ├── group_violins(...) -> ...
 │       └── printed_means(...) -> ...
 ├── qc
@@ -381,7 +388,7 @@ ogviz
 │   │   ├── is_backdrop(artist) -> bool
 │   │   ├── is_excused(label, other) -> bool
 │   │   ├── knocked_out_over(label, other) -> bool
-│   │   └── orientation_of(ax: Axes) -> str
+│   │   └── orientation_of(ax: Axes) -> Orientation
 │   ├── repair
 │   │   ├── knock_out_labels_over_rules(...) -> ...
 │   │   ├── move_labels_off_the_marks(...) -> ...
@@ -426,6 +433,7 @@ ogviz
     ├── inches_to_points(inches: float) -> float
     ├── midpoint(ax: Axes, low: float, high: float, *, orientation: str) -> float
     ├── panel_px(ax: Axes, *, orientation: str) -> float
+    ├── points_to_inches(points: float) -> float
     ├── px_per_point(fig: Figure | SubFigure) -> float
     ├── px_to_value(ax: Axes, pixels: float, *, orientation: str) -> float
     ├── to_points(pixels: float, *, fig: Figure | SubFigure) -> float

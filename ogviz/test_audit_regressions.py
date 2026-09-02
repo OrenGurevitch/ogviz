@@ -43,6 +43,9 @@ from ogviz.qc.arrangement import panels_disagree_about_ticks
 from ogviz.qc.marks import buried_baselines
 from ogviz.qc.repair import knock_out_labels_over_rules
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def _three_groups(seed: int = 9):
     rng = np.random.default_rng(seed)

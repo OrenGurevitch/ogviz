@@ -130,3 +130,43 @@ def test_the_new_arguments_left_untouched_change_nothing() -> None:
 
     for cloud in facecolors():
         assert len(cloud) == 1, "one colour for the whole cloud, as before"
+
+
+def test_a_plain_panel_returns_the_top_of_its_drawn_ink_not_the_data_maximum() -> None:
+    """ "Returns the topmost drawn y" meant the bracket ink's top WITH comparisons and the data
+    maximum without — which sits below a kernel body's top."""
+    from ogviz.layout import drawn_value_extent
+
+    rng = np.random.default_rng(3)
+    fig, ax = plt.subplots(figsize=(4.0, 5.0))
+    values = rng.normal(0.0, 1.0, 40)
+    returned = group_violins(ax, [(0.0, values, "#E8A838", "#B97C10")])
+    fig.canvas.draw()
+    extent = drawn_value_extent(ax)
+    assert extent is not None
+    assert returned == pytest.approx(extent[1])
+    plt.close(fig)
+
+
+def test_a_constant_series_still_gets_a_panel_with_height() -> None:
+    """`max(high - low, 1e-9)` kept the arithmetic safe and drew the figure into a line.
+
+    The limits came out equal to nine decimal places, so every mark landed on one row of pixels
+    and the printed mean sat on the frame — a panel that cannot say what the constant IS. A
+    constant group is ordinary data: an all-zero condition, a saturated measure.
+    """
+    from ogviz.tags import marked
+
+    for value in (5.0, 0.0, 1200.0):
+        fig, ax = plt.subplots(figsize=(6.0, 5.0))
+        group_violins(ax, [(0.0, np.full(30, value), "#E8A838", "#B97C10")])
+        fig.canvas.draw()
+        low, high = (float(v) for v in ax.get_ylim())
+        assert high > low, f"a constant series of {value} left the axis with no height"
+        row = next(text for text in ax.texts if marked(text, "mean_row"))
+        # The row, the marks and the frame are three distinct rows of pixels.
+        row_px = ax.transData.transform((0.0, row.get_position()[1]))[1]
+        floor_px = ax.transData.transform((0.0, low))[1]
+        marks_px = ax.transData.transform((0.0, value))[1]
+        assert floor_px < row_px < marks_px
+        plt.close(fig)

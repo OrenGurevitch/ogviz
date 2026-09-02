@@ -74,7 +74,7 @@ def caption(
     note_size: float = NOTE_SIZE,
     heading_size: float = HEADING_SIZE,
     margin: float = SIDE_MARGIN,
-) -> None:
+) -> list[str]:
     """Put `heading` above the figure and `note` below it, both wrapped to the figure width.
 
     Space is reserved by moving the axes, so neither block can land on a panel: the note pushes the
@@ -82,9 +82,34 @@ def caption(
     measured after drawing and re-wrapped if the render disagrees with the wrap.
 
     Either may be left out. With neither, this does nothing.
+
+    RETURNS WHAT IT COULD NOT DO, empty when there was nothing. Two things can go wrong here and
+    both used to be silent at this call:
+
+    - the text cannot be narrowed to the canvas. `_fit_within` has always returned whether it
+      managed it and both call sites threw the answer away. The gate still catches it —
+      `overflowing_text` is the last line of defence and fails the build — but a caller assembling
+      a figure has no way to ask before saving, which is the whole shape of a returned complaint;
+    - the figure has a LAYOUT ENGINE. `subplots_adjust` is refused outright under `constrained` or
+      `tight` layout: matplotlib warns and does not move the axes, so the caption reserves nothing
+      and lands on the panels. Measured on a `layout="constrained"` figure — the note's own
+      `bottom` never moves. The consequence is caught downstream by `text_over_data`, one step
+      later and in words about the note rather than about the layout.
+
+    A refusal is NOT marked on the figure: `layout_refused` is `fit_under_header`'s tag and the
+    gate fails a figure carrying it, so writing it here would newly reject every figure that pairs
+    a managed layout with a caption. Reported to the caller, checked by the gate on its
+    consequence.
     """
     if note is None and heading is None:
-        return
+        return []
+    unreserved: list[str] = []
+    managed = fig.get_layout_engine() is not None
+    if managed:
+        unreserved.append(
+            f"the figure's {type(fig.get_layout_engine()).__name__} refuses subplots_adjust, so "
+            "no room was reserved for the caption"
+        )
     width_px = fig.get_figwidth() * fig.dpi
     height_px = fig.get_figheight() * fig.dpi
     limit_px = width_px * (1.0 - 2.0 * margin)
@@ -103,15 +128,23 @@ def caption(
             color=INK,
             linespacing=LINE_SPACING,
         )
-        _fit_within(fig, drawn, heading, heading_size, limit_px)
+        if not _fit_within(fig, drawn, heading, heading_size, limit_px):
+            unreserved.append("the heading is wider than the canvas and cannot be wrapped narrower")
         # `_fit_within` may have re-wrapped, so the height has to be measured from a fresh render.
         # This read `used = _rendered_width_px(...) and float(...height)`, using `and` to sequence a
         # draw before a measurement — which quietly means "if the rendered WIDTH is 0.0, reserve the
         # width instead of the height". It has never fired, because a drawn heading has a width; it
         # is one empty string away from reserving nothing and putting the heading on the panels.
+        #
+        # THE DRAW IS BELT AND BRACES, not the fix it looks like. Measured: `Text.get_window_extent`
+        # recomputes its layout from the current string, so an extent read straight after
+        # `set_text` is already the new one — which is why the note branch below has never needed
+        # a draw of its own and must not be given one to match. Kept because a figure this size
+        # redraws in milliseconds and the cost of being wrong here is a header on the panels.
         fig.canvas.draw()
         used = float(drawn.get_window_extent().height)
-        fig.subplots_adjust(top=min(0.97, 1.0 - (used + 0.022 * height_px) / height_px))
+        if not managed:
+            fig.subplots_adjust(top=min(0.97, 1.0 - (used + 0.022 * height_px) / height_px))
 
     if note is not None:
         lines = wrap_to_width(note, available_pt, note_size)
@@ -125,9 +158,12 @@ def caption(
             color=MUTED_INK,
             linespacing=LINE_SPACING,
         )
-        _fit_within(fig, drawn, note, note_size, limit_px)
+        if not _fit_within(fig, drawn, note, note_size, limit_px):
+            unreserved.append("the note is wider than the canvas and cannot be wrapped narrower")
         used = float(drawn.get_window_extent().height)
-        fig.subplots_adjust(bottom=max(0.06, (used + 0.030 * height_px) / height_px))
+        if not managed:
+            fig.subplots_adjust(bottom=max(0.06, (used + 0.030 * height_px) / height_px))
+    return unreserved
 
 
 def longest_unbreakable(text: str, size: float) -> float:

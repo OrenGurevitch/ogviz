@@ -10,7 +10,7 @@ from ogviz.layout.panels import panel_row, settle_caption, text_width_points, wr
 CAPTION = (
     "Each dot is one observation, the bar the interquartile range, the line the mean and the "
     "open circle the median. The right-hand group sits lower than the left across every "
-    "category, and the composite is the primary comparison."
+    "category, and the total is the primary comparison."
 )
 
 
@@ -51,7 +51,7 @@ def test_two_panels_need_width_for_a_long_x_label():
         fig, axes = panel_row(2, caption=CAPTION, width=width)
         for ax in axes:
             ax.plot([0, 1], [1.0, 2.0])
-            ax.set_xlabel("time from first measurement to the imaging visit (years)")
+            ax.set_xlabel("time from the first reading to the second visit (years)")
             ax.set_xticks([0, 1])
             ax.set_xticklabels(["Control", "Treated"])
         return fig

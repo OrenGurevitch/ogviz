@@ -83,7 +83,11 @@ def identity_colors(
     over its central marks. At full saturation forty dots out-shout the distribution they are drawn
     to describe, which is the wrong way round: the cloud is the texture, the violin is the claim.
     """
-    require(count >= 0, f"identity_colors needs a non-negative count, not {count}")
+    # AT LEAST ONE, as `series_colors` requires. `count >= 0` let zero through and returned `()`,
+    # which reads as a palette rather than as a mistake: a caller looping over the result draws
+    # nothing at all and nothing says why. The two functions answer the same shape of question and
+    # disagreed about the empty case.
+    require(count > 0, f"identity_colors needs a count of at least one, got {count}")
     hues = (index / count for index in range(count))  # endpoint excluded: hue 1.0 IS hue 0.0
     return tuple(
         "#{:02X}{:02X}{:02X}".format(*(round(channel * 255) for channel in rgb))
@@ -334,12 +338,20 @@ def glyphs_must_render() -> Iterator[None]:
     looking broken — "R2* (s⁻¹)" did, because Arial has no U+207B. Matplotlib only warns, and a
     warning in a figure build scrolls past. Write the exponent as mathtext instead.
     """
+    # ONLY the glyph message is forced to "always"; every other filter the caller installed stays in
+    # force. This was `simplefilter("always")`, which replaced the caller's filters for the whole
+    # block: under `-W error::DeprecationWarning` — what `just strict` and CI run — a matplotlib
+    # deprecation raised during `savefig` no longer raised where it happened, and if a glyph was
+    # also missing the AssertionError below went out first and the deprecation was lost entirely.
+    # Measured on 2026-09-01 with a warning raised inside the block: "inside: did not raise".
     with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
+        warnings.filterwarnings("always", message=".*missing from font.*")
         yield
     missing = sorted({str(w.message) for w in caught if "missing from font" in str(w.message)})
     if missing:
         # Raised, not asserted: `python -O` deletes an `assert` and would let the tofu through.
         raise AssertionError("figure text has no glyph in the house font: " + "; ".join(missing))
+    # Anything else that was recorded rather than raised is handed on, so a caller's "default" or
+    # "once" filter still sees it.
     for other in (w for w in caught if "missing from font" not in str(w.message)):
         warnings.warn_explicit(other.message, other.category, other.filename, other.lineno)

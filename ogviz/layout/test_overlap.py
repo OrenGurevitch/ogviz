@@ -55,19 +55,19 @@ def test_invisible_and_empty_text_is_ignored():
 
 
 def _domain_panel(width: float):
-    """The real shape this guards: five word-length categories on one tick row."""
+    """The shape this guards: five word-length categories on one tick row, two of them long."""
     fig, ax = plt.subplots(figsize=(width, 4.5))
     bar_panel(
         ax,
         [Series("z", [0.6, 0.5, 0.6, 0.4, 0.7], SERIES[0])],
-        ["fatigue", "sleep", "pain", "cognition", "autonomic"],
+        ["heather", "gorse", "moss", "longitude", "amplitude"],
         show_values=False,
     )
     return fig
 
 
 def _abutting_width() -> float:
-    """A figure width at which "cognition" and "autonomic" abut WITHOUT overlapping.
+    """A figure width at which "longitude" and "amplitude" abut WITHOUT overlapping.
 
     Searched rather than pinned. The distinction this test exists to make — zero shared area and
     still unreadable — lives in about two pixels, and two pixels of text layout is not stable across
@@ -79,7 +79,7 @@ def _abutting_width() -> float:
         width = tenths / 10.0
         fig = _domain_panel(width)
         if not text_overlaps(fig, min_gap=0.0) and any(
-            "cognition" in hit and "autonomic" in hit for hit in text_overlaps(fig)
+            "longitude" in hit and "amplitude" in hit for hit in text_overlaps(fig)
         ):
             plt.close(fig)
             return width
@@ -88,12 +88,12 @@ def _abutting_width() -> float:
 
 
 def test_adjacent_labels_that_read_as_one_word_are_reported():
-    """Zero overlapping area, still broken: a couple of pixels between "cognition" and "autonomic"
+    """Zero overlapping area, still broken: a couple of pixels between "longitude" and "amplitude"
     renders joined. This is what no overlap test can catch, and the reason the spacing rule exists.
     """
     fig = _domain_panel(_abutting_width())
     assert text_overlaps(fig, min_gap=0.0) == [], "these do not overlap, they abut"
-    assert any("cognition" in hit and "autonomic" in hit for hit in text_overlaps(fig))
+    assert any("longitude" in hit and "amplitude" in hit for hit in text_overlaps(fig))
 
 
 def test_labels_that_run_into_each_other_are_reported_too():
@@ -101,7 +101,7 @@ def test_labels_that_run_into_each_other_are_reported_too():
     the gap rule as well, so the WORSE condition passed while mere abutting was caught."""
     fig = _domain_panel(7.0)  # the same pair, -11.5 px: actually overlapping
     hits = text_overlaps(fig)
-    assert any("cognition" in hit and "autonomic" in hit for hit in hits)
+    assert any("longitude" in hit and "amplitude" in hit for hit in hits)
     assert any("runs into" in hit for hit in hits)
 
 

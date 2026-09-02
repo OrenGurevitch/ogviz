@@ -286,7 +286,7 @@ def panel_row(
     """
     require(
         count >= 1,
-        "panels needs at least one panel",
+        f"panel_row needs at least one panel, got {count}",
     )
     right = LEGEND_RIGHT if legend else FULL_RIGHT
 
@@ -295,9 +295,10 @@ def panel_row(
     if caption:
         panel_width_points = units.inches_to_points(width * (right - LEFT_MARGIN))
         lines = wrap_to_width(caption, panel_width_points, caption_size)
-        caption_height = (caption_size * CAPTION_LINE_SPACING / 72.0) * len(
-            lines
-        ) + CAPTION_ROW_SLACK
+        caption_height = (
+            units.points_to_inches(caption_size * CAPTION_LINE_SPACING) * len(lines)
+            + CAPTION_ROW_SLACK
+        )
 
     figure = plt.figure(figsize=(width, panel_height + caption_height))
     rows = 2 if caption else 1
@@ -409,9 +410,9 @@ BAR_INCHES = 1.9  # of figure width per bar, measured against the house type siz
 def width_for_bars(count: int, *, minimum: float = 12.0, per_bar: float = BAR_INCHES) -> float:
     """How wide a bar panel has to be to hold `count` bars without its labels colliding.
 
-    A figure that held six bars does not hold eight. The gate says so — it refused a 12-inch panel
-    of eight bars with six real collisions — but saying so after the fact leaves the caller to
-    invent the rule, and the rule is one multiplication.
+    A figure that held six bars does not hold eight. The gate says so — it refused a wide panel of
+    eight bars with collisions along the tick row — but saying so after the fact leaves the caller
+    to invent the rule, and the rule is one multiplication.
 
     `per_bar` is measured against the house type sizes: a value label, an arm name and a group row
     all have to clear their neighbours, and 1.9 in is what does it. A project setting smaller type

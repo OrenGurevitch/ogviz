@@ -13,9 +13,8 @@ produce a label sitting on top of its own error bar.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import matplotlib.patheffects as path_effects
 import numpy as np
@@ -176,6 +175,28 @@ def _data_aspect(ax: Axes) -> float:
     return float((y_span / box.height) / (x_span / box.width))
 
 
+class _RoundedBar(FancyBboxPatch):
+    """A `FancyBboxPatch` whose data aspect is read from its axes when the path is BUILT.
+
+    `mutation_aspect` was computed once, while the bars were being added — before `bar_panel` set
+    the category limits, added its margins, or drew a reference — so it described a panel that no
+    longer existed by the time anything was rendered. On an order-1 axis the error was small. On a
+    counts axis it was total: the aspect stayed at about 1.6 where the final panel's was in the
+    hundreds, the corner's y extent came out at a fraction of a pixel, and a `rounded=True` bar
+    drew square. Measured 2026-09-01 on a single bar of 38,000: 0 px of corner against 27 px for
+    the same bar at 0.61. The test meant to catch it measured the value label instead (see
+    `test_a_rounded_corner_is_the_same_size_on_any_axis`), so the regression shipped.
+
+    `FancyBboxPatch.get_path` calls `get_mutation_aspect()` each time, so overriding it is enough:
+    the corner now follows the limits AND a later resize, which is what `rounded_free_end`'s
+    docstring already promised.
+    """
+
+    def get_mutation_aspect(self) -> float:  # type: ignore[override]
+        ax = self.axes
+        return _data_aspect(cast("Axes", ax)) if ax is not None else 1.0
+
+
 def _rounded_bars(
     ax: Axes,
     positions: NDArray[np.float64],
@@ -187,11 +208,11 @@ def _rounded_bars(
 ) -> None:
     """Bars with a softened free end. matplotlib has no rounded bar, so each is a FancyBboxPatch.
 
-    The radius is a fraction of the bar's own THICKNESS, and the patch is told the data aspect so
-    the corner comes out round on the page. It used to be a fraction of the tallest VALUE, which is
-    only sensible when the value axis happens to be order-1: the style applies to both axes, so on
-    a counts axis the corner measured 394,460% of the bar's own width — a lozenge rather than a
-    bar. The look was arithmetic rather than taste.
+    The radius is a fraction of the bar's own THICKNESS, and the patch reads the data aspect from
+    its axes as it is drawn (`_RoundedBar`) so the corner comes out round on the page. It used to
+    be a fraction of the tallest VALUE, which is only sensible when the value axis happens to be
+    order-1: the style applies to both axes, so on a counts axis the corner measured 394,460% of the
+    bar's own width — a lozenge rather than a bar. The look was arithmetic rather than taste.
 
     `alpha` is here because the plain `ax.bar` path has always passed `BAR_ALPHA` and this did not,
     so the same hex colour rendered at two different opacities depending on `rounded` — which made
@@ -200,12 +221,11 @@ def _rounded_bars(
     """
     colors = [entry.color] * len(values) if isinstance(entry.color, str) else list(entry.color)
     upright = is_vertical(orientation)
-    aspect = _data_aspect(ax)
     for index, (position, value, color) in enumerate(zip(positions, values, colors, strict=True)):
         corner = place(orientation, float(position) - thickness / 2, 0.0)
         size = place(orientation, thickness, float(value))
         ax.add_patch(
-            FancyBboxPatch(
+            _RoundedBar(
                 corner,
                 size[0],
                 size[1],
@@ -218,7 +238,6 @@ def _rounded_bars(
                 facecolor=color,
                 alpha=BAR_ALPHA,
                 edgecolor="none",
-                mutation_aspect=aspect,
                 zorder=Z_BAR,
                 # Only the first patch carries the label: one artist per BAR would put the series
                 # in the legend once per category.
@@ -275,10 +294,9 @@ def _auto_decimals(values: NDArray[np.float64]) -> int:
     number to ask about: a row of labels takes its precision from the largest value in the row, so
     they read as one measurement rather than as several.
     """
-    from ogviz.layout.ticks import auto_decimals
+    from ogviz.layout.ticks import row_decimals
 
-    largest = max((abs(v) for v in values if math.isfinite(v) and v != 0), default=1.0)
-    return auto_decimals(largest)
+    return row_decimals(values)
 
 
 def _format_of(values: NDArray[np.float64], given: str | None) -> str:
@@ -495,13 +513,27 @@ def bar_panel(
         len(categories),
         "bar_panel needs at least one category",
     )
+    # The SHAPE of `emphasis` is checked before its values are compared, because the comparison
+    # is what a wrong shape crashes in: a list reached `0 <= [0, 1]` and raised a bare TypeError
+    # naming int and list, and a one- or three-tuple raised IndexError from inside the message
+    # meant to explain it. `bool` is excluded for the reason `widths_of` excludes it — True is an
+    # `int`, so `emphasis=True` silently emphasised category 1.
     if isinstance(emphasis, tuple):
+        require(
+            len(emphasis) == 2,
+            f"emphasis {emphasis} is a (series, category) pair or a category index, "
+            f"not a {len(emphasis)}-tuple",
+        )
         require(
             0 <= emphasis[0] < len(series) and 0 <= emphasis[1] < len(categories),
             f"emphasis {emphasis} is not a (series, category) pair of this panel — "
             f"{len(series)} series, {len(categories)} categories",
         )
     elif emphasis is not None:
+        require(
+            isinstance(emphasis, int) and not isinstance(emphasis, bool),
+            f"emphasis is a category index or a (series, category) pair, got {emphasis!r}",
+        )
         require(
             0 <= emphasis < len(categories),
             f"emphasis {emphasis} is not a category index of {len(categories)}",

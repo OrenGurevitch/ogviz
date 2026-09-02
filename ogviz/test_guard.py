@@ -113,12 +113,17 @@ def test_a_misspelled_mode_fails_loudly() -> None:
         del os.environ[ENV_VAR]
 
 
-def test_a_bare_import_changes_nothing() -> None:
-    """A library that patches matplotlib on import is a bad neighbour; this must stay opt-in."""
+def test_a_bare_import_changes_nothing(monkeypatch) -> None:
+    """A library that patches matplotlib on import is a bad neighbour; this must stay opt-in.
+
+    With the variable UNSET, explicitly: this assumed it, and failed under `OGVIZ_GUARD=1` — the
+    setting the README tells a build to use — for a reason that had nothing to do with the claim.
+    """
     import importlib
 
     import ogviz
 
+    monkeypatch.delenv(ENV_VAR, raising=False)
     unguard()
     importlib.reload(ogviz)
     assert not is_guarded()
@@ -231,3 +236,21 @@ def test_a_figure_whose_glyphs_all_resolve_is_untouched(tmp_path) -> None:
         fig.savefig(tmp_path / "fine.png")
     assert (tmp_path / "fine.png").exists()
     plt.close(fig)
+
+
+def test_unguard_leaves_a_wrapper_it_did_not_install() -> None:
+    """`unguard` assigned matplotlib's original unconditionally, so a coexisting library's wrapper
+    was silently removed by a project that had never guarded."""
+    from matplotlib.figure import Figure
+
+    theirs = Figure.savefig
+
+    def wrapper(self, *args, **kwargs):
+        return theirs(self, *args, **kwargs)
+
+    Figure.savefig = wrapper  # type: ignore[method-assign, assignment]
+    try:
+        unguard()
+        assert Figure.savefig is wrapper, "not ours, so not ours to remove"
+    finally:
+        Figure.savefig = theirs  # type: ignore[method-assign]

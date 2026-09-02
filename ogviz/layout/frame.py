@@ -48,12 +48,26 @@ def baseline(ax: Axes, *, axis: Literal["x", "y"] = "x") -> None:
     ax.spines[far].set(linewidth=1.0, color=GRID)
 
 
-def zero_baseline(ax: Axes) -> None:
-    """Heavy ink line at y=0, for bars that grow from zero rather than from the frame."""
-    ax.axhline(0.0, color=MUTED_INK, linewidth=1.4, zorder=4)
-    ax.spines["bottom"].set_visible(False)
-    ax.spines["left"].set(linewidth=1.0, color=GRID)
-    ax.tick_params(axis="x", length=0.0)
+def zero_baseline(ax: Axes, *, axis: Literal["x", "y"] = "x") -> None:
+    """Heavy ink line at zero on the VALUE axis, for bars that grow from zero rather than the frame.
+
+    `axis` is the CATEGORY axis, as in `baseline` beside it: `"x"` for an upright panel, where the
+    rule runs across at y = 0, and `"y"` for a horizontal one, where it runs up at x = 0. It was
+    written for the upright case only and drew `axhline` whatever the panel, so on a horizontal bar
+    panel the rule the bars are measured from landed across the categories.
+
+    Drawn wherever zero is — matplotlib clips it when zero is out of view, and a signed panel that
+    hides zero is the caller's decision, not this function's.
+    """
+    if axis == "x":
+        ax.axhline(0.0, color=MUTED_INK, linewidth=1.4, zorder=4)
+        ax.spines["bottom"].set_visible(False)
+        ax.spines["left"].set(linewidth=1.0, color=GRID)
+    else:
+        ax.axvline(0.0, color=MUTED_INK, linewidth=1.4, zorder=4)
+        ax.spines["left"].set_visible(False)
+        ax.spines["bottom"].set(linewidth=1.0, color=GRID)
+    ax.tick_params(axis=axis, length=0.0)
 
 
 def pill_frame(legend: Legend) -> Legend:
@@ -101,6 +115,9 @@ def label_rows(
     value axis rescales. A caller writing this by hand reaches for `ax.get_xaxis_transform()` and
     picks the offsets one at a time, which is how three rows come out unevenly spaced.
     """
+    # Checked before the loop: a row given ONE label spans the positions and is placed at their
+    # midpoint, so zero positions divided by zero rather than saying what was missing.
+    require(len(positions) > 0, "label_rows needs at least one position")
     drawn: list[Text] = []
     for index, labels in enumerate(rows):
         require(

@@ -186,20 +186,31 @@ def scatter_panel(
     pooled_color: str | None = INK,
     point_size: float = POINT_SIZE,
     point_alpha: float = POINT_ALPHA,
-) -> None:
+) -> list[str]:
     """The observations and their trends. No numbers and no box over the data.
 
     `pooled_color` adds a dashed trend fitted to every cloud at once, which is the line the strip's
     pooled row corresponds to. Pass None where pooling the subsets would not mean anything.
+
+    RETURNS THE TRENDS IT COULD NOT FIT, empty when every one asked for was drawn. `trend_line`
+    declines two inputs on purpose — fewer than `MINIMUM_FOR_A_TREND` finite pairs, and points
+    stacked on one x, where `polyfit` returns a meaningless slope — and returns None for both. Both
+    returns were dropped on the floor here, so `Cloud(trend=True)` was a request that could go
+    unanswered without a word: the panel draws, the gate passes, and the guide the figure is read
+    with is simply absent. Nothing else notices, because a line that was never drawn leaves no ink
+    for a check to find.
     """
     require(
         leg.clouds,
         f"the {leg.x_label} / {leg.y_label} leg has nothing to scatter",
     )
+    unfitted: list[str] = []
     for cloud in leg.clouds:
         require(
             cloud.x.shape == cloud.y.shape,
-            f"{cloud.label}: {cloud.x.shape[0]} x values and {cloud.y.shape[0]} y values",
+            # The SHAPES themselves — see the same message in `lines.py`: `shape[0]` raises on a
+            # 0-d array, so the report of the mismatch became a different error.
+            f"{cloud.label}: x has shape {cloud.x.shape} and y has shape {cloud.y.shape}",
         )
         ax.scatter(
             cloud.x,
@@ -212,12 +223,16 @@ def scatter_panel(
             label=cloud.label,
             zorder=3,
         )
-        if cloud.trend:
-            trend_line(ax, cloud.x, cloud.y, color=cloud.edge)
+        if cloud.trend and trend_line(ax, cloud.x, cloud.y, color=cloud.edge) is None:
+            unfitted.append(
+                f"{cloud.label!r} asked for a trend and has none: fewer than "
+                f"{MINIMUM_FOR_A_TREND} finite pairs, or every point on one x"
+            )
     if pooled_color is not None:
         every_x = np.concatenate([cloud.x for cloud in leg.clouds])
         every_y = np.concatenate([cloud.y for cloud in leg.clouds])
-        trend_line(ax, every_x, every_y, color=pooled_color, dashed=True)
+        if trend_line(ax, every_x, every_y, color=pooled_color, dashed=True) is None:
+            unfitted.append(f"the pooled trend over {len(leg.clouds)} cloud(s) could not be fitted")
 
     ax.set_xlabel(leg.x_label)
     ax.set_ylabel(leg.y_label)
@@ -225,6 +240,7 @@ def scatter_panel(
     hairline_grid(ax, axis="y")
     ax.spines["left"].set(linewidth=1.0)
     ax.spines["bottom"].set(linewidth=2.0, color=INK)
+    return unfitted
 
 
 def _star_column(
@@ -307,6 +323,13 @@ def estimate_strip(
     require(
         estimates,
         "a strip with no estimates in it",
+    )
+    # Refused by name: a `Literal` is not enforced at runtime, and a misspelled `sort_by` silently
+    # sorted by signed value — the ordering the parameter exists to keep a caller from getting by
+    # accident. Probed with two misspellings; neither raised.
+    require(
+        sort_by in ("given", "value", "magnitude"),
+        f"sort_by is 'given', 'value' or 'magnitude', got {sort_by!r}",
     )
     if sort_by != "given":
         key = (
@@ -393,7 +416,7 @@ def coupling_panels(
     height_space: float = 0.42,
     label_for: Callable[[float], str] | None = None,
     reference: float | None = 0.0,
-) -> None:
+) -> list[str]:
     """One column per pair: the scatter above, its estimates below, all strips on one scale.
 
     Row labels are printed on the leftmost strip only. Repeating them under every column costs the
@@ -407,6 +430,9 @@ def coupling_panels(
     A LEG WITH NO ESTIMATES gets a scatter spanning both rows rather than a hole under it. The
     lower cell was simply never filled, and an empty gridspec cell in a finished figure reads as a
     rendering failure. `panel_grid` treats exactly this as worth reporting; here it said nothing.
+
+    RETURNS WHAT IT COULD NOT DRAW, from `scatter_panel` — every requested trend that had
+    nothing to fit, named by its cloud. Empty when the figure is what was asked for.
     """
     require(
         legs,
@@ -414,9 +440,10 @@ def coupling_panels(
     )
     grid = fig.add_gridspec(2, len(legs), height_ratios=height_ratios)
     scale = limits if limits is not None else shared_limits(legs, reference=reference)
+    unfitted: list[str] = []
     for column, leg in enumerate(legs):
         cell = grid[0, column] if leg.estimates else grid[:, column]
-        scatter_panel(fig.add_subplot(cell), leg, pooled_color=pooled_color)
+        unfitted += scatter_panel(fig.add_subplot(cell), leg, pooled_color=pooled_color)
         if leg.estimates:
             estimate_strip(
                 fig.add_subplot(grid[1, column]),
@@ -429,3 +456,4 @@ def coupling_panels(
     if estimate_axis_label is not None:
         fig.supxlabel(estimate_axis_label, fontsize=AXIS_LABEL_SIZE)
     fig.subplots_adjust(wspace=width_space, hspace=height_space)
+    return unfitted

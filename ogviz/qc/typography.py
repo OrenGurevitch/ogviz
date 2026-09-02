@@ -70,7 +70,7 @@ YEARS = range(1800, 2200)
 
 
 # A figure whose smallest type would stack more than this many times up its short side is dense
-# enough to be worth a second look. MEASURED, not chosen: across the seventeen shipped examples the
+# enough to be worth a second look. MEASURED, not chosen: across the shipped gallery (2026-08) the
 # densest is the comparison table, at 1.37% of its short side — about 73 lines stacked up the page.
 # The floor sits below that, so the gallery is silent, and a many-row table on a tall canvas — the
 # shape that gets reported as unreadable — falls under it.
@@ -129,9 +129,10 @@ def type_too_small(fig: Figure, *, column_width: float | None = None) -> list[st
     6 pt, all at final published size. Pass the width you will place at and the answer is checkable
     against a published standard instead of against a number this package chose.
 
-    Three of the seventeen figures shipped here fall under 5 pt at a 6.5 in single column. They are
-    not defective — all three are wide and would run double-column or full-width, where they pass.
-    That is exactly why the width is an argument: it is the one thing only the caller knows.
+    Three of the figures shipped here (gallery of 2026-08) fall under 5 pt at a 6.5 in single
+    column. They are not defective — all three are wide and would run double-column or full-width,
+    where they pass. That is exactly why the width is an argument: it is the one thing only the
+    caller knows.
     """
     smallest = _smallest_text(fig)
     if smallest is None:

@@ -16,13 +16,12 @@ from ogviz.layout.frame import (
     color_scale,
     hairline_grid,
     is_color_scale,
+    label_rows,
     legend_pill,
     pill_frame,
     zero_baseline,
 )
 from ogviz.theme import PANEL_FILL
-
-pytestmark = pytest.mark.usefixtures("pinned_font")
 
 
 def test_a_hairline_grid_sits_under_the_marks() -> None:
@@ -54,12 +53,22 @@ def test_a_baseline_is_heavier_than_the_grid_it_stands_among() -> None:
     plt.close(fig)
 
 
-def test_zero_baseline_draws_at_zero_and_only_when_zero_is_in_view() -> None:
+def test_zero_baseline_draws_at_zero_on_the_value_axis() -> None:
+    """Named for what it checks. The old name promised "only when zero is in view", a condition the
+    function never had and the test never exercised."""
     fig, ax = plt.subplots()
     ax.set_ylim(-1.0, 1.0)
     zero_baseline(ax)
     at_zero = [one for one in ax.lines if list(one.get_ydata()) == [0.0, 0.0]]
     assert at_zero, "a signed panel needs the line its bars are measured from"
+    plt.close(fig)
+
+    fig, ax = plt.subplots()
+    ax.set_xlim(-1.0, 1.0)
+    zero_baseline(ax, axis="y")
+    across = [one for one in ax.lines if list(one.get_xdata()) == [0.0, 0.0]]
+    assert across, "on a horizontal panel the rule runs up at x = 0"
+    assert not ax.spines["left"].get_visible(), "and replaces the spine it stands in for"
     plt.close(fig)
 
 
@@ -104,3 +113,10 @@ def test_a_colour_scale_carries_no_tick_marks() -> None:
     lengths = {tick.tick1line.get_markersize() for tick in bar.ax.yaxis.get_major_ticks()}
     assert lengths <= {0.0}, f"tick marks are drawn at {lengths}"
     plt.close(fig)
+
+
+def test_label_rows_says_what_is_missing_rather_than_dividing_by_zero() -> None:
+    """A row given ONE label is placed at the midpoint of the positions, and there were none."""
+    _fig, ax = plt.subplots()
+    with pytest.raises(AssertionError, match="at least one position"):
+        label_rows(ax, [], [["a group spanning them all"]])

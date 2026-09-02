@@ -30,6 +30,7 @@ import numpy as np
 from matplotlib.ticker import FuncFormatter, NullFormatter
 
 from ogviz.layout import hairline_grid, legend_pill
+from ogviz.layout.ticks import format_value
 from ogviz.require import require
 from ogviz.theme import GRID, INK, LINE_SERIES, MUTED_INK
 
@@ -42,7 +43,11 @@ if TYPE_CHECKING:
 LINE_WIDTH = 3.4
 MARKER_SIZE = 11.0
 MARKER_EDGE = 1.6
-BREAK_HEIGHT = 0.045  # share of the panel the zigzag occupies
+# Half the gap the break opens, as a share of the value span BEFORE the axis is extended for it:
+# `broken_zero` opens `2 * BREAK_HEIGHT` of that span, the stub takes 0.30 of the gap, and the
+# zigzag fills the rest — 0.063 of the pre-break span. (The comment used to say "share of the
+# panel the zigzag occupies", which is none of those numbers.)
+BREAK_HEIGHT = 0.045
 BREAK_WIDTH_PX = 9.0
 FLOOR_GAP = 0.10  # share of the data range left below the lowest point
 TICK_MARGIN = 1.18  # multiplicative pad beyond the outermost tick, on a log axis
@@ -155,7 +160,13 @@ def _draw_break(ax: Axes, *, low: float, high: float) -> None:
 
 
 def _tick_text(value: float) -> str:
-    return f"{value:g}"
+    """A tick label that groups its thousands, as every other number this package prints does.
+
+    Was `f"{value:g}"`: a broken axis over five-figure values printed `52000`, and the package's own
+    `ungrouped_thousands` then refused the figure — five complaints on one panel, measured.
+    `spectrogram` had already met and fixed the same defect with `format_value`.
+    """
+    return format_value(value)
 
 
 def line_panel(
@@ -172,9 +183,11 @@ def line_panel(
 ) -> None:
     """Draw every series, with the rules running the way the comparison does.
 
-    Muted series are drawn first and in a light colour, so a baseline stays visible without
-    competing — the reader should see the leading lines first and find the baseline when looking
-    for it.
+    Muted series are drawn first and BEHIND the others (a lower z-order), so a baseline stays
+    visible without competing — the reader should see the leading lines first and find the
+    baseline when looking for it. The colour stays the caller's: pass `MUTED_SERIES` as a muted
+    line's colour to have it recede as well. (This said "in a light colour" while setting no
+    colour at all, so a saturated muted line was a competing line drawn behind the others.)
     """
     require(
         lines,
@@ -183,7 +196,9 @@ def line_panel(
     for line in lines:
         require(
             line.x.shape == line.y.shape,
-            f"{line.label}: {line.x.shape[0]} x values and {line.y.shape[0]} y values",
+            # The SHAPES, not their first axis: `shape[0]` is itself an IndexError on a 0-d array,
+            # so the message meant to name the mismatch raised instead of reporting it.
+            f"{line.label}: x has shape {line.x.shape} and y has shape {line.y.shape}",
         )
     for line in sorted(lines, key=lambda item: (not item.muted, item.order)):
         ax.plot(

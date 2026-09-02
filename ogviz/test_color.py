@@ -186,24 +186,27 @@ def test_the_answer_does_not_move_between_runs() -> None:
     assert separated_from(taken) == separated_from(taken)
 
 
-def test_near_orders_the_winners_and_does_not_override_them() -> None:
-    """A tiebreak, never a constraint — separation still decides."""
-    from ogviz.color import separated_from, separation, worst_separation
+def test_near_chooses_among_the_comfortably_safe_and_still_clears_the_threshold() -> None:
+    """`near` ranges over every candidate clearing the threshold with headroom, not only the ties at
+    the maximum — so it CAN pick a less-separated colour than the plain call, and must still clear.
+    (This was named and worded for the first spelling, "a tiebreak, never a constraint", which the
+    implementation abandoned because it did nothing.)"""
+    from ogviz.color import CONFUSABLE_DISTANCE, separated_from, separation, worst_separation
 
     taken = ["#2E7CE0", "#EFA607"]
     plain, biased = separated_from(taken), separated_from(taken, near="#c00000")
     assert biased != plain, "the preference reached a different colour, so it is doing something"
     assert separation(biased, "#c00000") < separation(plain, "#c00000"), "and a nearer one"
-    assert worst_separation(biased, taken) >= 0.18, "while still clearing the threshold"
+    assert worst_separation(biased, taken) >= CONFUSABLE_DISTANCE, "while still clearing"
 
 
 def test_worst_separation_reads_the_deficiencies_and_not_only_normal_vision() -> None:
     """A pair that separates on screen and merges for a reader must score as merged."""
-    from ogviz.color import separation, worst_separation
+    from ogviz.color import CONFUSABLE_DISTANCE, separation, worst_separation
 
     red, green = "#D62728", "#2CA02C"  # matplotlib's own, the textbook confusable pair
-    assert separation(red, green) > 0.18, "the premise: they look distinct to normal vision"
-    assert worst_separation(red, [green]) < 0.18
+    assert separation(red, green) > CONFUSABLE_DISTANCE, "the premise: distinct to normal vision"
+    assert worst_separation(red, [green]) < CONFUSABLE_DISTANCE
 
 
 def test_the_vectorised_search_agrees_with_the_one_at_a_time_metric() -> None:
@@ -212,11 +215,11 @@ def test_the_vectorised_search_agrees_with_the_one_at_a_time_metric() -> None:
     Two implementations of one question is exactly how they come to disagree, so the fast one is
     held to the slow one on the answer it actually returns.
     """
-    from ogviz.color import separated_from, worst_separation
+    from ogviz.color import CONFUSABLE_DISTANCE, separated_from, worst_separation
 
     for taken in (["#2E7CE0"], ["#2E7CE0", "#EFA607", "#14A97C"]):
         picked = separated_from(taken)
-        assert worst_separation(picked, taken) >= 0.18, (taken, picked)
+        assert worst_separation(picked, taken) >= CONFUSABLE_DISTANCE, (taken, picked)
 
 
 def test_near_clears_the_threshold_with_room_rather_than_scraping_it() -> None:
@@ -233,3 +236,14 @@ def test_near_clears_the_threshold_with_room_rather_than_scraping_it() -> None:
     assert worst_separation(green, [red]) < CONFUSABLE_DISTANCE, "the premise: this pair is caught"
     picked = separated_from([red], near=green)
     assert worst_separation(picked, [red]) >= CONFUSABLE_DISTANCE * NEAR_HEADROOM
+
+
+def test_a_colour_separated_from_nothing_is_refused() -> None:
+    """Every score stayed at infinity, the threshold passed vacuously, and the first grid candidate
+    came back as though computed — or, with `near=`, a near-copy of `near`."""
+    from ogviz.color import separated_from
+
+    with pytest.raises(AssertionError, match="at least one colour"):
+        separated_from([])
+    with pytest.raises(AssertionError, match="at least one colour"):
+        separated_from([], near="#2CA02C")

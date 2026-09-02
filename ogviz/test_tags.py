@@ -44,8 +44,15 @@ def test_no_module_writes_a_tag_by_hand() -> None:
         for match in re.finditer(rf"\.{PREFIX}\w+\s*=|[\"']{PREFIX}\w+[\"']", text):
             line = text[: match.start()].count("\n") + 1
             offenders.append(f"{path.relative_to(PACKAGE)}:{line} {match.group().strip()}")
-    # The colormap registered by `heatmap` is a matplotlib name, not one of these tags.
-    offenders = [entry for entry in offenders if "diverging" not in entry]
+    # The colormap registered by `heatmap` is a matplotlib name, not one of these tags. Exempted by
+    # FILE and matched text, not by the word: `"diverging" not in entry` dropped any offender whose
+    # path or text happened to contain it, which is a hole exactly where the check is meant to bite.
+    colormap = f"{PREFIX}diverging"
+    offenders = [
+        entry
+        for entry in offenders
+        if not (entry.startswith("panels/heatmap.py:") and entry.strip("\"'").endswith(colormap))
+    ]
     assert not offenders, "tags written or read as bare strings:\n  " + "\n  ".join(offenders)
 
 

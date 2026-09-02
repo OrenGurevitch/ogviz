@@ -11,6 +11,9 @@ from ogviz.panels import Series, bar_panel
 from ogviz.tags import marked
 from ogviz.theme import SERIES
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 
 def _label_positions(ax) -> dict[str, float]:
     """Printed value label -> its y in data units."""
@@ -168,20 +171,30 @@ def test_a_rounded_corner_is_the_same_size_on_any_axis() -> None:
     from ogviz.layout.raster import frame_rgb, ink_of
     from ogviz.panels.bars import Series
 
-    def corner_px(values: list[float]) -> float:
+    def corner_px(values: list[float], *, rounded: bool) -> float:
         fig, ax = plt.subplots(figsize=(8.0, 5.0))
-        bar_panel(ax, [Series("s", np.array(values), "#7C9A6E")], ["A"], rounded=True)
+        bar_panel(ax, [Series("s", np.array(values), "#7C9A6E")], ["A"], rounded=rounded)
         fig.canvas.draw()
-        ink = ink_of(frame_rgb(fig), tolerance=8)
-        rows = np.flatnonzero(ink.sum(axis=1) > 0)
-        top, bottom = rows.min(), rows.max()
+        # THE BAR'S OWN COLUMNS AND ROWS, not the whole page. Taking the topmost ink of the figure
+        # measured the printed value label above the bar, and the row two pixels under it — so
+        # the number came out the same with `rounded=False` and the test could not fail. Taken
+        # from the bar's window extent, so the top row IS the bar's top.
+        (bar,) = [patch for patch in ax.patches if patch.get_width() > 0]
+        box = bar.get_window_extent()
+        height_px = fig.canvas.get_width_height()[1]
+        left, right = int(np.floor(box.x0)) - 2, int(np.ceil(box.x1)) + 2
+        top, bottom = int(height_px - box.y1), int(height_px - box.y0)
+        ink = ink_of(frame_rgb(fig), tolerance=8)[:, left:right]
         at_top = int(ink[top + 2].sum())  # clear of the antialiased first row
         at_middle = int(ink[(top + bottom) // 2].sum())
         plt.close(fig)
         return (at_middle - at_top) / 2.0
 
-    near_one = corner_px([0.61])
-    near_thousands = corner_px([38000.0])
+    assert corner_px([0.61], rounded=False) == pytest.approx(0.0, abs=1.0), (
+        "the premise: a square bar is as wide at its top as at its middle"
+    )
+    near_one = corner_px([0.61], rounded=True)
+    near_thousands = corner_px([38000.0], rounded=True)
     assert near_one > 1.0, "the premise: there is a corner to measure at all"
     assert near_one == pytest.approx(near_thousands, abs=1.5), (near_one, near_thousands)
 
@@ -413,3 +426,34 @@ def test_a_band_a_label_names_is_not_reported_as_data_under_the_label() -> None:
     on_the_band = [one for one in text_over_data(fig) if "sits on" in one]
     assert on_the_band == [], on_the_band
     plt.close(fig)
+
+
+def _two_series():
+    return [
+        Series("first", np.array([1.0, 2.0]), SERIES[0], SERIES[0]),
+        Series("second", np.array([3.0, 4.0]), SERIES[1], SERIES[1]),
+    ]
+
+
+def test_an_emphasis_of_the_wrong_shape_is_refused_by_name() -> None:
+    """The comparison is what a wrong shape crashed in, so the shape is checked before it.
+
+    A list met `0 <= [0, 1]` and raised a bare TypeError naming int and list; a three-tuple raised
+    IndexError from inside the message written to explain it.
+    """
+    for wrong, expected in (
+        ([0, 1], "category index or a \\(series, category\\) pair"),
+        ((0, 1, 0), "not a 3-tuple"),
+        ((0,), "not a 1-tuple"),
+        ("first", "category index or a \\(series, category\\) pair"),
+    ):
+        _fig, ax = plt.subplots()
+        with pytest.raises(AssertionError, match=expected):
+            bar_panel(ax, _two_series(), ["a", "b"], emphasis=wrong)  # type: ignore[arg-type]
+
+
+def test_a_boolean_emphasis_is_not_a_category_index() -> None:
+    """`True` is an `int`, so it silently emphasised category 1 — the trap `widths_of` names."""
+    _fig, ax = plt.subplots()
+    with pytest.raises(AssertionError, match="category index"):
+        bar_panel(ax, _two_series(), ["a", "b"], emphasis=True)  # type: ignore[arg-type]

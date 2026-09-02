@@ -70,7 +70,41 @@ MEAN_HALF_WIDTH = 0.15
 BOX_WIDTH = 5.5
 WHISKER_WIDTH = 1.5
 MEDIAN_SIZE = 7.5
+MEDIAN_EDGE_WIDTH = 1.6
 MEAN_LINEWIDTH = 3.2
+
+__all__ = [
+    "BOX_COLOR",
+    "BOX_WIDTH",
+    "CENTER_GAP",
+    "ERROR_CAPSIZE",
+    "ERROR_LINEWIDTH",
+    "JITTER_FILL",
+    "MEAN_HALF_WIDTH",
+    "MEAN_LINEWIDTH",
+    "MEDIAN_EDGE_WIDTH",
+    "MEDIAN_SIZE",
+    "POINT_ALPHA",
+    "POINT_EDGE_WIDTH",
+    "POINT_SIZE",
+    "VIOLIN_ALPHA",
+    "VIOLIN_WIDTH",
+    "WHISKER_WIDTH",
+    "Z_ERROR",
+    "Z_IQR",
+    "Z_MEAN_LINE",
+    "Z_MEDIAN_DOT",
+    "Z_POINTS",
+    "Z_VIOLIN",
+    "central_clearance",
+    "error_bars",
+    "iqr_box",
+    "jitter_x",
+    "mean_line",
+    "points",
+    "violin",
+    "widths_of",
+]
 
 
 def violin(
@@ -346,13 +380,24 @@ def widths_of(*mark_kwargs: Mapping[str, object] | None) -> dict[str, float]:
     Takes the mappings a caller passed to `iqr_box` and `mean_line` and returns what
     `central_clearance` calls the same quantities. Anything that is not a width — a colour, a fill —
     is ignored, so a caller can hand over its whole kwargs mapping without filtering it first.
+
+    A width that is not a number IS refused, rather than ignored: `box_width=True` used to become a
+    1.0 pt lane, because `bool` is an `int`. An unknown key is still passed over, since that is the
+    whole point of accepting the full mapping — but the cost is that a misspelled width reserves
+    the DEFAULT lane rather than the drawn one, which is why `central_clearance` refuses an unknown
+    `drawn=` name and this cannot.
     """
     found: dict[str, float] = {}
     for given in mark_kwargs:
         for name, value in (given or {}).items():
             target = _WIDTH_NAMES.get(name)
-            if target is not None and isinstance(value, (int, float)):
-                found[target] = float(value)
+            if target is None:
+                continue
+            require(
+                isinstance(value, (int, float)) and not isinstance(value, bool),
+                f"{name} is a width in points, got {value!r}",
+            )
+            found[target] = float(value)  # type: ignore[arg-type]
     return found
 
 
@@ -368,11 +413,19 @@ def iqr_box(
     median_fill: str | None = None,
     orientation: Orientation = "vertical",
 ) -> None:
-    """Q1-Q3 bar on a 1.5x IQR whisker, with the median as a dot on top."""
-    q1, median, q3 = np.percentile(values, [25, 50, 75])
+    """Q1-Q3 bar on a 1.5x IQR whisker, with the median as a dot on top.
+
+    COERCES its values, because every other mark in this module does. `np.percentile` accepts a
+    list, so the first half of this function did too and the raw `values.min()` two lines later
+    raised `AttributeError` on a `list` — a mark that half-accepted a sequence, and a message
+    naming nothing a caller could act on.
+    """
+    require(len(values), "iqr_box needs at least one value")
+    v = np.asarray(values, dtype=np.float64)
+    q1, median, q3 = np.percentile(v, [25, 50, 75])
     spread = q3 - q1
-    low = max(float(values.min()), q1 - 1.5 * spread)
-    high = min(float(values.max()), q3 + 1.5 * spread)
+    low = max(float(v.min()), q1 - 1.5 * spread)
+    high = min(float(v.max()), q3 + 1.5 * spread)
     ax.plot(
         *place_many(orientation, [position] * 2, [low, high]),
         color=color,
@@ -392,7 +445,7 @@ def iqr_box(
         "o",
         mfc=median_fill if median_fill is not None else page_color(),
         mec=color,
-        mew=1.6,
+        mew=MEDIAN_EDGE_WIDTH,
         ms=median_size,
         zorder=Z_MEDIAN_DOT,
     )

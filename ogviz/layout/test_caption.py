@@ -8,10 +8,13 @@ import pytest
 
 from ogviz.layout.caption import caption, longest_unbreakable, overflowing_text
 
+# Rendered-text assertions: measured under the font every machine has (see conftest.py).
+pytestmark = pytest.mark.usefixtures("pinned_font")
+
 NOTE = (
-    "Source: analysis of a random sample of messages, linked to self-reported occupations and "
-    "task descriptions. Notes: shares are message-weighted, so higher-volume users contribute "
-    "more observations. The chart shows users in the middle 50 percent of the distribution."
+    "Source: invented readings from a random sample of stations, linked to their declared region "
+    "and instrument type. Notes: shares are reading-weighted, so busier stations contribute more "
+    "observations. The chart shows stations in the middle 50 percent of the distribution."
 )
 
 
@@ -30,7 +33,7 @@ def _widest(fig) -> float:
 def test_the_caption_fits_at_every_figure_width(width: float) -> None:
     """The guarantee, checked by measuring the render rather than trusting the wrap."""
     fig, _ax = _figure(width)
-    caption(fig, NOTE, heading="Figure 6. Smaller workspaces show more boundary crossing")
+    caption(fig, NOTE, heading="Figure 6. Shorter strands cross the midline more often")
     assert _widest(fig) <= fig.get_figwidth() * fig.dpi
     assert not overflowing_text(fig)
 
@@ -69,3 +72,32 @@ def test_captions_are_absent_unless_asked_for() -> None:
     fig, _ax = _figure(9.0)
     caption(fig)
     assert not fig.texts
+
+
+def test_a_managed_layout_refuses_the_reservation_and_the_caller_is_told() -> None:
+    """`subplots_adjust` is a no-op under a layout engine, and matplotlib only warns about it.
+
+    So the caption reserved nothing and landed on the panels. The premise is the subplot
+    parameter itself: it does not move.
+    """
+    fig, ax = plt.subplots(figsize=(6.0, 3.0), layout="constrained")
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    before = fig.subplotpars.bottom
+    said = caption(fig, "a note long enough to want a couple of lines of room below the panels")
+    assert fig.subplotpars.bottom == before, "premise: nothing was reserved"
+    assert any("refuses subplots_adjust" in one for one in said)
+    plt.close(fig)
+
+
+def test_a_plain_figure_reserves_its_room_and_reports_nothing() -> None:
+    """The same note on a figure with no layout engine: the room appears and nothing is said.
+
+    `NOTE` wraps to several lines at this width, so the room it needs is more than the default
+    bottom margin — which is what makes the reservation visible as a rise rather than a change.
+    """
+    fig, ax = plt.subplots(figsize=(6.0, 3.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    before = fig.subplotpars.bottom
+    assert caption(fig, NOTE) == []
+    assert fig.subplotpars.bottom > before
+    plt.close(fig)
