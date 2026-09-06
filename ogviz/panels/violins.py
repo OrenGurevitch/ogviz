@@ -21,7 +21,16 @@ import numpy as np
 
 from ogviz.layout import drawn_value_extent, hairline_grid, ticks_over_data
 from ogviz.layout.overlap import DEFAULT_MIN_GAP
-from ogviz.marks import CATEGORY_HALF_SLOT, iqr_box, mean_line, points, violin, widths_of
+from ogviz.marks import (
+    CATEGORY_HALF_SLOT,
+    VIOLIN_WIDTH,
+    density_half_width,
+    iqr_box,
+    mean_line,
+    points,
+    violin,
+    widths_of,
+)
 from ogviz.orientation import (
     category_limits,
     category_tick_labels,
@@ -635,7 +644,22 @@ def group_violins(
         if outline_violins:
             body.setdefault("edge_color", fill)  # an explicit one in violin_kwargs still wins
         violin(ax, values, position, fill, **body)  # type: ignore[arg-type]
-        points(ax, values, position, fill if dots is None else dots, edge, rng, **point_kwargs)  # type: ignore[arg-type]
+        # A `span`-sized mean is a DIFFERENT width per group — it follows each body — so the lane
+        # the dots keep clear has to be recomputed per group too. `widths_of` reads a number off
+        # the kwargs and there is no number to read here, so left alone every dot would clear the
+        # default 0.085 lane while the line reached several times that, which is the collision
+        # `central_clearance` exists to prevent.
+        dot_kwargs = dict(point_kwargs)
+        mean_span = mean_kwargs.get("span")
+        if mean_span is not None:
+            lanes = dict(widths_of(box_kwargs, mean_kwargs))
+            lanes["mean_half_width"] = density_half_width(
+                values,
+                width=float(mean_kwargs.get("violin_width", VIOLIN_WIDTH)),  # type: ignore[arg-type]
+                fill=float(mean_span),  # type: ignore[arg-type]
+            )
+            dot_kwargs["mark_widths"] = lanes
+        points(ax, values, position, fill if dots is None else dots, edge, rng, **dot_kwargs)  # type: ignore[arg-type]
         iqr_box(ax, values, position, **box_kwargs)  # type: ignore[arg-type]
         mean_line(ax, values, position, **mean_kwargs)  # type: ignore[arg-type]
 

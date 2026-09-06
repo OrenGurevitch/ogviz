@@ -132,6 +132,7 @@ __all__ = [
     "Z_POINTS",
     "Z_VIOLIN",
     "central_clearance",
+    "density_half_width",
     "error_bars",
     "iqr_box",
     "jitter_x",
@@ -214,6 +215,32 @@ def jitter_x(
         half_width = np.maximum(half_width, inner * 1.06)  # always somewhere to put the dot
     side = np.where(rng.random(len(v)) < 0.5, -1.0, 1.0)
     return position + side * rng.uniform(inner, half_width)
+
+
+def density_half_width(
+    values: NDArray[np.float64],
+    *,
+    width: float = VIOLIN_WIDTH,
+    at: float | None = None,
+    fill: float = 1.0,
+) -> float:
+    """How wide the violin's own body is at one value, in category-axis units.
+
+    The same Gaussian KDE `jitter_x` spreads dots by, asked about a single height instead of about
+    every point — so a mark sized from this lands exactly on the body's edge where the dots stop.
+    `at` defaults to the mean, which is the mark that wants it.
+
+    Returns the fixed `MEAN_HALF_WIDTH` for a sample too small or too flat for a density, which is
+    the same condition under which `violin` draws no body at all: sizing a mark to a shape that was
+    never drawn would make the mark claim a width the figure does not show.
+    """
+    v = np.asarray(values, dtype=np.float64)
+    if len(v) < 2 or float(np.ptp(v)) == 0.0:
+        return MEAN_HALF_WIDTH
+    kde = gaussian_kde(v)
+    densest = max(float(kde(np.linspace(v.min(), v.max(), 200)).max()), float(kde(v).max()))
+    height = float(np.mean(v)) if at is None else at
+    return float(kde([height])[0]) / densest * (width / 2) * fill
 
 
 # The central marks a dot may have to keep clear of, named. `"iqr"` covers the whisker, the box and
@@ -492,16 +519,30 @@ def mean_line(
     position: float,
     *,
     half_width: float = MEAN_HALF_WIDTH,
+    span: float | None = None,
+    violin_width: float = VIOLIN_WIDTH,
     color: str = INK,
     linewidth: float = MEAN_LINEWIDTH,
     halo: str | None = None,
     orientation: Orientation = "vertical",
 ) -> None:
-    """Mean as a short ink line, over the IQR bar and under the median dot.
+    """Mean as an ink line across the body, over the IQR bar and under the median dot.
+
+    `span` sizes the mark from the VIOLIN rather than fixing it: a fraction of the body's own
+    half-width at the mean, so 1.0 reaches the edge of the shape and 0.5 stops halfway. It
+    overrides `half_width`. Left None the mark keeps its fixed `MEAN_HALF_WIDTH`, which is a
+    marker ON the IQR box rather than a rule across the body — the two read differently and
+    which one a figure wants is the caller's call, not this function's.
+
+    A fixed width ignores how wide the body actually is where the mean falls, so the same mark
+    overhangs a narrow violin and under-runs a wide one; `span` is the fix for that, and it uses
+    the same density `jitter_x` spreads dots by, so the line ends where the dots do.
 
     The halo is the page colour, read at draw time so it follows `use_house_style(canvas=...)`;
     pass your own, or "none" to drop it.
     """
+    if span is not None:
+        half_width = density_half_width(values, width=violin_width, fill=span)
     m = float(np.mean(values))
     ax.plot(
         *place_many(orientation, [position - half_width, position + half_width], [m, m]),

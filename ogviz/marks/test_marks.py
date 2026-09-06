@@ -314,3 +314,58 @@ def test_a_caller_can_still_have_the_retired_padding() -> None:
         category_pad=VIOLIN_WIDTH,
     )
     assert abs(float(ax.get_xlim()[0])) == pytest.approx(VIOLIN_WIDTH)
+
+
+def test_a_spanned_mean_reaches_the_body_where_a_fixed_one_does_not() -> None:
+    """A fixed mean tick ignores how wide the violin is where the mean falls.
+
+    The whole point of `span` is that the mark follows the shape: on a sample whose density peaks
+    at the mean the line has to come out WIDER than the fixed default, and it has to end where the
+    body does rather than at a number chosen in advance.
+    """
+    import numpy as np
+
+    from ogviz.marks import MEAN_HALF_WIDTH, VIOLIN_WIDTH, density_half_width
+
+    rng = np.random.default_rng(0)
+    values = rng.normal(0.0, 1.0, 400)  # unimodal, so the density peaks at the mean
+
+    full = density_half_width(values, width=VIOLIN_WIDTH, fill=1.0)
+    half = density_half_width(values, width=VIOLIN_WIDTH, fill=0.5)
+
+    assert full > MEAN_HALF_WIDTH, "a spanned mean on a peaked density must be wider than the tick"
+    assert full <= VIOLIN_WIDTH / 2 + 1e-12, "it can never reach past the body's own half-width"
+    assert abs(half - full / 2) < 1e-12, "`fill` scales the width it returns, linearly"
+
+
+def test_a_sample_too_flat_for_a_density_keeps_the_fixed_width() -> None:
+    """`violin` draws no body below two points or on a constant sample, so there is no shape to
+    size a mark from. Returning a density-derived number there would make the mark claim a width
+    the figure does not show; the fixed default is the honest answer."""
+    import numpy as np
+
+    from ogviz.marks import MEAN_HALF_WIDTH, density_half_width
+
+    assert density_half_width(np.array([1.0])) == MEAN_HALF_WIDTH
+    assert density_half_width(np.full(20, 2.5)) == MEAN_HALF_WIDTH
+
+
+def test_span_widens_the_drawn_mean_line() -> None:
+    """End to end through `mean_line`, because `span` overriding `half_width` is the contract."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    from ogviz.marks import mean_line
+
+    rng = np.random.default_rng(1)
+    values = rng.normal(0.0, 1.0, 300)
+
+    def drawn_width(**kwargs: object) -> float:
+        _fig, ax = plt.subplots()
+        mean_line(ax, values, 0.0, **kwargs)  # type: ignore[arg-type]
+        xs = ax.lines[-1].get_xdata()
+        plt.close("all")
+        return float(max(xs) - min(xs))
+
+    assert drawn_width(span=1.0) > drawn_width() * 2, "a spanned mean is visibly the longer mark"
+    assert drawn_width(span=0.5) < drawn_width(span=1.0)
