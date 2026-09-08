@@ -441,18 +441,29 @@ def coupling_panels(
     grid = fig.add_gridspec(2, len(legs), height_ratios=height_ratios)
     scale = limits if limits is not None else shared_limits(legs, reference=reference)
     unfitted: list[str] = []
+    strips: list[Axes] = []
     for column, leg in enumerate(legs):
         cell = grid[0, column] if leg.estimates else grid[:, column]
         unfitted += scatter_panel(fig.add_subplot(cell), leg, pooled_color=pooled_color)
         if leg.estimates:
+            strip = fig.add_subplot(grid[1, column])
+            strips.append(strip)
             estimate_strip(
-                fig.add_subplot(grid[1, column]),
+                strip,
                 leg.estimates,
                 limits=scale,
                 name_the_rows=column == 0,
                 label_for=label_for,
                 reference=reference,
             )
+    # SAY THAT THE STRIPS SHARE A SCALE, in the tag the QC rules already read. `scale` is one span
+    # for every column by construction, so a column whose intervals are the short ones is empty at
+    # one end because a NEIGHBOUR needed the room — the case `unused_value_headroom` and
+    # `panel_emptiness` are both written to forgive, and could not see here because only
+    # `share_value_limits` was marking it. Unmarked, they told a caller to tighten the one limit
+    # that must not be tightened: doing it is what stops the three columns being comparable.
+    for strip in strips:
+        mark(strip, "shared_scale", len(strips))
     if estimate_axis_label is not None:
         fig.supxlabel(estimate_axis_label, fontsize=AXIS_LABEL_SIZE)
     fig.subplots_adjust(wspace=width_space, hspace=height_space)

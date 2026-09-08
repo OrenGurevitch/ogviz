@@ -16,6 +16,8 @@ from ogviz.panels.coupling import (
     shared_limits,
     trend_line,
 )
+from ogviz.qc.arrangement import unused_value_headroom
+from ogviz.tags import value_of
 
 
 def _cloud(seed: int = 0, size: int = 30) -> Cloud:
@@ -50,6 +52,28 @@ def test_every_strip_gets_the_same_scale() -> None:
     strips = [ax for ax in fig.axes if ax.get_ylim()[0] == pytest.approx(-0.7)]
     assert len(strips) == len(legs)
     assert len({tuple(round(v, 9) for v in ax.get_xlim()) for ax in strips}) == 1
+
+
+def test_a_short_column_is_not_told_to_tighten_the_shared_scale() -> None:
+    """The room in a short column belongs to its neighbour, and the QC rules must be told so.
+
+    Three legs on one scale, the third reaching far higher than the first. Unmarked, the first
+    column reads as an axis half empty above everything drawn and `unused_value_headroom` reports
+    it — advice that, taken, would break the only thing the figure is for.
+    """
+    rows = ("Pooled", "Long COVID", "Control")
+    legs = (
+        _leg(*(Estimate(row, -0.30, (-0.64, -0.02), "#000000") for row in rows)),
+        _leg(*(Estimate(row, 0.05, (-0.10, 0.20), "#000000") for row in rows)),
+        _leg(*(Estimate(row, 0.60, (0.40, 0.90), "#000000") for row in rows)),
+    )
+    fig = plt.figure(figsize=(12, 6))
+    # The caller's own limits, the way a figure that pads for a label column passes them: wider on
+    # the right than the widest interval needs. The symmetric default hides the case.
+    coupling_panels(fig, legs, limits=(-0.74, 1.05))
+    strips = [ax for ax in fig.axes if ax.get_ylim()[0] == pytest.approx(-0.7)]
+    assert unused_value_headroom(fig) == []
+    assert {value_of(ax, "shared_scale") for ax in strips} == {len(legs)}
 
 
 def test_the_shared_scale_reaches_the_widest_interval() -> None:
