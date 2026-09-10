@@ -205,3 +205,72 @@ def test_artist_name_quotes_text_and_falls_back_to_the_type() -> None:
     assert artist_name(ax.text(0.5, 0.5, "a label")) == "'a label'"
     assert artist_name(ax.plot([0, 1], [0, 1])[0]) == "Line2D"
     plt.close(fig)
+
+
+def test_a_contour_set_is_not_text_however_much_it_looks_like_it() -> None:
+    """`QuadContourSet` inherits `ContourLabeler.get_text`, which is a FORMATTER, not a label.
+
+    So `hasattr(a, "get_text")` says yes and calling it with no arguments raises. The premise is
+    asserted first, because it is a fact about matplotlib rather than about this package: if a
+    future version stops inheriting that method, this test would pass while checking nothing.
+    """
+    from ogviz.qc.reading import is_text
+
+    grid = np.linspace(-3.0, 3.0, 40)
+    mesh_x, mesh_y = np.meshgrid(grid, grid)
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    contours = ax.contour(mesh_x, mesh_y, np.exp(-(mesh_x**2 + mesh_y**2)))
+
+    assert hasattr(contours, "get_text"), "premise: a contour set answers hasattr yes"
+    with pytest.raises(TypeError):
+        contours.get_text()  # type: ignore[call-arg]
+
+    assert not is_text(contours)
+    assert artist_name(contours) == "QuadContourSet"
+    plt.close(fig)
+
+
+def test_the_audit_survives_a_figure_drawn_with_contours() -> None:
+    """It did not fail the figure — it died on it, which tells a caller nothing about their figure.
+
+    Reported from a project whose figures draw contours. Three sites duck-typed `get_text` and
+    each broke differently: `artist_name` raised on the call, `knocked_out_over` passed the
+    `hasattr` guard and reached `opaque_backing` for a `get_bbox_patch` a contour has not got, and
+    `colliding_ink` counted the contour as TEXT, so a contour crossing a mark was reported as a
+    label collision rather than passed over as one mark meeting another.
+    """
+    from ogviz.qc import audit
+
+    grid = np.linspace(-3.0, 3.0, 40)
+    mesh_x, mesh_y = np.meshgrid(grid, grid)
+    for filled in (False, True):
+        fig, ax = plt.subplots(figsize=(6.0, 4.0))
+        drawer = ax.contourf if filled else ax.contour
+        drawer(mesh_x, mesh_y, np.exp(-(mesh_x**2 + mesh_y**2)))
+        ax.set_title("a contour panel")
+        ax.text(0.0, 0.0, "a label")
+        fig.canvas.draw()
+        audit(fig)  # the assertion is that this returns at all
+        audit(fig, thorough=True)
+        plt.close(fig)
+
+
+def test_contour_labels_are_still_read_as_text() -> None:
+    """The other side of the fix: `clabel` makes real `Text` children and they must still count.
+
+    Narrowing to `isinstance(..., Text)` could have made the checks blind to the labels a contour
+    panel actually carries, which would be a worse bug than the crash it replaced.
+    """
+    from ogviz.qc.reading import is_text
+
+    grid = np.linspace(-3.0, 3.0, 40)
+    mesh_x, mesh_y = np.meshgrid(grid, grid)
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    contours = ax.contour(mesh_x, mesh_y, np.exp(-(mesh_x**2 + mesh_y**2)), colors="k")
+    ax.clabel(contours, inline=True, fontsize=9)
+    fig.canvas.draw()
+
+    labels = [text for text in ax.texts if text.get_text().strip()]
+    assert labels, "premise: clabel really does add Text children"
+    assert all(is_text(text) for text in labels)
+    plt.close(fig)

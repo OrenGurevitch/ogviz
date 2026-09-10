@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from matplotlib.text import Text
 
 from ogviz.layout.collision import quoted
 from ogviz.layout.overlap import (
@@ -138,10 +139,32 @@ def is_backdrop(artist) -> bool:
     return bool(marked(artist, "backdrop"))
 
 
+def is_text(artist) -> bool:
+    """Whether `artist` is a text artist — asked by TYPE, never by `hasattr(a, "get_text")`.
+
+    Duck-typing this is wrong in matplotlib, and the way it is wrong crashes rather than misjudges.
+    `QuadContourSet` inherits `ContourLabeler.get_text`, which is a FORMATTER — it takes `(lev,
+    fmt)` and returns the string for one contour level. So a contour set answers `hasattr` yes,
+    and every site that then called `get_text()` with no arguments raised `TypeError: get_text()
+    missing 2 required positional arguments`. Reported from a project whose figure draws contours:
+    the audit did not fail the figure, it died on it, which is worse — a gate that crashes tells a
+    caller nothing about their figure.
+
+    Three sites duck-typed it, and each broke differently, which is why this is one function:
+    `artist_name` crashed on the call; `knocked_out_over` passed the `hasattr` guard and reached
+    `opaque_backing`, which asks for `get_bbox_patch` that a contour has not got; and
+    `colliding_ink` counted a contour as TEXT, so a contour overlapping a mark was reported as a
+    label collision instead of being passed over as one mark meeting another, which is a chart.
+
+    `Text` is the right test and not too narrow: `Annotation` subclasses it, and tick labels,
+    titles and legend entries are all `Text`.
+    """
+    return isinstance(artist, Text)
+
+
 def artist_name(artist) -> str:
-    text = getattr(artist, "get_text", None)
-    if text is not None:
-        return repr(quoted(text()))
+    if is_text(artist):
+        return repr(quoted(artist.get_text()))
     return type(artist).__name__
 
 
@@ -175,7 +198,7 @@ def knocked_out_over(label, other) -> bool:
     Paint order decides it, so a box under the other artist excuses nothing.
     """
 
-    if not hasattr(label, "get_text") or label.get_zorder() < other.get_zorder():
+    if not is_text(label) or label.get_zorder() < other.get_zorder():
         return False
     return opaque_backing(label) is not None
 

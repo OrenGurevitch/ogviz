@@ -390,6 +390,7 @@ ogviz
 │   │   ├── filled_marks_over(ax: Axes, box, zorder: float) -> list
 │   │   ├── is_backdrop(artist) -> bool
 │   │   ├── is_excused(label, other) -> bool
+│   │   ├── is_text(artist) -> bool
 │   │   ├── knocked_out_over(label, other) -> bool
 │   │   └── orientation_of(ax: Axes) -> Orientation
 │   ├── repair

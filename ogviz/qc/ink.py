@@ -15,6 +15,7 @@ from ogviz.qc.reading import (
     drawn_artists,
     is_backdrop,
     is_excused,
+    is_text,
     knocked_out_over,
 )
 
@@ -66,7 +67,9 @@ def colliding_ink(fig: Figure) -> list[str]:
     complaints: list[str] = []
     for ax in fig.axes:
         artists = drawn_artists(ax)
-        text_index = {index for index, a in enumerate(artists) if hasattr(a, "get_text")}
+        # BY TYPE. `hasattr(a, "get_text")` counted a `QuadContourSet` as text, because it
+        # inherits `ContourLabeler.get_text` — a formatter taking `(lev, fmt)`. See `is_text`.
+        text_index = {index for index, a in enumerate(artists) if is_text(a)}
         for first, second, shared in exact_overlaps(fig, artists):
             if first not in text_index and second not in text_index:
                 continue  # two marks may overlap; that is a chart, not a defect
