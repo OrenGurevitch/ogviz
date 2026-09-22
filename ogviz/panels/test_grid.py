@@ -361,20 +361,23 @@ def test_aligning_a_tall_stack_keeps_it_under_the_shared_ceiling() -> None:
     from ogviz import group_violins, share_value_limits
 
     def reach(ax) -> float:
+        # A star is measured by the rows it actually INKS, rendered alone, since that is what
+        # `bracket_stack` fits by. Its text box stands above the ink by an amount that depends on
+        # the face and on the matplotlib version — over a pixel under DejaVu on 3.10 — so a box
+        # measurement fails this premise on a stack that fits its own panel exactly.
+        from ogviz.layout.ink import artist_ink
+
         fig.canvas.draw()
         to_data = ax.transData.inverted()
         lines = [float(np.max(line.get_ydata())) for line in ax.lines if marked(line, "bracket")]
-        stars = [
-            float(to_data.transform((0.0, text.get_window_extent().y1))[1])
-            for text in ax.texts
-            if marked(text, "bracket_star")
-        ]
-        # One pixel of slack, in data: a star is measured here by its text BOX, which in a wide face
-        # (DejaVu, a Linux runner's fallback) stands a fraction of a pixel above the ink
-        # `bracket_stack` fits by — so the box of a stack that fits its own panel exactly pokes
-        # through by less than anything the gate, or a reader, can see.
-        pixel = abs(to_data.transform((0.0, 1.0))[1] - to_data.transform((0.0, 0.0))[1])
-        return max(lines + stars) - pixel
+        stars = []
+        for text in ax.texts:
+            if not marked(text, "bracket_star"):
+                continue
+            inked = np.nonzero(artist_ink(fig, text).any(axis=1))[0]
+            top_row = fig.bbox.height - float(inked.min())
+            stars.append(float(to_data.transform((0.0, top_row))[1]))
+        return max(lines + stars)
 
     rng = np.random.default_rng(0)
     fig, (low, high) = plt.subplots(1, 2, figsize=(10.0, 5.0))
