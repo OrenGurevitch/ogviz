@@ -132,3 +132,26 @@ def test_a_mismatch_report_survives_a_zero_dimensional_array() -> None:
     _fig, ax = plt.subplots()
     with pytest.raises(AssertionError, match="x has shape"):
         line_panel(ax, [Line(label="a", x=1.0, y=[1.0, 2.0], color="#2E7CE0")])
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        pytest.param([-60.0, -58.0, -56.0], id="all-negative"),
+        pytest.param([0.5, 5.0, 10.0], id="reaches-zero"),
+    ],
+)
+def test_a_broken_zero_refuses_a_floor_that_zero_is_not_below(values) -> None:
+    """The stub is labelled "0" wherever it sits, so on -60..-56 it said "0" beneath "-60".
+
+    The premise is asserted: the floor `value_floor` hands back really is not above zero, so the
+    refusal is what is being tested and not a floor that happened to be fine.
+    """
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    lines = [Line(label="a", x=[0, 1, 2], y=values, color="#2E7CE0")]
+    line_panel(ax, lines)
+    floor = value_floor(lines)
+    assert floor <= 0.0, floor
+    with pytest.raises(AssertionError, match="floor must be above zero"):
+        broken_zero(ax, floor=floor)
+    plt.close(fig)

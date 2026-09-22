@@ -114,8 +114,27 @@ def broken_zero(ax: Axes, *, floor: float, zero_gap: float | None = None) -> Non
     reads as decoration that happens to sit there. The spine is split into a long run covering the
     data and a stub carrying the zero tick, and the zigzag is drawn across the space between them,
     so the axis is genuinely discontinuous at the point where the scale is.
+
+    REFUSED unless zero lies below `floor`. The tick beneath the cut is labelled "0" whatever value
+    it sits at, which is honest only when zero really is further down the axis than the floor. On
+    all-negative data (-60 to -56, measured) the floor came out at -60.4 and the stub was labelled
+    "0" beneath "-60" — a wrong number, in a figure the whole gate passed, because no check reads a
+    tick's text against its position. A floor at or below zero means the data already reaches zero
+    and there is nothing to cut; data entirely below zero wants the cut at the top, which this does
+    not draw. Refusal rather than a silent no-op, because a caller who asked for a broken axis and
+    got a plain truncated one would have exactly the overstated difference this exists to prevent.
     """
     low, high = ax.get_ylim()
+    require(
+        floor > 0.0,
+        f"broken_zero cuts the axis above a zero tick, so the floor must be above zero; got "
+        f"{floor:g}. A floor at or below zero means the data reaches zero already — plot from zero "
+        "instead of breaking the axis.",
+    )
+    require(
+        floor < high,
+        f"broken_zero was given a floor of {floor:g}, at or above the top of the axis ({high:g})",
+    )
     span = high - low
     gap = zero_gap if zero_gap is not None else span * BREAK_HEIGHT * 2.0
     bottom = floor - gap
@@ -243,7 +262,12 @@ def line_panel(
 
 
 def value_floor(lines: Sequence[Line], *, gap: float = FLOOR_GAP) -> float:
-    """A floor just below the lowest point, for `broken_zero` to cut the axis at."""
+    """A floor just below the lowest point, for `broken_zero` to cut the axis at.
+
+    It can come out at or below zero — on negative data, or on data whose lowest point is within a
+    tenth of its range of zero — and then `broken_zero` refuses it. That is the right answer rather
+    than one to clamp away: an axis whose data comes that close to zero should simply start at zero.
+    """
     every = np.concatenate([line.y for line in lines])
     low, high = float(every.min()), float(every.max())
     return low - gap * max(high - low, 1e-9)
