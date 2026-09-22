@@ -52,6 +52,32 @@ def test_jitter_is_degenerate_safe() -> None:
     assert jitter_x(np.full(9, 4.2), 1.0, rng).tolist() == [1.0] * 9
 
 
+def test_a_constant_group_keeps_the_lane_it_was_asked_to_keep() -> None:
+    """Every value equal put every dot on the centre line, `clearance` or not.
+
+    The early return for a flat sample ran before `clearance` was read, so the one case where every
+    dot is level with the mean line AND the median dot was the one case the lane was ignored, and
+    `group_violins` on a constant group was refused for dots sitting on the central marks.
+    """
+    clearance = np.full(9, 0.05)
+    spread = jitter_x(np.full(9, 4.2), 1.0, np.random.default_rng(2), clearance=clearance)
+    offsets = np.abs(spread - 1.0)
+    assert np.all(offsets >= clearance), "every dot clears the lane"
+    assert np.all(offsets <= VIOLIN_WIDTH / 2), "and stays inside the slot"
+    assert len(set(spread.round(9))) > 1, "spread across the band, not stacked at one offset"
+
+
+def test_an_ordinary_group_draws_the_same_dots_as_before() -> None:
+    """The constant-group fix must not reorder the rng draws a varied sample takes."""
+    rng = np.random.default_rng(3)
+    values = rng.normal(size=50)
+    clearance = np.full(50, 0.04)
+    first = jitter_x(values, 0.0, np.random.default_rng(4), clearance=clearance)
+    draws = np.random.default_rng(4)
+    side = np.where(draws.random(50) < 0.5, -1.0, 1.0)
+    assert np.all(np.sign(first) == side), "the first draw still decides the side"
+
+
 def test_iqr_box_puts_the_median_dot_at_the_median() -> None:
     _fig, ax = plt.subplots()
     values = np.arange(101, dtype=float)

@@ -201,8 +201,22 @@ def jitter_x(
     thin whisker. When it is given it is a FLOOR — a dot is pushed just outside the marks rather
     than squeezed onto them, even where the body is too narrow to hold it. Squeezing is what put
     dots on top of the mean line and the median.
+
+    A CONSTANT GROUP WITH A `clearance` IS SPREAD ACROSS THE CLEAR BAND, from the lane out to the
+    body's full jitter reach. It returned every dot on `position` before `clearance` was read — so
+    the one sample whose every dot is level with the mean line and the median was the one the lane
+    ignored, and `group_violins` on an all-equal group was refused for dots on the central marks.
+    All the mass sits at one value, so the density there is the densest there is and the band runs
+    to the same `width / 2 * fill` a varied sample's densest row reaches. Without a `clearance`
+    there is no lane to keep and the dots stay on the centre line, as before. Varied samples take
+    the same draws in the same order as they always did, so their dots do not move.
     """
     v = np.asarray(values, dtype=np.float64)
+    if len(v) >= 2 and float(np.ptp(v)) == 0.0 and clearance is not None:
+        inner = np.asarray(clearance, dtype=np.float64)
+        outer = np.maximum(width / 2 * fill, inner * 1.06)
+        side = np.where(rng.random(len(v)) < 0.5, -1.0, 1.0)
+        return position + side * rng.uniform(inner, outer)
     if len(v) < 2 or float(np.ptp(v)) == 0.0:
         return np.full(len(v), float(position))
     kde = gaussian_kde(v)
