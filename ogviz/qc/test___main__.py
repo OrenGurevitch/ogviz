@@ -119,6 +119,51 @@ def test_fix_output_does_not_carry_the_matplotlib_version(tmp_path) -> None:
     assert "Software" not in Image.open(written).info, Image.open(written).info
 
 
+def test_fix_writes_under_the_guard_even_what_is_still_broken(tmp_path) -> None:
+    """`--fix` writes with `figure.savefig`, so under `OGVIZ_GUARD=1` the guard audited that write
+    and refused it — the run died on the first figure `repair` could not finish, which is the
+    figure `--fix` exists to report on.
+
+    The premise is that this figure is still refused after `repair`; without it, a builder that
+    `repair` cleans passes the guard and the test says nothing.
+    """
+    import sys
+
+    from ogviz import guarded
+    from ogviz.qc import audit
+    from ogviz.qc.repair import repair
+
+    (tmp_path / "stubborn.py").write_text(
+        "import matplotlib\n"
+        "matplotlib.use('Agg')\n"
+        "import matplotlib.pyplot as plt\n"
+        "def build():\n"
+        "    fig, ax = plt.subplots(figsize=(4.0, 3.0))\n"
+        "    ax.plot([0, 1], [0, 1])\n"
+        "    for _ in range(2):\n"
+        "        ax.text(0.5, 0.5, 'the same words here', ha='center', fontsize=20)\n"
+        "    fig.set_label('stubborn')\n"
+        "    return fig\n"
+    )
+    out = tmp_path / "out"
+    sys.path.insert(0, str(tmp_path))
+    try:
+        import stubborn  # pyright: ignore[reportMissingImports]
+
+        premise = stubborn.build()
+        repair(premise)
+        assert audit(premise), "premise: repair leaves this figure refused"
+        plt.close("all")
+        with guarded(mode="raise"):
+            status = main(["stubborn:build", "--fix", str(out)])
+    finally:
+        sys.path.remove(str(tmp_path))
+        sys.modules.pop("stubborn", None)
+        plt.close("all")
+    assert status == 1
+    assert (out / "stubborn.png").exists()
+
+
 def test_list_checks_prints_and_stops() -> None:
     """`--list-checks` needs no target, and must exit 0 rather than falling into the audit path."""
     assert main(["--list-checks"]) == 0

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from matplotlib.figure import Figure
 
+from ogviz.guard import gate_already_run
 from ogviz.layout.write import plain_filename as _filename
 from ogviz.layout.write import reproducible_metadata
 from ogviz.qc import ADVISORY_CHECKS, CHECKS, THOROUGH_CHECKS, audit
@@ -153,7 +154,14 @@ def _report_one(
     # matplotlib VERSION — so the same repaired figure written under 3.10 and under 3.11 differs in
     # its bytes, on a repo whose whole CI shape is two matplotlib legs. Stripping it is what makes
     # `--fix` output comparable between them.
-    figure.savefig(written, dpi=200, bbox_inches="tight", metadata=reproducible_metadata(written))
+    #
+    # PAST THE GUARD, because this has just run the audit itself and is writing a figure it knows
+    # may still fail it. Under `OGVIZ_GUARD=1` the guard refused this write, so `--fix` died on the
+    # first figure `repair` could not finish — the one a person most needed the report on.
+    with gate_already_run():
+        figure.savefig(
+            written, dpi=200, bbox_inches="tight", metadata=reproducible_metadata(written)
+        )
     print(f"  wrote {written}")
     # Re-audited because `repair` has just changed the figure — this is the "what still needs a
     # person" number, and it is a different question from the one printed above.
