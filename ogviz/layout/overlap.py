@@ -57,14 +57,22 @@ def drawn_tick_labels(ax: Axes) -> list[Text]:
     panel edge. A subtitle was flagged as running into a tick label that is not on the page.
     """
     found: list[Text] = []
-    for axis, ticks, limits in (
-        (ax.xaxis, ax.get_xticks(), ax.get_xlim()),
-        (ax.yaxis, ax.get_yticks(), ax.get_ylim()),
-    ):
+    for axis, limits in ((ax.xaxis, ax.get_xlim()), (ax.yaxis, ax.get_ylim())):
+        # An axis turned OFF draws none of its labels, though each keeps its own visibility. That is
+        # how `twinx` hides the twin's x axis, and the hidden labels sit exactly on the host's, so
+        # every x tick was reported as running into itself.
+        if not axis.get_visible():
+            continue
         low, high = min(limits), max(limits)
-        for tick, label in zip(ticks, axis.get_ticklabels(), strict=False):
-            if low - 1e-9 <= float(tick) <= high + 1e-9:
-                found.append(label)
+        locations = axis.get_majorticklocs()
+        # PER TICK, both labels. `get_ticklabels` returns every left label and then every right
+        # one, so zipping it against the tick positions kept only the first set: with
+        # `labelright=True` the right-hand labels were never checked at all. The first N ticks are
+        # the ones the axis draws for N locations, which is how matplotlib pairs them itself.
+        for location, tick in zip(locations, axis.get_major_ticks(len(locations)), strict=True):
+            if not tick.get_visible() or not low - 1e-9 <= float(location) <= high + 1e-9:
+                continue
+            found.extend(label for label in (tick.label1, tick.label2) if label.get_visible())
     return found
 
 

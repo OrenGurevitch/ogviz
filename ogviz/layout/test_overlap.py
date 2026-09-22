@@ -223,3 +223,49 @@ def test_a_log_line_through_zero_is_not_an_absurd_overrun():
     (complaint,) = clipped_artists(fig)
     overrun = float(complaint.split(" px ")[0].split()[-1])
     assert 0 < overrun < fig.bbox.height, complaint
+
+
+def test_a_twin_axes_does_not_collide_with_the_x_labels_it_hides():
+    """`twinx` hides its own x axis by turning the AXIS off, not its tick labels.
+
+    The labels keep their visibility and sit exactly on the host's, so every x tick was reported as
+    running into itself. The premise is asserted because it is a fact about matplotlib.
+    """
+    from ogviz.layout.overlap import drawn_tick_labels
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    ax.plot([0, 1], [0, 1])
+    twin = ax.twinx()
+    twin.plot([0, 1], [5, 3])
+    fig.canvas.draw()
+    assert not twin.xaxis.get_visible(), "premise: the twin's x axis is off"
+    assert any(label.get_visible() for label in twin.xaxis.get_ticklabels()), "premise"
+
+    hidden = {id(label) for label in twin.xaxis.get_ticklabels()}
+    assert not any(id(label) in hidden for label in drawn_tick_labels(twin))
+    assert text_overlaps(fig) == []
+    plt.close(fig)
+
+
+def test_labels_on_both_sides_of_an_axis_are_all_read():
+    """With `labelright=True` each tick carries two labels, and the zip against the ticks kept half.
+
+    `get_ticklabels` returns every left label and then every right one, twice as many as there are
+    ticks, so pairing it with the tick positions dropped the right-hand set: those labels were never
+    checked for spacing or for running off the page.
+    """
+    from ogviz.layout.overlap import drawn_tick_labels
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    ax.plot([0, 1], [0, 1])
+    ax.tick_params(labelright=True)
+    fig.canvas.draw()
+    shown = [tick for tick in ax.get_yticks() if 0.0 - 1e-9 <= tick <= 1.0 + 1e-9]
+    assert len(ax.yaxis.get_ticklabels()) == 2 * len(ax.get_yticks()), "premise"
+
+    right = ax.get_window_extent().x1
+    on_the_right = [
+        label for label in drawn_tick_labels(ax) if label.get_window_extent().x0 > right
+    ]
+    assert len(on_the_right) == len(shown)
+    plt.close(fig)
