@@ -40,6 +40,12 @@ ALPHA = 0.05
 DECLARED_COLOR = "#4A6136"  # survives the correction
 REJECTED_COLOR = "#B4B0A4"  # does not
 POINT_SIZE = 62.0
+# How far above the larger of the top p and alpha a log ladder's axis runs, as a MULTIPLE. The axis
+# ran to 1.0 whatever the family held, and `unused_value_headroom` refused it: a family topping out
+# at 0.4 was "60% of the value axis empty", at 0.1 "90%". That check measures the share linearly,
+# so the multiple must stay under 1 / (1 - 0.40) = 1.67 to pass it; 1.5 leaves room for the top
+# marker and was clean on two families of 6 and 14 with tops from 0.03 to 0.9 at 8 x 5 in.
+LOG_HEADROOM = 1.5
 
 
 def bonferroni_threshold(count: int, *, alpha: float = ALPHA) -> float:
@@ -62,6 +68,13 @@ def benjamini_hochberg_rank(sorted_p: NDArray[np.float64], *, alpha: float = ALP
     require(
         count > 0,
         "a family needs at least one test",
+    )
+    # Before the sort check, because NaN fails `diff >= 0` too and was then told to sort a family
+    # that was already sorted.
+    finite = np.isfinite(sorted_p)
+    require(
+        bool(np.all(finite)),
+        f"benjamini_hochberg_rank needs finite p-values; got {sorted_p[~finite][:3]}",
     )
     # The ramp only means anything against ASCENDING p-values, and the parameter's name is not a
     # check: an unsorted family returned a count with no error, which is a wrong number of declared
@@ -115,9 +128,13 @@ def multiplicity_ladder(
         values.ndim == 1 and values.size,
         "multiplicity_ladder needs a family of p-values",
     )
+    # The complement of the range, not `(values < 0) | (values > 1)`: NaN compares false both ways,
+    # so a family holding one was refused by the first test and then quoted as "got []" — a
+    # refusal naming no value at all. Written this way round, the NaN is the value it names.
+    outside = ~((values >= 0.0) & (values <= 1.0))
     require(
-        np.all((values >= 0.0) & (values <= 1.0)),
-        f"p-values must be in [0, 1]; got {values[(values < 0.0) | (values > 1.0)][:3]}",
+        not np.any(outside),
+        f"p-values must be in [0, 1]; got {values[outside][:3]}",
     )
     require(
         labels is None or len(labels) == len(values),
@@ -187,10 +204,13 @@ def multiplicity_ladder(
     if log:
         # The floor is the smallest thing that has to be VISIBLE — the smallest p or the tightest
         # threshold, whichever is lower — rather than a round decade, so the panel never opens a
-        # blank decade below the data. The top is 1 because that is where p stops.
+        # blank decade below the data. The top is the larger of the top p and alpha, since alpha is
+        # where the BH ramp ends, padded by `LOG_HEADROOM` and capped at 1, where p stops. It was 1
+        # outright, which left most families refused for the empty band above them.
         floor = min(float(sorted_p.min()), bonferroni_threshold(count, alpha=alpha))
+        top = min(1.0, max(float(sorted_p.max()), alpha) * LOG_HEADROOM)
         ax.set_yscale("log")
-        ax.set_ylim(floor / 2.5, 1.0)
+        ax.set_ylim(floor / 2.5, top)
     else:
         ax.set_ylim(0.0, max(float(sorted_p.max()), alpha) * 1.15)
     ax.set_xlabel("Rank")

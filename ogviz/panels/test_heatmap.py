@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from matplotlib.colors import to_rgb
 
+from ogviz.layout.ticks import MINUS
 from ogviz.panels.heatmap import MISSING_MARK, effect_heatmap
 from ogviz.qc import audit
 from ogviz.tags import marked
@@ -163,3 +164,57 @@ def test_the_scale_can_be_turned_off_for_a_grid_that_labels_it_once() -> None:
     effect_heatmap(ax, values, row_labels=["a", "b"], column_labels=["x", "y"], colorbar=False)
     assert len(fig.axes) == 1
     plt.close(fig)
+
+
+def _printed(values, **kwargs) -> list[str]:
+    fig, ax = plt.subplots(figsize=(8.0, 4.0))
+    grid = np.atleast_2d(np.asarray(values, dtype=float))
+    rows, columns = grid.shape
+    effect_heatmap(
+        ax,
+        grid,
+        row_labels=[f"r{index}" for index in range(rows)],
+        column_labels=[f"c{index}" for index in range(columns)],
+        colorbar=False,
+        **kwargs,
+    )
+    printed = [t.get_text() for t in ax.texts]
+    plt.close(fig)
+    return printed
+
+
+def test_a_zero_cell_carries_no_sign() -> None:
+    """The default spec was `"{:+,.2f}"`, which printed a measured zero as "+0.00".
+
+    A value that only ROUNDS to zero keeps its sign, by `format_value`'s rule: that is "small, and
+    which way", which a bare zero is not.
+    """
+    assert _printed([0.0, -0.0, 0.001, -0.001, 0.42, -0.42]) == [
+        "0.00",
+        "0.00",
+        "+0.00",
+        f"{MINUS}0.00",
+        "+0.42",
+        f"{MINUS}0.42",
+    ]
+
+
+def test_against_a_neutral_other_than_zero_the_cells_are_unsigned() -> None:
+    """The sign was relative to ZERO whatever `neutral` was: at neutral 1.0, 0.80 printed "+0.80"
+    while drawn in the low colour. The premise is asserted — that 0.80 really is the low side."""
+    fig, ax = plt.subplots(figsize=(8.0, 4.0))
+    effect_heatmap(
+        ax, np.array([[0.8, 1.2]]), row_labels=["a"], column_labels=["x", "y"], neutral=1.0
+    )
+    low, high = (to_rgb(patch.get_facecolor()) for patch in ax.patches[:2])
+    assert low != high, "the premise: the two cells sit on opposite sides of the neutral colour"
+    cells = [t.get_text() for t in ax.texts]
+    ticks = [t.get_text() for t in fig.axes[-1].get_yticklabels() if t.get_text()]
+    plt.close(fig)
+    assert cells == ["0.80", "1.20"]
+    assert ticks == ["0.80", "1.00", "1.20"]
+
+
+def test_a_caller_s_format_is_printed_as_given() -> None:
+    """The default changed; a spec the caller states is theirs, sign and all."""
+    assert _printed([0.0, 0.5], value_format="{:+.1f}") == ["+0.0", "+0.5"]

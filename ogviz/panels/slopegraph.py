@@ -67,6 +67,24 @@ class Strand:
             self.spread is None or len(self.spread) == len(self.values),
             f"{self.label}: {len(self.spread or ())} spreads for {len(self.values)} values",
         )
+        # FINITE, checked here and named by stage. A NaN last value reached `crowded_ends`, which
+        # reported that the strand ends ran "nan to nan" and told the caller to draw the strands
+        # first or set the limits — advice about the axis, for a defect in the data. A NaN anywhere
+        # else was drawn as a strand with a stage silently missing. A stage that was not measured
+        # is the caller's to show, as a separate strand or a note, not this panel's to skip.
+        values = np.asarray(self.values, dtype=float)
+        bad = np.flatnonzero(~np.isfinite(values))
+        require(
+            not bad.size,
+            f"{self.label}: every value must be finite; got {values[bad].tolist()} at stage "
+            f"index {bad.tolist()}",
+        )
+        if self.spread is not None:
+            bounds = np.asarray(self.spread, dtype=float)
+            require(
+                bool(np.all(np.isfinite(bounds))),
+                f"{self.label}: every spread bound must be finite; got {self.spread}",
+            )
 
 
 def crowded_ends(strands: Sequence[Strand], ax: Axes, *, gap_px: float = CROWDED_PX) -> list[str]:

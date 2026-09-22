@@ -85,7 +85,15 @@ SCATTER_TO_STRIP = (3.0, 1.15)  # how the height of one column is split
 
 @dataclass(frozen=True)
 class Cloud:
-    """One subset's points in a scatter, in the colours the project gives it."""
+    """One subset's points in a scatter, in the colours the project gives it.
+
+    `x` and `y` are ARRAY-LIKE and coerced here, as `lines.Line` already does and for the same
+    reason: `scatter_panel` reads `cloud.x.shape`, so the plain lists everyone hands matplotlib
+    raised `AttributeError: 'list' object has no attribute 'shape'` from inside the `require` meant
+    to give the caller a sentence. `Estimate`, `Leg`, `bars.Series`, `slopegraph.Strand` and the
+    table's rows were checked for the same defect and do not have it — each is read by `len`, by
+    index, or through an `np.asarray` at the point of use.
+    """
 
     x: NDArray[np.float64]
     y: NDArray[np.float64]
@@ -93,6 +101,11 @@ class Cloud:
     edge: str
     label: str
     trend: bool = True
+
+    def __post_init__(self) -> None:
+        for name in ("x", "y"):
+            # `object.__setattr__` because the dataclass is frozen, as in `lines.Line`.
+            object.__setattr__(self, name, np.asarray(getattr(self, name), dtype=float))
 
 
 @dataclass(frozen=True)
@@ -420,7 +433,10 @@ def coupling_panels(
     """One column per pair: the scatter above, its estimates below, all strips on one scale.
 
     Row labels are printed on the leftmost strip only. Repeating them under every column costs the
-    width the panels need and tells the reader nothing they did not learn from the first.
+    width the panels need and tells the reader nothing they did not learn from the first. The
+    leftmost strip DRAWN, not the strip under the first column: it was `column == 0`, so a first
+    leg with no estimates — which gets no strip at all — took every row label in the figure with
+    it, and the remaining strips were rows of intervals with nothing saying what any of them was.
 
     `reference` is where "no relationship" sits, passed to every strip AND to the shared scale so
     the two agree. There was no way to say it here: the strips took the default zero and the scale
@@ -452,7 +468,7 @@ def coupling_panels(
                 strip,
                 leg.estimates,
                 limits=scale,
-                name_the_rows=column == 0,
+                name_the_rows=len(strips) == 1,
                 label_for=label_for,
                 reference=reference,
             )
