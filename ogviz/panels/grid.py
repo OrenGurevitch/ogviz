@@ -71,12 +71,16 @@ def share_value_limits(
         else:
             ax.set_xlim(low, high)
         mark(ax, "shared_scale", len(panels))
-    if is_vertical(orientation):
-        # Both ends of the panel. A shared scale that leaves the brackets at six heights and the
-        # printed means at six others is a shared scale in name only.
-        align_brackets(panels)
-        align_ticks(panels, orientation=orientation)
-        align_mean_rows(panels, floor=low)
+    # Both ends of the panel. A shared scale that leaves the brackets at six heights and the
+    # printed means at six others is a shared scale in name only.
+    #
+    # WHICHEVER WAY THE PANELS RUN. This block sat under `if is_vertical(orientation)` and passed
+    # no orientation, although all three helpers take one — so a horizontal grid got the shared
+    # range and kept every panel's own ticks and brackets, and the gate refused it as "different
+    # value ticks" on a figure this function had been asked to make agree.
+    align_brackets(panels, orientation=orientation)
+    align_ticks(panels, orientation=orientation)
+    align_mean_rows(panels, floor=low, orientation=orientation)
     if label_edge:
         label_shared_scale_once(panels, orientation=orientation)
     return low, high
@@ -141,7 +145,10 @@ def align_ticks(axes: Iterable[Axes], *, orientation: Orientation = "vertical") 
         "align_ticks needs at least one axes",
     )
     upright = is_vertical(orientation)
-    reaches = [extent[1] for extent in (drawn_value_extent(ax) for ax in panels) if extent]
+    # Along the VALUE axis. Read without `orientation` this measured y, which on a horizontal grid
+    # is the category positions, and trimmed the ticks against a number with no meaning.
+    extents = (drawn_value_extent(ax, orientation=orientation) for ax in panels)
+    reaches = [extent[1] for extent in extents if extent]
     if not reaches:
         return []
 
@@ -271,6 +278,8 @@ def align_mean_rows(
     rows = [text for ax in panels for text in ax.texts if marked(text, "mean_row")]
     if not rows:
         return None
+    # Along the VALUE axis. Read without `orientation` this measured y, which on a horizontal grid
+    # is the category positions, and trimmed the ticks against a number with no meaning.
     extents = (drawn_value_extent(ax, orientation=orientation) for ax in panels)
     measured = [extent[0] for extent in extents if extent is not None]
     if not measured:

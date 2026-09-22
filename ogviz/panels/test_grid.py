@@ -306,3 +306,43 @@ def test_the_mean_rows_of_a_horizontal_grid_align_along_the_value_axis() -> None
         "the category coordinate is not the row"
     )
     plt.close(fig)
+
+
+def test_a_horizontal_grid_is_aligned_as_fully_as_a_vertical_one() -> None:
+    """`share_value_limits` aligned brackets, ticks and mean rows on a vertical grid ONLY.
+
+    The helpers it calls all take `orientation`; the call sites gated on `is_vertical` and passed
+    nothing, so a horizontal grid got one shared range and each panel's own ticks and brackets —
+    which the gate then refused as "different value ticks", on a figure the caller had asked this
+    function to make agree.
+    """
+    import numpy as np
+
+    from ogviz import group_violins, share_value_limits
+    from ogviz.qc import panels_disagree_about_ticks
+
+    def crossbars(ax):
+        return [
+            float(np.asarray(line.get_xdata(), dtype=float).max())
+            for line in ax.lines
+            if marked(line, "bracket")
+        ]
+
+    rng = np.random.default_rng(0)
+    fig, axes = plt.subplots(1, 2, figsize=(10.0, 5.0))
+    for ax, shift in zip(axes, (0.0, 5.0), strict=True):
+        group_violins(
+            ax,
+            [
+                (0.0, rng.normal(shift, 1.0, 30), "#E8A838", "#B97C10"),
+                (1.0, rng.normal(shift, 1.0, 30), "#7C9A6E", "#4A6136"),
+            ],
+            comparisons=[(0.0, 1.0, 0.01)],
+            orientation="horizontal",
+        )
+    assert len({round(max(crossbars(ax)), 6) for ax in axes}) > 1, "premise: two bracket lines"
+
+    share_value_limits(axes, orientation="horizontal")
+    fig.canvas.draw()
+    assert not panels_disagree_about_ticks(fig)
+    assert len({round(max(crossbars(ax)), 6) for ax in axes}) == 1, "one bracket line"
