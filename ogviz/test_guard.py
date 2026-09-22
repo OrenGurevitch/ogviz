@@ -254,3 +254,28 @@ def test_unguard_leaves_a_wrapper_it_did_not_install() -> None:
         assert Figure.savefig is wrapper, "not ours, so not ours to remove"
     finally:
         Figure.savefig = theirs  # type: ignore[method-assign]
+
+
+def test_a_wrapper_installed_after_import_is_kept_under_the_guard(tmp_path) -> None:
+    """The guard called the `savefig` it found AT IMPORT, so a library that wrapped it later was
+    bypassed while guarded, and `unguard` then put the import-time one back — dropping that
+    library's wrapper for the rest of the process."""
+    from matplotlib.figure import Figure
+
+    theirs = Figure.savefig
+    calls: list[object] = []
+
+    def wrapper(self, *args, **kwargs):
+        calls.append(args[0] if args else kwargs.get("fname"))
+        return theirs(self, *args, **kwargs)
+
+    Figure.savefig = wrapper  # type: ignore[method-assign, assignment]
+    try:
+        guard()
+        guard()  # idempotent: the second must not capture the first as "theirs"
+        _clean().savefig(tmp_path / "through.png")
+        assert calls == [tmp_path / "through.png"], "the guarded save skipped their wrapper"
+        unguard()
+        assert Figure.savefig is wrapper, "unguard put back something other than what it found"
+    finally:
+        Figure.savefig = theirs  # type: ignore[method-assign]
