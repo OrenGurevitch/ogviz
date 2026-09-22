@@ -69,6 +69,13 @@ def benjamini_hochberg_rank(sorted_p: NDArray[np.float64], *, alpha: float = ALP
         count > 0,
         "a family needs at least one test",
     )
+    # Before the sort check, because NaN fails `diff >= 0` too and was then told to sort a family
+    # that was already sorted.
+    finite = np.isfinite(sorted_p)
+    require(
+        bool(np.all(finite)),
+        f"benjamini_hochberg_rank needs finite p-values; got {sorted_p[~finite][:3]}",
+    )
     # The ramp only means anything against ASCENDING p-values, and the parameter's name is not a
     # check: an unsorted family returned a count with no error, which is a wrong number of declared
     # findings, silently. `multiplicity_ladder` sorts before calling; a direct caller may not.
@@ -121,9 +128,13 @@ def multiplicity_ladder(
         values.ndim == 1 and values.size,
         "multiplicity_ladder needs a family of p-values",
     )
+    # The complement of the range, not `(values < 0) | (values > 1)`: NaN compares false both ways,
+    # so a family holding one was refused by the first test and then quoted as "got []" — a
+    # refusal naming no value at all. Written this way round, the NaN is the value it names.
+    outside = ~((values >= 0.0) & (values <= 1.0))
     require(
-        np.all((values >= 0.0) & (values <= 1.0)),
-        f"p-values must be in [0, 1]; got {values[(values < 0.0) | (values > 1.0)][:3]}",
+        not np.any(outside),
+        f"p-values must be in [0, 1]; got {values[outside][:3]}",
     )
     require(
         labels is None or len(labels) == len(values),

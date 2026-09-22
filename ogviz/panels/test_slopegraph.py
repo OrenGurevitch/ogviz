@@ -110,3 +110,24 @@ def test_crowding_asked_before_the_panel_is_scaled_is_refused_not_guessed() -> N
     # Drawn, the same question has a meaningful answer.
     assert slopegraph(ax, strands, ["one", "two", "three"]) != []
     plt.close(fig)
+
+
+@pytest.mark.parametrize("stage", [0, 3])
+def test_a_non_finite_value_is_refused_by_name(stage) -> None:
+    """A NaN last value reached `crowded_ends`, which said to draw the strands or set the limits.
+
+    That was advice about the axis for a defect in the data. The first stage is here too, since a
+    NaN there was not refused at all: the strand was drawn with a stage silently missing.
+    """
+    values = [0.02, 0.05, 0.09, 0.1]
+    values[stage] = float("nan")
+    with pytest.raises(
+        AssertionError,
+        match=rf"Signal A: every value must be finite; got \[nan\] at stage index \[{stage}\]",
+    ):
+        Strand("Signal A", values, SERIES[0])
+
+
+def test_a_non_finite_spread_is_refused() -> None:
+    with pytest.raises(AssertionError, match="every spread bound must be finite"):
+        Strand("Signal A", [0.1, 0.2], SERIES[0], spread=[(0.0, 0.2), (0.1, float("nan"))])

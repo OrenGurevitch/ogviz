@@ -184,3 +184,18 @@ def test_a_log_ladder_runs_its_axis_to_the_family_not_to_one(top_p) -> None:
     fig.canvas.draw()
     assert bool(unused_value_headroom(fig)) == (top_p < 0.6), "the premise: 1.0 was refused"
     plt.close(fig)
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+def test_a_non_finite_p_is_refused_by_name(bad) -> None:
+    """A NaN compares false both ways, so the refusal quoted "got []" — naming nothing."""
+    _fig, ax = plt.subplots()
+    with pytest.raises(AssertionError, match=r"p-values must be in \[0, 1\]; got \[(nan|inf)\]"):
+        multiplicity_ladder(ax, [0.01, bad])
+    plt.close(_fig)
+
+
+def test_bh_refuses_a_nan_rather_than_asking_for_a_sort() -> None:
+    """NaN fails `diff >= 0` too, so a sorted family was told to sort itself."""
+    with pytest.raises(AssertionError, match=r"finite p-values; got \[nan\]"):
+        benjamini_hochberg_rank(np.array([0.01, 0.02, np.nan]))
