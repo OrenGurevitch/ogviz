@@ -22,7 +22,7 @@ from ogviz.theme import glyphs_must_render
 
 if TYPE_CHECKING:
     import os
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from matplotlib.figure import Figure
 
@@ -92,11 +92,35 @@ def plain_filename(name: str) -> str:
     A figure LABEL is caller data and a `save` name is usually a developer's literal, which is the
     argument for not guarding the second one. It is not a good argument: the literal is a template
     in a builder loop as often as not.
+
+    `save` now splits its name on `/` first and sends each part through here (`_name_parts`), so a
+    subfolder can be asked for; `--fix` still flattens a label whole, since a label is not a path.
     """
     safe = "".join(
         character if character.isalnum() or character in "-_. " else "_" for character in name
     ).strip(" .")
     return safe or "figure"
+
+
+def _name_parts(name: str) -> list[str]:
+    """`save`'s `name` as the folders under `directory` and the file stem, each part made plain.
+
+    A name with no `/` in it is exactly `[plain_filename(name)]`, as before. A `/` reaches into a
+    subfolder, and ONLY a subfolder: an absolute name, or a part that is empty, `.` or `..` (or
+    nothing but dots and spaces, which `plain_filename` would otherwise quietly turn into
+    `figure`), is refused rather than rewritten, because a name meant to climb out and a name that
+    lands somewhere else are the same mistake and only one of them says so. `/` is the separator
+    on every platform; a backslash is still an ordinary character and still becomes `_`.
+    """
+    if "/" not in name:
+        return [plain_filename(name)]
+    parts = name.split("/")
+    require(
+        not name.startswith("/") and all(part.strip(" .") for part in parts),
+        f"save name {name!r} must stay inside the directory it is given: a subfolder like "
+        "'panels/a' is allowed, an absolute name or an empty, '.' or '..' part is not",
+    )
+    return [plain_filename(part) for part in parts]
 
 
 def save(
@@ -110,6 +134,8 @@ def save(
     close: bool = True,
     crop: bool = True,
     settled: Callable[[str], None] | None = None,
+    by_format: bool = False,
+    metadata: Mapping[str, Any] | None = None,
 ) -> list[Path]:
     """Write `<directory>/<name>.<ext>` per format, checked on the way out.
 
@@ -149,8 +175,20 @@ def save(
     chosen. Cropping and pinning are the two coherent choices; picking neither deliberately is how a
     set ends up inconsistent.
 
-    `name` is sanitised by `plain_filename`, so a name carrying a separator cannot write outside
-    `directory`. It could: `save(fig, out, "../escaped")` wrote a level up.
+    `name` may reach into a subfolder — `save(fig, out, "panels/a")` writes `out/panels/a.png`,
+    creating `panels` — and cannot reach out of `directory`: `..`, an empty part or an absolute
+    name is refused, where it used to be flattened (`"../escaped"` wrote `_escaped.png`, and before
+    that a level up). Each part is still sanitised by `plain_filename`. `_name_parts` has the rule.
+
+    `by_format=True` gives each format its own folder — `out/png/a.png` beside `out/svg/a.svg` —
+    for a build that hands the rasters to one reader and the vectors to another. It is still ONE
+    save: the settle passes and the gate run once, and every format is written or none is. Wanting
+    this was the commonest reason to write with `fig.savefig` and so skip the gate altogether.
+
+    `metadata` is merged over the reproducible defaults for each format (a `Title`, an `Author`; a
+    key given `None` removes one), so asking for a key does not bring the date stamp back. A format
+    that carries no metadata — every one Pillow writes — cannot take it, and is refused up front
+    rather than written without it.
 
     `directory` may be a `str` or any path-like; it was `.mkdir`-ed as given, so a `str` raised.
 
@@ -180,6 +218,14 @@ def save(
         f"save cannot write {', '.join(map(repr, unknown))}: "
         f"matplotlib writes {', '.join(sorted(supported))}",
     )
+    if metadata:
+        bare = [extension for extension in formats if _format_of(extension) not in _STAMPS]
+        require(
+            not bare,
+            f"save cannot attach metadata to {', '.join(map(repr, bare))}: matplotlib writes "
+            f"metadata only for {', '.join(_STAMPS)}",
+        )
+    *folders, stem = _name_parts(name)
     # Before the checks, not after: a caption row is reserved when the panels are created and the
     # caller has not plotted yet, so what grows into it can only be measured here.
     moved = list(settle_header(fig))
@@ -201,7 +247,10 @@ def save(
 
         assert_clean(fig)
     canvas = fig.get_facecolor()
-    paths = [directory / f"{plain_filename(name)}.{extension}" for extension in formats]
+    paths = [
+        directory.joinpath(*([extension] if by_format else []), *folders, f"{stem}.{extension}")
+        for extension in formats
+    ]
     # INTO MEMORY FIRST, every format, and only then onto disk — measured byte-identical to writing
     # the path directly, for png, svg and pdf. The glyph gate raises as its block exits, so the
     # writes cannot sit inside it, and a later format failing must not strand an earlier one.
@@ -209,6 +258,8 @@ def save(
     with glyphs_must_render(), gate_already_run():
         for path in paths:
             stamps = reproducible_metadata(path)
+            if stamps is not None and metadata:
+                stamps = {**stamps, **metadata}
             # Left out rather than passed as `None` where a format takes none: pgf refuses the
             # keyword itself.
             extra: dict[str, Any] = {} if stamps is None else {"metadata": stamps}
@@ -224,8 +275,8 @@ def save(
             rendered.append(buffer.getvalue())
     # AFTER the gate: a refused figure used to leave an empty directory tree behind, and the
     # package's claim is that a refusal writes nothing.
-    directory.mkdir(parents=True, exist_ok=True)
     for path, content in zip(paths, rendered, strict=True):
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
     if close:
         plt.close(fig)

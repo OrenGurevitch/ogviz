@@ -30,7 +30,9 @@ save(fig, out_dir, "figure")                       # writes AND runs the gate
 
 Three things the names do not give away:
 
-- **`save` runs the gate and raises instead of writing.** It also closes the figure.
+- **`save` runs the gate and raises instead of writing.** It also closes the figure. A name may
+  carry a subfolder (`"panels/a"`), `by_format=True` writes `out/png/` beside `out/svg/`, and
+  `metadata=` is merged over the defaults that keep the files diffable.
 - **`titled` returns a float** — where the header ends. `fit_under_header` needs it, or the panels
   grow into the title.
 - **`use_house_style()` once per process** — a second call resets the font family, so a project
