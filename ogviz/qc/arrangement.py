@@ -438,10 +438,15 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
         # the grid being comparable — the same distinction `dead_space` was taught to make, and
         # this check shipped without it. Measured against every panel on the same scale, so the
         # question becomes "does anything in this GROUP use the room", which is the honest one.
-        reach = own_reach
+        #
+        # Two ways onto one scale, and both count. The tag is how this package says it; matplotlib's
+        # own `sharey=True` is how everything else does, and reading the tag alone told the short
+        # panel of a plain shared grid to tighten a limit it cannot move without un-sharing it.
+        group = [other for other in _sharing_the_value_axis(ax) if other.get_visible()]
         if marked(ax, "shared_scale"):
-            group = (_highest_drawn(other) for other in fig.axes if _same_scale(other, ax))
-            reach = max((top for top in group if top is not None), default=reach)
+            group += [other for other in fig.axes if _same_scale(other, ax)]
+        tops = (_highest_drawn(other) for other in group)
+        reach = max([own_reach, *(top for top in tops if top is not None)])
         share = (high - reach) / (high - low)
         if not math.isfinite(share) or share < floor:
             continue  # a share that is not a number is a measurement failure, not a verdict

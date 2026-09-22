@@ -248,3 +248,28 @@ def test_a_missing_value_in_a_scatter_is_not_reported_as_nan_percent_empty() -> 
     found = unused_value_headroom(fig)
     assert found and "nan" not in found[0] and "0.65" in found[0], found
     plt.close(fig)
+
+
+def test_a_plain_sharey_grid_is_a_shared_scale_too() -> None:
+    """`plt.subplots(sharey=True)` puts panels on one scale as surely as `share_value_limits` does.
+
+    Only the `shared_scale` tag was read, which is this package's own mark, so a grid built with
+    matplotlib's sharing — the ordinary way, and the one any figure this package did not draw uses
+    — had its short panel told to tighten a limit it cannot tighten without un-sharing the grid.
+    The over-tall case must still fire: a group whose TALLEST panel leaves the room empty is
+    reported, because nothing in the group uses it.
+    """
+    from ogviz.qc.arrangement import unused_value_headroom
+
+    fig, axes = plt.subplots(1, 2, sharey=True, figsize=(9.0, 5.0))
+    axes[0].bar([0, 1], [1.0, 10.0])
+    axes[1].bar([0, 1], [1.0, 2.0])
+    fig.canvas.draw()
+    top = axes[1].get_ylim()[1]
+    assert (top - 2.0) / top > 0.5, "the premise: the short panel is over half empty on its own"
+    assert unused_value_headroom(fig) == []
+
+    axes[0].set_ylim(0.0, 30.0)
+    found = unused_value_headroom(fig)
+    assert len(found) == 2 and all("nothing reaches past 10" in line for line in found), found
+    plt.close(fig)
