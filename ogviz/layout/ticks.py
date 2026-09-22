@@ -189,7 +189,10 @@ def value_ticks(
     was supported, documented, and overridden by its own caller.
     """
     require_linear_value_axis(ax, orientation, "value_ticks")
-    low, high = value_span(ax, orientation)
+    # SORTED. An inverted axis — depth, rank, anything read downward — returns its limits high
+    # first, and `round_ticks` refused that as an empty range. The span is what is being labelled;
+    # which way it runs belongs to the axis, and setting ticks does not change it.
+    low, high = sorted(value_span(ax, orientation))
     positions = round_ticks(float(low), float(high), count)
     labels = [
         format_value(

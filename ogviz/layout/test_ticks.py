@@ -234,3 +234,29 @@ def test_a_doubled_corner_zero_loses_the_x_axis_copy() -> None:
     printed = [label.get_text() for label in ax.get_xticklabels()]
     assert printed[0] == "", "the x axis's zero is the redundant one"
     assert any(text for text in printed[1:]), "every other x tick still states the scale"
+
+
+def test_value_ticks_on_an_inverted_axis_keeps_the_inversion():
+    """An inverted axis hands back its limits high-first, and `round_ticks` refused that span.
+
+    Depth, rank and reaction time all run downward by convention, so this is an ordinary axis to
+    label — and `value_ticks` raised "round_ticks got an empty range" on it. The ticks are placed
+    on the span in order; the axis keeps running the way the caller set it.
+    """
+    for orientation in ("vertical", "horizontal"):
+        _fig, ax = plt.subplots()
+        ax.plot([0.0, 10.0], [0.0, 10.0])
+        if orientation == "vertical":
+            ax.invert_yaxis()
+            limits = ax.get_ylim
+        else:
+            ax.invert_xaxis()
+            limits = ax.get_xlim
+        before = limits()
+        assert before[0] > before[1], "premise: the limits really do come back high-first"
+
+        ticks = value_ticks(ax, count=4, orientation=orientation)
+        assert len(ticks) == 4
+        assert all(min(before) < tick < max(before) for tick in ticks)
+        assert limits() == before, "still inverted, and not moved"
+        plt.close(_fig)
