@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.color import indistinguishable_series
+from ogviz.layout.bounds import figure_levels
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -87,9 +88,15 @@ def legend_colors(fig: Figure) -> dict[str, str]:
 
 
 def _legends(fig: Figure) -> list:
-    """Axes-level and figure-level. `ax.get_legend()` never returns the latter."""
+    """Axes-level and figure-level. `ax.get_legend()` never returns the latter.
+
+    Figure-level at EVERY level: a `subfig.legend(...)` lives in that subfigure's `legends`, not
+    the root's, so a confusable pair in one was never compared. `fig.axes` already covers the axes
+    inside subfigures.
+    """
     found = [legend for ax in fig.axes if (legend := ax.get_legend()) is not None]
-    found.extend(fig.legends)
+    for level in figure_levels(fig):
+        found.extend(level.legends)
     return found
 
 

@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from matplotlib.axes import Axes
-    from matplotlib.figure import Figure
+    from matplotlib.figure import Figure, SubFigure
     from matplotlib.text import Text
 
 EDGE_TOLERANCE_PX = 1.0  # rendering rounds to the pixel grid
@@ -75,6 +75,21 @@ def panel_text(ax: Axes, *, ticks: bool = False, legend: bool = False) -> Iterat
             yield from drawn.get_texts()
 
 
+def figure_levels(fig: Figure | SubFigure) -> list[Figure | SubFigure]:
+    """The figure and every subfigure nested in it, at any depth, outermost first.
+
+    Needed for what a figure holds DIRECTLY — its texts and its legends. `fig.axes` already reaches
+    into subfigures, so a walker over axes sees every panel; `fig.texts` and `fig.legends` do not,
+    so a subfigure's `suptitle` and a `subfig.legend(...)` were outside every check that walked the
+    root figure alone. A subfigure that is hidden hides what it holds.
+    """
+    levels: list[Figure | SubFigure] = [fig]
+    for sub in fig.subfigs:
+        if sub.get_visible():
+            levels.extend(figure_levels(sub))
+    return levels
+
+
 def figure_text(
     fig: Figure, *, ticks: bool = False, legend: bool = True
 ) -> Iterator[tuple[Text, Axes | None]]:
@@ -82,10 +97,15 @@ def figure_text(
 
     Legend text is IN by default: a legend that runs off the page is as cropped as any other label,
     and it was outside the only walker that asked.
+
+    A subfigure's own texts count as the figure's — see `figure_levels` for why they had to be
+    asked for. Its axes do not need it: they are already in `fig.axes`, and walking them again
+    would report every label on them twice.
     """
-    for text in fig.texts:
-        if text.get_visible() and text.get_text().strip():
-            yield text, None
+    for level in figure_levels(fig):
+        for text in level.texts:
+            if text.get_visible() and text.get_text().strip():
+                yield text, None
     for ax in fig.axes:
         if not ax.get_visible():
             continue

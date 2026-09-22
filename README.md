@@ -173,6 +173,7 @@ ogviz
 │   │   ├── settle_axis_labels(fig: Figure, *, drift: float) -> list[str]
 │   │   └── ticks_over_data(...) -> ...
 │   ├── bounds
+│   │   ├── figure_levels(fig: Figure | SubFigure) -> list[Figure | SubFigure]
 │   │   ├── figure_text(...) -> ...
 │   │   ├── panel_prefix(fig: Figure, ax: Axes) -> str
 │   │   ├── panel_text(ax: Axes, *, ticks: bool, legend: bool) -> Iterator[Text]

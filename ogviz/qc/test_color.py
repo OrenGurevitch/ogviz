@@ -113,3 +113,24 @@ def test_a_figure_level_legend_is_read_too() -> None:
     fig.canvas.draw()
     assert set(legend_colors(fig)) == {"a", "b"}
     plt.close(fig)
+
+
+def test_a_legend_on_a_subfigure_is_read() -> None:
+    """`subfig.legend(...)` lives in that subfigure's `legends`, not the root figure's.
+
+    The same gap as the figure-level legend above, one level down: a confusable pair in a legend
+    attached to a subfigure was never compared.
+    """
+    from ogviz.qc.color import legend_colors
+
+    fig = plt.figure(figsize=(8.0, 4.0))
+    left = fig.subfigures(1, 2)[0]
+    ax = left.subplots()
+    _two_series(ax)
+    left.legend()
+    fig.canvas.draw()
+    assert not fig.legends and ax.get_legend() is None, "premise: only the subfigure has one"
+
+    assert set(legend_colors(fig)) == {"alpha", "beta"}
+    assert series_confusable_under_cvd(fig)
+    plt.close(fig)

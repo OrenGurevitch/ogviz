@@ -109,3 +109,28 @@ def test_a_panel_is_identified_one_way_across_every_check() -> None:
     axes[1].set_title("Throughput")
     assert panel_prefix(grid, axes[1]) == "panel 'Throughput': "
     plt.close("all")
+
+
+def test_a_subfigure_title_is_read_like_any_other_label() -> None:
+    """`fig.axes` reaches into subfigures, but `fig.texts` does not, and nor did this walker.
+
+    A subfigure's `suptitle` lives in that subfigure's own `texts`, so a title running off the page
+    or into a panel was outside every check built on `figure_text` — spacing, canvas, overflow.
+    """
+    from ogviz.layout.bounds import figure_text
+
+    fig = plt.figure(figsize=(8.0, 4.0))
+    left, right = fig.subfigures(1, 2)
+    left.subplots().plot([0.0, 1.0], [0.0, 1.0])
+    right.subplots().plot([0.0, 1.0], [1.0, 0.0])
+    left.suptitle("the left half")
+    nested = right.subfigures(2, 1)[0]
+    nested.text(0.5, 0.5, "a nested note")
+    fig.canvas.draw()
+    assert "the left half" not in [text.get_text() for text in fig.texts], "premise"
+
+    read = [text.get_text() for text, _owner in figure_text(fig)]
+    assert "the left half" in read
+    assert "a nested note" in read
+    assert len(read) == len(set(read)), "each label once: the subfigures' axes are not re-walked"
+    plt.close(fig)
