@@ -232,6 +232,99 @@ def test_two_figures_sharing_a_label_get_two_files(tmp_path) -> None:
     assert written == ["panel A.png", "panel A_2.png", "panel A_3.png"]
 
 
+def _script(tmp_path, body: str):
+    """A figure script in its own folder, beside a sibling module it imports."""
+    folder = tmp_path / "project"
+    folder.mkdir()
+    (folder / "sibling_helper.py").write_text("TITLE = 'from the sibling'\n")
+    script = folder / "draw.py"
+    script.write_text(
+        "import json, sys\n"
+        "import matplotlib\n"
+        "import matplotlib.pyplot as plt\n"
+        "def draw():\n"
+        "    fig, ax = plt.subplots(figsize=(4.0, 3.0))\n"
+        "    ax.plot([0.0, 1.0], [0.0, 1.0])\n"
+        "    return fig\n" + body
+    )
+    return script
+
+
+def _cleanup_script_run() -> None:
+    import sys
+
+    sys.modules.pop("sibling_helper", None)
+    plt.close("all")
+
+
+def test_a_script_that_draws_under_its_main_guard_is_audited(tmp_path) -> None:
+    """The script ran as `__ogviz_qc__`, so the commonest script shape of all — drawing inside
+    `if __name__ == "__main__":` — produced no figures and the run said so."""
+    script = _script(tmp_path, "if __name__ == '__main__':\n    draw()\n")
+    try:
+        assert main([str(script)]) == 0
+    finally:
+        _cleanup_script_run()
+
+
+def test_a_script_runs_as_it_would_from_its_own_folder(tmp_path) -> None:
+    """Three things `python draw.py` gives a script that running it from here did not: a sibling
+    module on the path, `sys.argv` naming only the script, and a non-blocking backend — the last
+    so a `plt.show()` at the end neither blocks nor closes what is to be audited."""
+    import sys
+    import warnings
+
+    seen = tmp_path / "seen.json"
+    script = _script(
+        tmp_path,
+        "import sibling_helper\n"
+        "fig = draw()\n"
+        "fig.suptitle(sibling_helper.TITLE)\n"
+        "plt.show()\n"
+        "seen = {'argv': sys.argv, 'backend': matplotlib.get_backend()}\n"
+        f"json.dump(seen, open({str(seen)!r}, 'w'))\n",
+    )
+    path_before, argv_before = list(sys.path), list(sys.argv)
+    plt.switch_backend("pdf")  # any backend but Agg, so forcing it is observable
+    try:
+        # Agg's own `show` warns that it cannot show; the no-op put in its place does not.
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert main([str(script)]) == 0, "the figure was not there to audit"
+        assert not [w for w in caught if "cannot be shown" in str(w.message)], "plt.show ran"
+    finally:
+        plt.switch_backend("agg")
+        _cleanup_script_run()
+    import json
+
+    observed = json.loads(seen.read_text())
+    assert observed["argv"] == [str(script)]
+    assert observed["backend"].lower() == "agg"
+    assert sys.path == path_before, "the script's folder was left on sys.path"
+    assert sys.argv == argv_before
+
+
+def test_a_script_ending_in_a_clean_exit_is_still_audited(tmp_path) -> None:
+    """`raise SystemExit(main())` is how a script with a `main` ends, and status 0 is not a failure;
+    it used to take the audit down with it."""
+    script = _script(tmp_path, "if __name__ == '__main__':\n    draw()\n    raise SystemExit(0)\n")
+    try:
+        assert main([str(script)]) == 0
+    finally:
+        _cleanup_script_run()
+
+
+def test_a_script_that_exits_with_a_failure_is_reported(tmp_path) -> None:
+    """A nonzero exit is the script saying it failed; auditing its half-drawn figures would report
+    on a build that did not happen."""
+    script = _script(tmp_path, "draw()\nraise SystemExit(3)\n")
+    try:
+        with pytest.raises(AssertionError, match="exited with status 3"):
+            main([str(script)])
+    finally:
+        _cleanup_script_run()
+
+
 def test_a_target_that_produces_no_figures_says_so_and_exits_nonzero(tmp_path, capsys) -> None:
     """Untested: the branch a mistyped target or a builder that drew nothing lands in.
 

@@ -64,7 +64,6 @@ def _load_figures(target: str) -> list[Figure]:
     as running the project's own figure build, which is the only way to get artists to inspect.
     """
     import importlib
-    import runpy
 
     import matplotlib.pyplot as plt
 
@@ -88,8 +87,52 @@ def _load_figures(target: str) -> list[Figure]:
     else:
         path = Path(target)
         require(path.exists(), f"no such file: {target}")
-        runpy.run_path(str(path), run_name="__ogviz_qc__")
+        _run_script(path)
     return [plt.figure(number) for number in plt.get_fignums()]
+
+
+def _run_script(path: Path) -> None:
+    """Run a figure script the way `python path` would, except that its figures stay open.
+
+    It ran as `__ogviz_qc__`, which was meant to keep a script's `if __name__ == "__main__":` block
+    from running — and that block is where most scripts draw, so the commonest shape there is came
+    back as "produced no figures". Three more differences from running it directly, each of which
+    broke a script before it drew anything:
+
+    - its folder was not on `sys.path`, so `import helpers` beside it failed;
+    - `sys.argv` was this command's own, so a script reading its arguments read ours;
+    - the backend was whatever the environment chose, so `plt.show()` at the end could block on a
+      window — and on some backends close the figures on the way out.
+
+    So it runs as `__main__` with its folder first on `sys.path` and `sys.argv == [path]`, under
+    Agg, with `plt.show` a no-op. Everything but the backend is put back afterwards; the backend is
+    not, because switching it closes every figure, and the figures are the point.
+
+    `raise SystemExit(0)` — how a script with a `main` ends — is a success and the audit goes on.
+    Any other status is the script saying it failed, and that is reported rather than audited.
+    """
+    import runpy
+    import sys
+
+    import matplotlib.pyplot as plt
+
+    plt.switch_backend("agg")
+    folder = str(path.resolve().parent)
+    argv, show = sys.argv, plt.show
+    sys.argv = [str(path)]
+    sys.path.insert(0, folder)
+    plt.show = lambda *args, **kwargs: None  # pyright: ignore[reportAttributeAccessIssue]
+    try:
+        runpy.run_path(str(path), run_name="__main__")
+    except SystemExit as exit_:
+        if exit_.code not in (0, None):
+            raise AssertionError(f"{path} exited with status {exit_.code}") from exit_
+    finally:
+        sys.argv = argv
+        plt.show = show
+        # The first match only: the script may have put its own folder on the path as well.
+        if folder in sys.path:
+            sys.path.remove(folder)
 
 
 def _unique_filenames(figures: Sequence[Figure]) -> list[str]:
@@ -188,7 +231,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         prog="python -m ogviz.qc",
         description=(
             "Check matplotlib figures for layout defects. Point it at `module:callable` that "
-            "returns a figure, or at a script that draws some. The code is executed."
+            "returns a figure, or at a script that draws some. The code is executed; a script "
+            "runs as __main__ from its own folder, under Agg, with plt.show() doing nothing."
         ),
     )
     parser.add_argument(

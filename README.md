@@ -135,6 +135,9 @@ uv run python -m ogviz.qc scripts/make_figures.py --fix out/
 uv run python -m ogviz.qc --list-checks
 ```
 
+A script runs as `python script.py` would — as `__main__`, from its own folder, with only its own
+name in `sys.argv` — except under Agg with `plt.show()` a no-op, so its figures stay open to be read.
+
 Exit 0 when clean, 1 otherwise. `--fix` changes presentation only — a label moved, a knockout added,
 a buried line raised — and leaves what it cannot decide. From Python, all in `ogviz.qc`:
 `audit(fig)`, `repair(fig)`, `assert_clean(fig)`, and `type_too_small(fig, column_width=...)` for
@@ -266,7 +269,7 @@ ogviz
 │   │   └── value_ticks(...) -> ...
 │   └── write
 │       ├── plain_filename(name: str) -> str
-│       ├── reproducible_metadata(path: Path) -> dict[str, None]
+│       ├── reproducible_metadata(path: Path) -> dict[str, None] | None
 │       └── save(...) -> ...
 ├── marks
 │   ├── central_clearance(...) -> ...
