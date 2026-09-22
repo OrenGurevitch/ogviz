@@ -115,22 +115,28 @@ def broken_zero(ax: Axes, *, floor: float, zero_gap: float | None = None) -> Non
     data and a stub carrying the zero tick, and the zigzag is drawn across the space between them,
     so the axis is genuinely discontinuous at the point where the scale is.
 
-    REFUSED unless zero lies below `floor`. The tick beneath the cut is labelled "0" whatever value
-    it sits at, which is honest only when zero really is further down the axis than the floor. On
-    all-negative data (-60 to -56, measured) the floor came out at -60.4 and the stub was labelled
+    A floor at or below zero is not cut at all: the axis simply starts at zero. The tick beneath
+    the cut is labelled "0" whatever value it sits at, which is honest only when zero really is
+    further down the axis than the floor, and `value_floor` hands back such a floor whenever the
+    data comes within a tenth of its range of zero. There is then nothing to cut — the axis is
+    already short of zero by less than the break would take — so plotting from zero is the honest
+    figure and the one the caller would draw by hand. It used to label a negative position "0";
+    refusing instead would fail the build of a figure whose data merely drifted towards zero.
+
+    REFUSED when the data lies entirely below zero. On -60 to -56 (measured) the stub was labelled
     "0" beneath "-60" — a wrong number, in a figure the whole gate passed, because no check reads a
-    tick's text against its position. A floor at or below zero means the data already reaches zero
-    and there is nothing to cut; data entirely below zero wants the cut at the top, which this does
-    not draw. Refusal rather than a silent no-op, because a caller who asked for a broken axis and
-    got a plain truncated one would have exactly the overstated difference this exists to prevent.
+    tick's text against its position. Such data wants the cut at the TOP, which this does not draw,
+    and a silent plain axis would overstate the differences this exists to admit.
     """
     low, high = ax.get_ylim()
     require(
-        floor > 0.0,
-        f"broken_zero cuts the axis above a zero tick, so the floor must be above zero; got "
-        f"{floor:g}. A floor at or below zero means the data reaches zero already — plot from zero "
-        "instead of breaking the axis.",
+        high > 0.0,
+        f"broken_zero cuts the axis above a zero tick, and this axis lies entirely below zero (top "
+        f"{high:g}); data below zero wants the cut at the top, which this does not draw",
     )
+    if floor <= 0.0:
+        ax.set_ylim(min(low, 0.0), high)
+        return
     require(
         floor < high,
         f"broken_zero was given a floor of {floor:g}, at or above the top of the axis ({high:g})",
@@ -265,8 +271,9 @@ def value_floor(lines: Sequence[Line], *, gap: float = FLOOR_GAP) -> float:
     """A floor just below the lowest point, for `broken_zero` to cut the axis at.
 
     It can come out at or below zero — on negative data, or on data whose lowest point is within a
-    tenth of its range of zero — and then `broken_zero` refuses it. That is the right answer rather
-    than one to clamp away: an axis whose data comes that close to zero should simply start at zero.
+    tenth of its range of zero. `broken_zero` then plots from zero rather than cutting (and refuses
+    data entirely below zero). Not clamped here: an axis whose data comes that close to zero should
+    simply start at zero, and that is the caller's figure to get, not a cut one.
     """
     every = np.concatenate([line.y for line in lines])
     low, high = float(every.min()), float(every.max())

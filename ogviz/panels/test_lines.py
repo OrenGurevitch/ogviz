@@ -134,24 +134,35 @@ def test_a_mismatch_report_survives_a_zero_dimensional_array() -> None:
         line_panel(ax, [Line(label="a", x=1.0, y=[1.0, 2.0], color="#2E7CE0")])
 
 
-@pytest.mark.parametrize(
-    "values",
-    [
-        pytest.param([-60.0, -58.0, -56.0], id="all-negative"),
-        pytest.param([0.5, 5.0, 10.0], id="reaches-zero"),
-    ],
-)
-def test_a_broken_zero_refuses_a_floor_that_zero_is_not_below(values) -> None:
+def test_a_broken_zero_refuses_data_entirely_below_zero() -> None:
     """The stub is labelled "0" wherever it sits, so on -60..-56 it said "0" beneath "-60".
 
-    The premise is asserted: the floor `value_floor` hands back really is not above zero, so the
-    refusal is what is being tested and not a floor that happened to be fine.
+    The premise is asserted: the floor `value_floor` hands back really is not above zero.
     """
     fig, ax = plt.subplots(figsize=(7.0, 4.0))
-    lines = [Line(label="a", x=[0, 1, 2], y=values, color="#2E7CE0")]
+    lines = [Line(label="a", x=[0, 1, 2], y=[-60.0, -58.0, -56.0], color="#2E7CE0")]
     line_panel(ax, lines)
     floor = value_floor(lines)
     assert floor <= 0.0, floor
-    with pytest.raises(AssertionError, match="floor must be above zero"):
+    with pytest.raises(AssertionError, match="entirely below zero"):
         broken_zero(ax, floor=floor)
+    plt.close(fig)
+
+
+def test_a_broken_zero_on_data_that_reaches_zero_plots_from_zero() -> None:
+    """Data within a tenth of its range of zero gets a floor below zero, and nothing to cut.
+
+    It used to label a negative position "0". Refusing would fail the build of a figure whose data
+    merely drifted towards zero; the honest figure is a plain axis from zero, with no "0" label
+    written by hand.
+    """
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    lines = [Line(label="a", x=[0, 1, 2], y=[0.5, 5.0, 10.0], color="#2E7CE0")]
+    line_panel(ax, lines)
+    floor = value_floor(lines)
+    assert floor <= 0.0, floor
+    drawn = len(ax.lines)
+    broken_zero(ax, floor=floor)
+    assert ax.get_ylim()[0] == 0.0
+    assert len(ax.lines) == drawn, "no stub and no zigzag when there is nothing to cut"
     plt.close(fig)
