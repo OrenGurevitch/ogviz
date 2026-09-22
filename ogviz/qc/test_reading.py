@@ -289,6 +289,15 @@ def _unit_lines() -> list:
     return [categorical, dated]
 
 
+# matplotlib 3.10's own date converter subtracts with a generic-unit timedelta, which current
+# NumPy deprecates; plotting a date raises under `-W error` with no ogviz code on the stack. 3.11
+# no longer does it. Ignored by its exact text, for the two tests that plot dates, and nowhere else.
+_MATPLOTLIB_310_DATES = pytest.mark.filterwarnings(
+    "ignore:The 'generic' unit for NumPy timedelta:DeprecationWarning"
+)
+
+
+@_MATPLOTLIB_310_DATES
 def test_a_line_drawn_with_strings_or_dates_is_read_in_the_units_it_was_drawn_in() -> None:
     """The gate died on `ax.plot(["a", "b"], ...)`, which is an ordinary line panel.
 
@@ -309,6 +318,7 @@ def test_a_line_drawn_with_strings_or_dates_is_read_in_the_units_it_was_drawn_in
         plt.close(fig)
 
 
+@_MATPLOTLIB_310_DATES
 def test_save_survives_a_line_drawn_with_strings_or_dates(tmp_path) -> None:
     """`save` either writes or REFUSES; what it may not do is die inside the gate.
 
