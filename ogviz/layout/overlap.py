@@ -20,11 +20,14 @@ from typing import TYPE_CHECKING
 import numpy as np
 from matplotlib.transforms import Bbox
 
+from ogviz.layout.collision import line_points
 from ogviz.layout.render import ensure_rendered
+from ogviz.units import to_px
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+    from matplotlib.lines import Line2D
     from matplotlib.text import Text
 
 DEFAULT_MIN_GAP = 5.0  # px; below this two labels on one row read as one word
@@ -153,7 +156,9 @@ def clipped_artists(fig: Figure) -> list[str]:
             # filters on visibility and this one did not.
             if not line.get_visible() or not line.get_clip_on() or vertices.size == 0:
                 continue
-            box = line.get_window_extent(renderer)
+            box = _drawable_extent(fig, ax, line)
+            if box is None:
+                continue
             # Both directions, not one or the other. The `elif` here meant a line escaping the top
             # AND the side was only ever reported for the top, so a caller shortened the data,
             # re-ran, and met a second complaint that had been there all along.
@@ -171,6 +176,46 @@ def clipped_artists(fig: Figure) -> list[str]:
                     "shorten the data or widen the limit"
                 )
     return escaped
+
+
+def _on_scale(values: np.ndarray, scale: str) -> np.ndarray:
+    """Which values the axis scale can place at all — finite, and inside the scale's domain."""
+    placeable = np.isfinite(values)
+    if scale == "log":
+        placeable &= values > 0
+    elif scale == "logit":
+        placeable &= (values > 0) & (values < 1)
+    return placeable
+
+
+def _drawable_extent(fig: Figure, ax: Axes, line: Line2D) -> Bbox | None:
+    """Where a line's ink would be, in display pixels, counting only points the scale can place.
+
+    `Line2D.get_window_extent` transforms every point, and a log transform does not refuse a zero —
+    it clips it to a stand-in about a thousand decades down. A `semilogy` through zero, which is an
+    ordinary thing to draw, then had its extent hundreds of thousands of pixels below the panel,
+    and that distance was reported as the overrun, with "raise the limit" as the fix. No limit
+    reaches that point: it is not on the scale. So those points are left out, on each coordinate
+    that is in data units; one in axes units, the x of an `axhline`, is not tested against a scale.
+
+    Padded by half the marker, as matplotlib's own extent is, so a marker poking past the frame is
+    still ink past the frame.
+    """
+    points = line_points(line)
+    in_data = line.get_transform().contains_branch_seperately(ax.transData)
+    keep = np.isfinite(points).all(axis=1)
+    for index, (is_data, scale) in enumerate(
+        zip(in_data, (ax.get_xscale(), ax.get_yscale()), strict=True)
+    ):
+        if is_data:
+            keep &= _on_scale(points[:, index], scale)
+    if not keep.any():
+        return None
+    box = Bbox.null()
+    box.update_from_data_xy(line.get_transform().transform(points[keep]), ignore=True)
+    if line.get_marker() not in (None, "None", "none", "", " "):
+        box = box.padded(to_px(line.get_markersize(), "pt", fig=fig) / 2.0)
+    return box
 
 
 def assert_nothing_clipped(fig: Figure) -> None:

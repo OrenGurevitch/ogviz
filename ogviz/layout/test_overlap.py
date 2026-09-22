@@ -200,3 +200,26 @@ def test_a_knockout_over_empty_space_is_not_reported() -> None:
     )
     fig.canvas.draw()
     assert not text_hidden_behind_knockouts(fig)
+
+
+def test_a_log_line_through_zero_is_not_an_absurd_overrun():
+    """Zero has no place on a log axis; matplotlib's log transform clips it to a far-off stand-in.
+
+    `get_window_extent` then put the line hundreds of thousands of pixels below its panel, and the
+    gate reported that distance as the overrun. No limit could fix it — the point is not on the
+    scale at all. A real overrun on a log axis must still be reported, in pixels a page can hold.
+    """
+    from ogviz.layout.overlap import clipped_artists
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    (line,) = ax.semilogy([0, 1, 2], [0.0, 1.0, 10.0])
+    fig.canvas.draw()
+    below = ax.get_window_extent().y0 - line.get_window_extent().y0
+    assert below > 10 * fig.bbox.height, f"premise: the extent is {below:.0f} px below the panel"
+    assert clipped_artists(fig) == []
+
+    ax.set_ylim(0.5, 5.0)  # the 10 is now really above the axis
+    fig.canvas.draw()
+    (complaint,) = clipped_artists(fig)
+    overrun = float(complaint.split(" px ")[0].split()[-1])
+    assert 0 < overrun < fig.bbox.height, complaint
