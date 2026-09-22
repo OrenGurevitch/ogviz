@@ -184,3 +184,44 @@ def test_a_real_violin_panel_is_settled_by_save() -> None:
         save(fig, Path(directory), "violins", close=False)
     assert abs(_offset(ax)) < 2.0, _offset(ax)
     plt.close(fig)
+
+
+def test_the_extent_of_a_quiver_or_hexbin_is_where_it_was_drawn() -> None:
+    """Neither is a scatter and neither carries its shape in data units, so both were misread.
+
+    A quiver's paths are arrow GLYPHS in a pixel-scaled frame, anchored at data offsets; a hexbin's
+    one path is a hexagon about the origin, repeated at every cell centre. Reading the path
+    vertices put both near zero whatever the data said — the scatter trap `point_offsets` exists
+    for, in two shapes it does not recognise.
+    """
+    from ogviz.layout.axis import drawn_value_extent
+
+    _fig, ax = plt.subplots()
+    grid_x, grid_y = np.meshgrid([0.0, 1.0], [10.0, 11.0])
+    ax.quiver(grid_x, grid_y, np.ones_like(grid_x), np.ones_like(grid_y))
+    _fig.canvas.draw()
+    low, high = drawn_value_extent(ax) or (np.nan, np.nan)
+    assert low == pytest.approx(10.0) and high == pytest.approx(11.0)
+
+    _fig, ax = plt.subplots()
+    rng = np.random.default_rng(0)
+    ax.hexbin(rng.uniform(100.0, 110.0, 200), rng.uniform(100.0, 110.0, 200), gridsize=5)
+    _fig.canvas.draw()
+    low, high = drawn_value_extent(ax) or (np.nan, np.nan)
+    assert 95.0 < low < 100.5 and 109.5 < high < 115.0, (low, high)
+
+
+def test_a_span_in_axes_units_does_not_reach_anywhere_on_the_value_axis() -> None:
+    """`axvspan` runs 0 to 1 in AXES FRACTION on y, and those numbers were read as data.
+
+    So a panel whose line sits between 5 and 6 was said to reach down to 0, and `axvline` did the
+    same. Only the coordinate that is in data units says anything about where the marks reach.
+    """
+    from ogviz.layout.axis import drawn_value_extent
+
+    _fig, ax = plt.subplots()
+    ax.plot([0.0, 1.0], [5.0, 6.0])
+    ax.axvspan(0.2, 0.4, color="#DDD")
+    ax.axvline(0.7)
+    assert drawn_value_extent(ax) == pytest.approx((5.0, 6.0))
+    assert drawn_value_extent(ax, orientation="horizontal") == pytest.approx((0.0, 1.0))

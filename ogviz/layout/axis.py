@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from matplotlib.transforms import AffineDeltaTransform
 
 from ogviz.layout.bounds import panel_prefix
 from ogviz.layout.collision import line_points, point_offsets
@@ -178,21 +179,45 @@ def drawn_value_extent(
             lows.append(float(finite.min()))
             highs.append(float(finite.max()))
 
+    def in_data(artist) -> bool:
+        # Whether this artist's coordinate along the value axis is a DATA value at all. `axvspan`
+        # and `axvline` run 0 to 1 in axes fraction on y, and read as data they said every panel
+        # carrying one reached down to zero.
+        return bool(artist.get_transform().contains_branch_seperately(ax.transData)[axis])
+
     for collection in ax.collections:
         offsets = point_offsets(collection)
         if offsets is not None:
             reach(offsets[:, axis])
             continue
+        placed = np.asarray(collection.get_offsets(), dtype=float).reshape(-1, 2)[:, axis]
+        if not in_data(collection):
+            # The paths are GLYPHS in a frame of their own — a quiver's arrows are scaled in
+            # pixels — anchored at offsets in data. Where it was drawn is the offsets; the path
+            # vertices put every quiver near zero, the same trap as a scatter's marker outline.
+            anchored = collection.get_offset_transform().contains_branch_seperately(ax.transData)
+            if anchored[axis]:
+                reach(placed)
+            continue
+        # The paths are in data. A hexbin's single hexagon about the origin is repeated at every
+        # cell centre, its offsets carried as DATA DELTAS, so each cell is the path shifted by its
+        # offset; read alone, the vertices said a panel of values near 100 reached +-1.6. For a
+        # filled body the offsets are the default zero, and the shift is nothing.
+        deltas = isinstance(collection.get_offset_transform(), AffineDeltaTransform)
+        shifts = placed[np.isfinite(placed)] if deltas else np.zeros(1)
+        if not shifts.size:
+            continue
         for path in collection.get_paths():
-            vertices = np.asarray(path.vertices, dtype=float)
-            if vertices.size:
-                reach(vertices[:, axis])
+            along = np.asarray(path.vertices, dtype=float)[:, axis]
+            along = along[np.isfinite(along)]
+            if along.size:
+                reach(np.array([along.min() + shifts.min(), along.max() + shifts.max()]))
     for line in ax.lines:
-        if _is_furniture(line) and not include_furniture:
+        if (_is_furniture(line) and not include_furniture) or not in_data(line):
             continue
         reach(line_points(line)[:, axis])
     for patch in ax.patches:
-        if _is_furniture(patch) and not include_furniture:
+        if (_is_furniture(patch) and not include_furniture) or not in_data(patch):
             continue
         vertices = np.asarray(patch.get_path().transformed(patch.get_patch_transform()).vertices)
         reach(vertices[:, axis])
