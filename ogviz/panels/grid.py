@@ -21,6 +21,7 @@ from ogviz.layout import drawn_value_extent
 from ogviz.orientation import is_vertical, value_limits
 from ogviz.require import require
 from ogviz.tags import mark, marked
+from ogviz.units import px_to_value
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -140,29 +141,41 @@ def _raise_over_aligned_stacks(
     """
     from ogviz.significance import settle_bracket_labels
 
-    def overshoot() -> list[float]:
-        reaches = [(_stack_reach(ax, orientation), clearance) for ax, clearance in clearances]
-        return [
-            reach + clearance
-            for reach, clearance in reaches
-            if reach is not None and clearance is not None and reach > high
-        ]
+    def overshoot(ceiling: float) -> list[float]:
+        # A stack counts as reaching past the top only by more than a PIXEL, and its own clearance
+        # is never taken as negative. A star is measured here by its text box, which in a wide face
+        # stands a fraction of a pixel above the ink `bracket_stack` fits by — so a panel whose
+        # stack fits itself exactly has a box poking through by less than the gate can see, a
+        # clearance just below zero, and a loop that chased that sliver for every round it had.
+        wanted = []
+        for ax, clearance in clearances:
+            reach = _stack_reach(ax, orientation)
+            if reach is None or clearance is None:
+                continue
+            pixel = abs(
+                px_to_value(ax, 1.0, orientation=orientation)
+                - px_to_value(ax, 0.0, orientation=orientation)
+            )
+            if reach > ceiling + pixel:
+                wanted.append(reach + max(clearance, 0.0))
+        return wanted
 
-    wanted = overshoot()
-    if not wanted:
-        return high
+    # Each round asks whether anything still reaches past the top it has JUST set, and stops when
+    # nothing does. It compared against the original top and stopped only when a round's target
+    # came out at or below the last — a fixed point approached from above and never exactly hit,
+    # so a wide face (DejaVu, a Linux runner's fallback) ran out of rounds on a two-panel grid
+    # with one bracket each and refused a figure that fitted.
     top = high
     for _attempt in range(12):
-        target = max(wanted)
-        if target <= top:
+        wanted = overshoot(top)
+        if not wanted:
             return top
-        top = target
+        top = max(wanted)
         for ax, _clearance in clearances:
             value_limits(ax, orientation)(low, top)
         figure = clearances[0][0].get_figure(root=True)
         if figure is not None:
             settle_bracket_labels(figure)
-        wanted = overshoot()
     raise AssertionError(
         "the aligned bracket stacks will not fit under one shared top at this figure size. Make "
         "the panels taller along the value axis, or draw fewer comparisons."

@@ -369,7 +369,12 @@ def test_aligning_a_tall_stack_keeps_it_under_the_shared_ceiling() -> None:
             for text in ax.texts
             if marked(text, "bracket_star")
         ]
-        return max(lines + stars)
+        # One pixel of slack, in data: a star is measured here by its text BOX, which in a wide face
+        # (DejaVu, a Linux runner's fallback) stands a fraction of a pixel above the ink
+        # `bracket_stack` fits by — so the box of a stack that fits its own panel exactly pokes
+        # through by less than anything the gate, or a reader, can see.
+        pixel = abs(to_data.transform((0.0, 1.0))[1] - to_data.transform((0.0, 0.0))[1])
+        return max(lines + stars) - pixel
 
     rng = np.random.default_rng(0)
     fig, (low, high) = plt.subplots(1, 2, figsize=(10.0, 5.0))
