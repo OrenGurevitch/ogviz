@@ -223,3 +223,28 @@ def test_headroom_is_judged_on_the_value_axis_of_a_horizontal_panel() -> None:
     fig.canvas.draw()
     assert unused_value_headroom(fig), "the value axis runs six times past the bars"
     plt.close(fig)
+
+
+def test_a_missing_value_in_a_scatter_is_not_reported_as_nan_percent_empty() -> None:
+    """One NaN in a scatter made the whole extent NaN, and the gate reported "nan% ... is empty".
+
+    `scatter` keeps a NaN point in its offsets and simply does not draw it; `.min()` and `.max()`
+    over those offsets propagate it. A fitted axis was then refused with a percentage nobody could
+    act on, and an over-tall one named "nan" as the height the marks reach.
+    """
+    import numpy as np
+
+    from ogviz.layout.axis import drawn_value_extent
+    from ogviz.qc.arrangement import unused_value_headroom
+
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    ax.scatter([0.0, 1.0, 2.0], [0.34, np.nan, 0.65])
+    assert np.isnan(np.asarray(ax.collections[0].get_offsets(), dtype=float)).any(), "premise"
+    assert drawn_value_extent(ax) == pytest.approx((0.34, 0.65))
+
+    ax.set_ylim(0.0, 0.72)
+    assert unused_value_headroom(fig) == []
+    ax.set_ylim(0.0, 1.5)
+    found = unused_value_headroom(fig)
+    assert found and "nan" not in found[0] and "0.65" in found[0], found
+    plt.close(fig)

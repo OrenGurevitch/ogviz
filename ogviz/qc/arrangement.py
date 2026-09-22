@@ -8,6 +8,7 @@ still have quietly lost one of those, which is why none of them shows up as a co
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 from ogviz.layout.axis import drawn_value_extent
@@ -442,8 +443,8 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
             group = (_highest_drawn(other) for other in fig.axes if _same_scale(other, ax))
             reach = max((top for top in group if top is not None), default=reach)
         share = (high - reach) / (high - low)
-        if share < floor:
-            continue
+        if not math.isfinite(share) or share < floor:
+            continue  # a share that is not a number is a measurement failure, not a verdict
         # `reach`, the number the decision was made on — on a shared scale that is the group's
         # tallest, and quoting this panel's own top beside a percentage computed from the group's
         # did not add up.

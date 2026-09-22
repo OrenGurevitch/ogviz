@@ -18,6 +18,7 @@ from ogviz.tags import marked
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+    from numpy.typing import NDArray
 
     from ogviz.orientation import Orientation
 
@@ -164,37 +165,37 @@ def drawn_value_extent(
     axis = 1 if orientation == "vertical" else 0
     lows: list[float] = []
     highs: list[float] = []
+
+    def reach(values: NDArray[np.float64]) -> None:
+        # FINITE values only, for every kind of mark. Lines and patches filtered already and the
+        # collections did not, so one NaN in a scatter — which `scatter` keeps in its offsets and
+        # simply does not draw — made the whole extent NaN, and `unused_value_headroom` refused a
+        # fitted axis with "nan% of the value axis is empty". An EMPTY cloud reaches nothing either,
+        # which is the same test: `point_offsets` answers an empty array for a `scatter` with no
+        # data, and `.min()` on that would raise.
+        finite = values[np.isfinite(values)]
+        if finite.size:
+            lows.append(float(finite.min()))
+            highs.append(float(finite.max()))
+
     for collection in ax.collections:
         offsets = point_offsets(collection)
         if offsets is not None:
-            # An EMPTY cloud reaches nothing. `point_offsets` used to answer None for one, because
-            # it identified a cloud by having more than one offset; it answers by type now, so a
-            # `scatter` with no data comes back here as an empty array and `.min()` would raise.
-            if offsets.size:
-                lows.append(float(offsets[:, axis].min()))
-                highs.append(float(offsets[:, axis].max()))
+            reach(offsets[:, axis])
             continue
         for path in collection.get_paths():
             vertices = np.asarray(path.vertices, dtype=float)
             if vertices.size:
-                lows.append(float(vertices[:, axis].min()))
-                highs.append(float(vertices[:, axis].max()))
+                reach(vertices[:, axis])
     for line in ax.lines:
         if _is_furniture(line) and not include_furniture:
             continue
-        values = line_points(line)[:, axis]
-        values = values[np.isfinite(values)]
-        if values.size:
-            lows.append(float(values.min()))
-            highs.append(float(values.max()))
+        reach(line_points(line)[:, axis])
     for patch in ax.patches:
         if _is_furniture(patch) and not include_furniture:
             continue
         vertices = np.asarray(patch.get_path().transformed(patch.get_patch_transform()).vertices)
-        finite = vertices[np.isfinite(vertices[:, axis]), axis]
-        if finite.size:
-            lows.append(float(finite.min()))
-            highs.append(float(finite.max()))
+        reach(vertices[:, axis])
     if not lows:
         return None
     return min(lows), max(highs)
