@@ -32,7 +32,7 @@ from ogviz.marks import (
 )
 from ogviz.orientation import violin_orientation_kwarg
 from ogviz.panels.grid import align_mean_rows
-from ogviz.panels.violins import constant_span
+from ogviz.panels.violins import MEAN_ROW_FLOOR_PT, _shrink_until_clear, constant_span
 from ogviz.require import require
 from ogviz.tags import mark
 from ogviz.theme import KNOCKOUT_PAD, VALUE_LABEL_SIZE, page_color
@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from matplotlib.axes import Axes
+    from matplotlib.text import Text
     from numpy.typing import NDArray
 
 Side = int  # -1 for the left half, +1 for the right
@@ -227,12 +228,21 @@ def _printed_pairs(
     decimals: int | None,
     scale: float,
 ) -> None:
-    """Both means under each category, each in its own half's colour so neither is ambiguous."""
+    """Both means under each category, each in its own half's colour so neither is ambiguous.
+
+    THE ROW SHRINKS UNTIL IT STOPS COLLIDING WITH ITSELF, by the same measured loop
+    `printed_means` uses and down to the same floor. It was set at one size, so a metric of order
+    0.003 — five characters a number, two numbers a category — ran its neighbours together by tens
+    of pixels on a four-category panel and the gate refused a figure that a smaller row would have
+    fixed. A row with room is left at the size it was set at.
+    """
     from ogviz.layout.ticks import format_value, row_decimals
 
     means = [float(np.mean(v)) * scale for v in (*left, *right)]
     if decimals is None:
         decimals = row_decimals(means)
+    size = VALUE_LABEL_SIZE * 0.85
+    drawn: list[Text] = []
     for at, low_values, high_values in zip(positions, left, right, strict=True):
         for side, values, color in ((-1, low_values, left_color), (1, high_values, right_color)):
             printed = ax.text(
@@ -241,7 +251,7 @@ def _printed_pairs(
                 format_value(float(np.mean(values)), scale=scale, decimals=decimals),
                 ha="center",
                 va="center",
-                fontsize=VALUE_LABEL_SIZE * 0.85,
+                fontsize=size,
                 fontweight="bold",
                 color=color,
                 zorder=9,
@@ -253,3 +263,5 @@ def _printed_pairs(
                 },
             )
             mark(printed, "mean_row")
+            drawn.append(printed)
+    _shrink_until_clear(ax, drawn, size, min(MEAN_ROW_FLOOR_PT, size))

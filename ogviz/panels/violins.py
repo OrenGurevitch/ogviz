@@ -562,6 +562,17 @@ def group_violins(
         f"two groups share a position in {seats}. They would be drawn on top of each other — two "
         "violins, two clouds of dots, two mean lines, and no way to read either.",
     )
+    # A bracket end is a GROUP, named by its position. Unchecked, a typo'd end was drawn wherever
+    # its number fell: `(0, 5, p)` on groups at 0 and 1 ran a bracket 825 px off the side of the
+    # panel and put its star past the page, and the gate's complaints named a line and a star but
+    # not the comparison that caused them. An empty group is not drawn, so it cannot be compared.
+    for x_left, x_right, _p in comparisons:
+        for end in (x_left, x_right):
+            require(
+                any(np.isclose(end, seat) for seat in seats),
+                f"comparison ({x_left:g}, {x_right:g}) names {end:g}, and no group is drawn at "
+                f"{end:g} — the drawn groups sit at {seats}.",
+            )
     for position, values, _f, _e in populated:
         missing = int(np.count_nonzero(~np.isfinite(values)))
         require(

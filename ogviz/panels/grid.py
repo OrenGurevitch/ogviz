@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout import drawn_value_extent
-from ogviz.orientation import is_vertical
+from ogviz.orientation import is_vertical, value_limits
 from ogviz.require import require
 from ogviz.tags import mark, marked
 
@@ -65,21 +65,108 @@ def share_value_limits(
     spans = [reader(ax) for ax in panels]
     low = min(bounds[0] for bounds in spans)
     high = max(bounds[1] for bounds in spans)
+    # Measured on each panel's OWN scale, before anything moves: how much room it fitted above its
+    # bracket stack. Only consulted if aligning carries a stack past the shared top.
+    clearances = [(ax, _clearance_above_stack(ax, orientation)) for ax in panels]
     for ax in panels:
-        if is_vertical(orientation):
-            ax.set_ylim(low, high)
-        else:
-            ax.set_xlim(low, high)
+        value_limits(ax, orientation)(low, high)
         mark(ax, "shared_scale", len(panels))
-    if is_vertical(orientation):
-        # Both ends of the panel. A shared scale that leaves the brackets at six heights and the
-        # printed means at six others is a shared scale in name only.
-        align_brackets(panels)
-        align_ticks(panels, orientation=orientation)
-        align_mean_rows(panels, floor=low)
+    # Both ends of the panel. A shared scale that leaves the brackets at six heights and the
+    # printed means at six others is a shared scale in name only.
+    #
+    # WHICHEVER WAY THE PANELS RUN. This block sat under `if is_vertical(orientation)` and passed
+    # no orientation, although all three helpers take one — so a horizontal grid got the shared
+    # range and kept every panel's own ticks and brackets, and the gate refused it as "different
+    # value ticks" on a figure this function had been asked to make agree.
+    align_brackets(panels, orientation=orientation)
+    high = _raise_over_aligned_stacks(clearances, low, high, orientation=orientation)
+    align_ticks(panels, orientation=orientation)
+    align_mean_rows(panels, floor=low, orientation=orientation)
     if label_edge:
         label_shared_scale_once(panels, orientation=orientation)
     return low, high
+
+
+def _stack_reach(ax: Axes, orientation: Orientation) -> float | None:
+    """The highest value this panel's bracket stack reaches — its lines and its stars' boxes."""
+    upright = is_vertical(orientation)
+    lines, stars = _bracket_artists(ax, upright=upright)
+    if not lines:
+        return None
+    figure = ax.get_figure()
+    if figure is not None:
+        figure.canvas.draw()
+    to_data = ax.transData.inverted()
+    reaches = [_bracket_top(line, upright=upright) for line in lines]
+    for star in stars:
+        box = star.get_window_extent()
+        corner = to_data.transform((box.x1, box.y1))
+        reaches.append(float(corner[1] if upright else corner[0]))
+    return max(reaches)
+
+
+def _clearance_above_stack(ax: Axes, orientation: Orientation) -> float | None:
+    """How much value axis this panel left above its own stack, or None where it has none."""
+    reach = _stack_reach(ax, orientation)
+    top = ax.get_ylim()[1] if is_vertical(orientation) else ax.get_xlim()[1]
+    return None if reach is None else top - reach
+
+
+def _raise_over_aligned_stacks(
+    clearances: list[tuple[Axes, float | None]],
+    low: float,
+    high: float,
+    *,
+    orientation: Orientation,
+) -> float:
+    """The shared top, raised only as far as a stack that aligning lifted past it needs.
+
+    `align_brackets` moves every stack up onto the HIGHEST first bracket in the grid. The shared
+    top came from the tallest panel, which sized its headroom for its own stack — so a panel of low
+    data with three brackets, beside a panel of high data with one, has its stack lifted onto the
+    one-bracket line and its upper two brackets land above an axis sized for one. matplotlib clips
+    the lines and not the stars, and the gate refused the figure for lines running past the frame.
+
+    Each overshooting stack gets back the room it fitted above itself on its own scale — the
+    measurement `violins._fit_bracket_stack` made — rather than a margin chosen here.
+
+    GROWN AND RE-MEASURED, not computed once, for the reason `_fit_bracket_stack` gives: a star is
+    a fixed number of PIXELS, so raising the top makes every pixel worth more data and the star
+    reaches higher in data than it did. Computing the top once from the old scale left the star
+    0.05 above the axis it had just been given. The stars are re-anchored to their brackets before
+    each measurement, as `save` would do, so what is measured is what ships.
+
+    A grid whose stacks already fit is returned untouched, so nothing accepted before moves.
+    """
+    from ogviz.significance import settle_bracket_labels
+
+    def overshoot() -> list[float]:
+        reaches = [(_stack_reach(ax, orientation), clearance) for ax, clearance in clearances]
+        return [
+            reach + clearance
+            for reach, clearance in reaches
+            if reach is not None and clearance is not None and reach > high
+        ]
+
+    wanted = overshoot()
+    if not wanted:
+        return high
+    top = high
+    for _attempt in range(12):
+        target = max(wanted)
+        if target <= top:
+            return top
+        top = target
+        for ax, _clearance in clearances:
+            value_limits(ax, orientation)(low, top)
+        figure = clearances[0][0].get_figure(root=True)
+        if figure is not None:
+            settle_bracket_labels(figure)
+        wanted = overshoot()
+    raise AssertionError(
+        "the aligned bracket stacks will not fit under one shared top at this figure size. Make "
+        "the panels taller along the value axis, or draw fewer comparisons."
+    )
 
 
 def label_shared_scale_once(
@@ -141,7 +228,10 @@ def align_ticks(axes: Iterable[Axes], *, orientation: Orientation = "vertical") 
         "align_ticks needs at least one axes",
     )
     upright = is_vertical(orientation)
-    reaches = [extent[1] for extent in (drawn_value_extent(ax) for ax in panels) if extent]
+    # Along the VALUE axis. Read without `orientation` this measured y, which on a horizontal grid
+    # is the category positions, and trimmed the ticks against a number with no meaning.
+    extents = (drawn_value_extent(ax, orientation=orientation) for ax in panels)
+    reaches = [extent[1] for extent in extents if extent]
     if not reaches:
         return []
 
@@ -271,6 +361,8 @@ def align_mean_rows(
     rows = [text for ax in panels for text in ax.texts if marked(text, "mean_row")]
     if not rows:
         return None
+    # Along the VALUE axis. Read without `orientation` this measured y, which on a horizontal grid
+    # is the category positions, and trimmed the ticks against a number with no meaning.
     extents = (drawn_value_extent(ax, orientation=orientation) for ax in panels)
     measured = [extent[0] for extent in extents if extent is not None]
     if not measured:

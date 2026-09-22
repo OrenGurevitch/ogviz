@@ -349,3 +349,21 @@ def test_a_cell_needs_a_group_and_a_grid_needs_a_cell() -> None:
         violin_figsize(3, rows=0)
     with pytest.raises(AssertionError, match="a slot is a width"):
         violin_figsize(3, per_slot=0.0)
+
+
+def test_a_comparison_must_name_two_drawn_groups() -> None:
+    """A bracket end at a position no group occupies was drawn wherever that number fell.
+
+    `comparisons=[(0, 5, p)]` on groups at 0 and 1 drew a bracket running off the page, and the
+    gate's complaint was about a line past the axes — nothing that named the typo that caused it.
+    """
+    rng = np.random.default_rng(0)
+    groups = [(float(i), rng.normal(0.0, 1.0, 30), "#E8A838", "#B97C10") for i in range(2)]
+    fig, ax = plt.subplots()
+    with pytest.raises(AssertionError, match="no group is drawn at 5"):
+        group_violins(ax, groups, comparisons=[(0.0, 5.0, 0.01)])
+    plt.close(fig)
+
+    fig, ax = plt.subplots()
+    group_violins(ax, groups, comparisons=[(0.0, 1.0, 0.01)])  # both ends drawn: accepted
+    plt.close(fig)

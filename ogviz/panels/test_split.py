@@ -146,3 +146,31 @@ def test_the_panel_passes_its_own_gate() -> None:
     fig, _ax = _pair()
     assert audit(fig) == []
     plt.close(fig)
+
+
+def test_a_crowded_mean_row_shrinks_instead_of_being_refused() -> None:
+    """The pairs' row was set at one size, so small means with many decimals ran into each other.
+
+    `group_violins` has shrunk its row until clear since `printed_means` learned to; this row was
+    built separately and never did, so the gate refused a figure a smaller row would have fixed.
+    """
+    from ogviz.layout.overlap import text_overlaps
+    from ogviz.theme import VALUE_LABEL_SIZE
+
+    asked = VALUE_LABEL_SIZE * 0.85
+    rng = np.random.default_rng(0)
+    left = [rng.normal(0.00312, 0.0005, 40) for _ in range(4)]
+    right = [rng.normal(0.00318, 0.0005, 40) for _ in range(4)]
+    # Wide enough that a smaller row CAN clear. Narrower, the pairs sit closer than the floor size
+    # allows and the row stops at the floor, which the gate is right to refuse.
+    fig, ax = plt.subplots(figsize=(12.0, 4.0))
+    split_violins(ax, list("ABCD"), left, right, **COLORS)
+    row = [text for text in ax.texts if marked(text, "mean_row")]
+    assert max(text.get_fontsize() for text in row) < asked, "it shrank"
+    assert not text_overlaps(fig)
+    plt.close(fig)
+
+    fig, ax = _pair()
+    roomy = {text.get_fontsize() for text in ax.texts if marked(text, "mean_row")}
+    assert roomy == {asked}, "a row with room keeps the size it was asked for"
+    plt.close(fig)
