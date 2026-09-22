@@ -31,7 +31,9 @@ save(fig, out_dir, "figure")                       # writes AND runs the gate
 
 Three things the names do not give away:
 
-- **`save` runs the gate and raises instead of writing.** It also closes the figure.
+- **`save` runs the gate and raises instead of writing.** It also closes the figure. A name may
+  carry a subfolder (`"panels/a"`), `by_format=True` writes `out/png/` beside `out/svg/`, and
+  `metadata=` is merged over the defaults that keep the files diffable.
 - **`titled` returns a float** — where the header ends. `fit_under_header` needs it, or the panels
   grow into the title.
 - **`use_house_style()` once per process** — a second call resets the font family, so a project
@@ -134,6 +136,9 @@ uv run python -m ogviz.qc scripts/make_figures.py         # a script; every figu
 uv run python -m ogviz.qc scripts/make_figures.py --fix out/
 uv run python -m ogviz.qc --list-checks
 ```
+
+A script runs as `python script.py` would — as `__main__`, from its own folder, with only its own
+name in `sys.argv` — except under Agg with `plt.show()` a no-op, so its figures stay open to be read.
 
 Exit 0 when clean, 1 otherwise. `--fix` changes presentation only — a label moved, a knockout added,
 a buried line raised — and leaves what it cannot decide. From Python, all in `ogviz.qc`:
@@ -268,7 +273,7 @@ ogviz
 │   │   └── value_ticks(...) -> ...
 │   └── write
 │       ├── plain_filename(name: str) -> str
-│       ├── reproducible_metadata(path: Path) -> dict[str, None]
+│       ├── reproducible_metadata(path: Path) -> dict[str, None] | None
 │       └── save(...) -> ...
 ├── marks
 │   ├── central_clearance(...) -> ...

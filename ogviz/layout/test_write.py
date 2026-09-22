@@ -116,6 +116,8 @@ def test_reproducible_metadata_names_the_key_each_format_stamps() -> None:
 
     assert reproducible_metadata(Path("x.svg")) == {"Date": None}
     assert reproducible_metadata(Path("x.png")) == {"Software": None}
+    assert reproducible_metadata(Path("x.SVG")) == {"Date": None}, "matplotlib reads it as SVG"
+    assert reproducible_metadata(Path("x.jpg")) is None, "Pillow's formats take no metadata"
 
 
 def test_crop_decides_whether_the_declared_canvas_is_what_lands(tmp_path) -> None:
@@ -203,13 +205,162 @@ def test_a_name_with_a_separator_in_it_cannot_write_outside_the_directory(tmp_pa
     """`save`'s `name` is joined onto a directory and had no guard, where `--fix`'s label has one.
 
     The premise is that the escape really was one: the naive join lands a level up.
+
+    It was flattened to `_escaped.png` until names could reach into a subfolder; now that `/` means
+    something, a name that climbs out is refused rather than quietly written somewhere else.
     """
     out = tmp_path / "out"
     assert (out / "../escaped.png").resolve() == tmp_path / "escaped.png", "premise: it escapes"
 
     fig, ax = plt.subplots(figsize=(5.0, 3.0))
     ax.plot([0.0, 1.0], [0.0, 1.0])
-    written = save(fig, out, "../escaped", formats=("png",))
-    assert not (tmp_path / "escaped.png").exists()
-    assert [path.parent for path in written] == [out]
-    assert written[0].name == "_escaped.png"
+    with pytest.raises(AssertionError, match="must stay inside"):
+        save(fig, out, "../escaped", formats=("png",))
+    assert not list(tmp_path.rglob("*.png")), "a refused name wrote something"
+    plt.close(fig)
+
+
+@pytest.mark.parametrize(
+    "name", ["../escaped", "/absolute/x", "panels/../../x", "a//b", "panels/", "./a", "a/ .. /b"]
+)
+def test_a_name_that_leaves_the_directory_is_refused_before_anything_happens(
+    tmp_path, name
+) -> None:
+    """Every way out, and the empty and `.` parts, which would land somewhere the caller did not
+    write. Refused before the settle passes, so the figure is untouched and still open."""
+    fig = _clean()
+    with pytest.raises(AssertionError, match="must stay inside"):
+        save(fig, tmp_path / "out", name)
+    assert not (tmp_path / "out").exists()
+    assert plt.fignum_exists(fig.number)
+    plt.close(fig)
+
+
+def test_a_name_may_reach_into_a_subfolder(tmp_path) -> None:
+    """`save(fig, out, "panels/a")` writes `out/panels/a.png`, making `panels`. The old answer was
+    `out/panels_a.png`, which is why a project wanting the subfolder wrote with `fig.savefig`."""
+    written = save(_clean(), tmp_path, "panels/fig: a", formats=("png",))
+    assert written == [tmp_path / "panels" / "fig_ a.png"], "each part is still made plain"
+    assert written[0].exists()
+
+
+def test_a_name_without_a_slash_is_written_exactly_as_before(tmp_path) -> None:
+    """The widening must not move a single existing file. A backslash is not a separator here on
+    any platform, so it is rewritten as it always was."""
+    written = save(_clean(), tmp_path, "Fig 1: a\\b", formats=("png",))
+    assert written == [tmp_path / "Fig 1_ a_b.png"]
+
+
+def test_by_format_gives_each_format_its_own_folder(tmp_path) -> None:
+    """`out/png/a.png` beside `out/svg/a.svg`, and a subfolder in the name goes under each."""
+    written = save(_clean(), tmp_path, "panels/a", by_format=True)
+    assert written == [tmp_path / "png" / "panels" / "a.png", tmp_path / "svg" / "panels" / "a.svg"]
+    assert all(path.exists() for path in written)
+
+
+def test_by_format_is_still_one_save(tmp_path, monkeypatch) -> None:
+    """The settle passes and the gate run ONCE for every format, as they do without it — two
+    calls to `save`, one per folder, is the workaround this replaces, and it gated twice."""
+    import ogviz.qc
+
+    gated: list[object] = []
+    real = ogviz.qc.assert_clean
+    monkeypatch.setattr(ogviz.qc, "assert_clean", lambda fig, **kw: gated.append(real(fig, **kw)))
+    save(_clean(), tmp_path, "a", by_format=True, formats=("png", "svg", "pdf"))
+    assert len(gated) == 1
+
+
+def test_metadata_is_merged_over_the_reproducible_defaults(tmp_path) -> None:
+    """A caller's `Title` lands, and asking for it does not bring back the stamp the defaults
+    remove — which is what passing `metadata=` straight to `fig.savefig` does."""
+    png, svg = save(_clean(), tmp_path, "titled", metadata={"Title": "A titled figure"})
+    info = Image.open(png).info
+    assert info.get("Title") == "A titled figure"
+    assert "Software" not in info
+    text = svg.read_text()
+    assert "A titled figure" in text
+    assert "dc:date" not in text
+
+
+def test_metadata_for_a_format_that_carries_none_is_refused_up_front(tmp_path) -> None:
+    """Dropping it silently would write a file without what was asked for, and saying nothing."""
+    fig = _clean()
+    with pytest.raises(AssertionError, match="cannot attach metadata to 'jpg'"):
+        save(fig, tmp_path / "out", "fig", formats=("png", "jpg"), metadata={"Title": "x"})
+    assert not (tmp_path / "out").exists()
+    plt.close(fig)
+
+
+def test_a_format_failing_at_write_time_writes_nothing_else(tmp_path) -> None:
+    """Some failures exist only once rendering starts — an SVG handed a key its writer does not
+    know is one. Every format renders before anything lands, so it cannot strand the PNG."""
+    fig = _clean()
+    with pytest.raises(ValueError, match="Unknown metadata"):
+        save(fig, tmp_path / "out", "fig", metadata={"Software": "x"}, formats=("png", "svg"))
+    assert not (tmp_path / "out").exists()
+    plt.close(fig)
+
+
+def test_a_directory_given_as_a_string_is_accepted(tmp_path) -> None:
+    """Every path API in the standard library takes a `str`; this raised `AttributeError` from
+    `.mkdir` — after the gate had run, with the figure still open."""
+    written = save(_clean(), str(tmp_path / "as_text"), "fig", formats=("png",))
+    assert written == [tmp_path / "as_text" / "fig.png"]
+    assert written[0].exists()
+
+
+@pytest.mark.parametrize("extension", ["jpg", "jpeg", "tif", "tiff", "webp"])
+def test_a_format_that_carries_no_metadata_is_written(tmp_path, extension) -> None:
+    """Pillow's formats refuse `metadata=` whatever it holds, and `reproducible_metadata` handed
+    every format that is not SVG the PNG key."""
+    fig = _clean()
+    written = save(fig, tmp_path, "fig", formats=(extension,))
+    assert written[0].exists()
+    assert not plt.fignum_exists(fig.number)
+
+
+def test_the_premise_that_pillow_formats_refuse_any_metadata(tmp_path) -> None:
+    """A fact about matplotlib — measured, even `{}` is refused. If a future version accepts it,
+    this fails and the table in `reproducible_metadata` can widen."""
+    fig = _clean()
+    with pytest.raises(ValueError, match="metadata not supported"):
+        fig.savefig(tmp_path / "x.jpg", metadata={})
+    plt.close(fig)
+
+
+def test_an_unknown_format_is_refused_before_anything_is_written(tmp_path) -> None:
+    """A mixed list wrote the formats in front of the bad one and then raised, so a save that
+    failed still left half a figure on disk."""
+    fig = _clean()
+    with pytest.raises(AssertionError, match="nosuch"):
+        save(fig, tmp_path / "out", "fig", formats=("png", "svg", "nosuch"))
+    assert not (tmp_path / "out").exists(), "a refused save wrote something"
+    assert plt.fignum_exists(fig.number), "a refusal leaves the figure open, as the gate's does"
+    plt.close(fig)
+
+
+# The settle passes draw before the gate and warn the same way; that is the defect, not the test.
+@pytest.mark.filterwarnings("ignore:.*missing from font")
+def test_a_glyph_refusal_writes_nothing(tmp_path) -> None:
+    """The glyph gate raises when its block ENDS, and the writes were inside the block: a figure
+    with a tofu box was refused and written anyway, in every format.
+
+    The character warns under the pinned DejaVu; `test_guard.py` says why that is measured rather
+    than picked.
+    """
+    fig, ax = plt.subplots(figsize=(4.0, 3.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.set_title("no glyph for this: क")
+    with pytest.raises(AssertionError, match="no glyph"):
+        save(fig, tmp_path / "out", "tofu", check_overlap=False)
+    assert not (tmp_path / "out").exists(), "a refused figure was written anyway"
+    plt.close(fig)
+
+
+def test_pdf_and_postscript_lose_the_version_stamp(tmp_path) -> None:
+    """Both were handed PNG's key, which neither reads, so each carried the matplotlib version —
+    a file that differs between the two matplotlib legs CI runs."""
+    version = matplotlib.__version__.encode()
+    written = save(_clean(), tmp_path, "fig", formats=("pdf", "eps"))
+    for path in written:
+        assert version not in path.read_bytes(), path.suffix

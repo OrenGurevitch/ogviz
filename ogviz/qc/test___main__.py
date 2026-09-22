@@ -119,6 +119,51 @@ def test_fix_output_does_not_carry_the_matplotlib_version(tmp_path) -> None:
     assert "Software" not in Image.open(written).info, Image.open(written).info
 
 
+def test_fix_writes_under_the_guard_even_what_is_still_broken(tmp_path) -> None:
+    """`--fix` writes with `figure.savefig`, so under `OGVIZ_GUARD=1` the guard audited that write
+    and refused it — the run died on the first figure `repair` could not finish, which is the
+    figure `--fix` exists to report on.
+
+    The premise is that this figure is still refused after `repair`; without it, a builder that
+    `repair` cleans passes the guard and the test says nothing.
+    """
+    import sys
+
+    from ogviz import guarded
+    from ogviz.qc import audit
+    from ogviz.qc.repair import repair
+
+    (tmp_path / "stubborn.py").write_text(
+        "import matplotlib\n"
+        "matplotlib.use('Agg')\n"
+        "import matplotlib.pyplot as plt\n"
+        "def build():\n"
+        "    fig, ax = plt.subplots(figsize=(4.0, 3.0))\n"
+        "    ax.plot([0, 1], [0, 1])\n"
+        "    for _ in range(2):\n"
+        "        ax.text(0.5, 0.5, 'the same words here', ha='center', fontsize=20)\n"
+        "    fig.set_label('stubborn')\n"
+        "    return fig\n"
+    )
+    out = tmp_path / "out"
+    sys.path.insert(0, str(tmp_path))
+    try:
+        import stubborn  # pyright: ignore[reportMissingImports]
+
+        premise = stubborn.build()
+        repair(premise)
+        assert audit(premise), "premise: repair leaves this figure refused"
+        plt.close("all")
+        with guarded(mode="raise"):
+            status = main(["stubborn:build", "--fix", str(out)])
+    finally:
+        sys.path.remove(str(tmp_path))
+        sys.modules.pop("stubborn", None)
+        plt.close("all")
+    assert status == 1
+    assert (out / "stubborn.png").exists()
+
+
 def test_list_checks_prints_and_stops() -> None:
     """`--list-checks` needs no target, and must exit 0 rather than falling into the audit path."""
     assert main(["--list-checks"]) == 0
@@ -185,6 +230,99 @@ def test_two_figures_sharing_a_label_get_two_files(tmp_path) -> None:
 
     written = sorted(path.name for path in out.glob("*.png"))
     assert written == ["panel A.png", "panel A_2.png", "panel A_3.png"]
+
+
+def _script(tmp_path, body: str):
+    """A figure script in its own folder, beside a sibling module it imports."""
+    folder = tmp_path / "project"
+    folder.mkdir()
+    (folder / "sibling_helper.py").write_text("TITLE = 'from the sibling'\n")
+    script = folder / "draw.py"
+    script.write_text(
+        "import json, sys\n"
+        "import matplotlib\n"
+        "import matplotlib.pyplot as plt\n"
+        "def draw():\n"
+        "    fig, ax = plt.subplots(figsize=(4.0, 3.0))\n"
+        "    ax.plot([0.0, 1.0], [0.0, 1.0])\n"
+        "    return fig\n" + body
+    )
+    return script
+
+
+def _cleanup_script_run() -> None:
+    import sys
+
+    sys.modules.pop("sibling_helper", None)
+    plt.close("all")
+
+
+def test_a_script_that_draws_under_its_main_guard_is_audited(tmp_path) -> None:
+    """The script ran as `__ogviz_qc__`, so the commonest script shape of all — drawing inside
+    `if __name__ == "__main__":` — produced no figures and the run said so."""
+    script = _script(tmp_path, "if __name__ == '__main__':\n    draw()\n")
+    try:
+        assert main([str(script)]) == 0
+    finally:
+        _cleanup_script_run()
+
+
+def test_a_script_runs_as_it_would_from_its_own_folder(tmp_path) -> None:
+    """Three things `python draw.py` gives a script that running it from here did not: a sibling
+    module on the path, `sys.argv` naming only the script, and a non-blocking backend — the last
+    so a `plt.show()` at the end neither blocks nor closes what is to be audited."""
+    import sys
+    import warnings
+
+    seen = tmp_path / "seen.json"
+    script = _script(
+        tmp_path,
+        "import sibling_helper\n"
+        "fig = draw()\n"
+        "fig.suptitle(sibling_helper.TITLE)\n"
+        "plt.show()\n"
+        "seen = {'argv': sys.argv, 'backend': matplotlib.get_backend()}\n"
+        f"json.dump(seen, open({str(seen)!r}, 'w'))\n",
+    )
+    path_before, argv_before = list(sys.path), list(sys.argv)
+    plt.switch_backend("pdf")  # any backend but Agg, so forcing it is observable
+    try:
+        # Agg's own `show` warns that it cannot show; the no-op put in its place does not.
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert main([str(script)]) == 0, "the figure was not there to audit"
+        assert not [w for w in caught if "cannot be shown" in str(w.message)], "plt.show ran"
+    finally:
+        plt.switch_backend("agg")
+        _cleanup_script_run()
+    import json
+
+    observed = json.loads(seen.read_text())
+    assert observed["argv"] == [str(script)]
+    assert observed["backend"].lower() == "agg"
+    assert sys.path == path_before, "the script's folder was left on sys.path"
+    assert sys.argv == argv_before
+
+
+def test_a_script_ending_in_a_clean_exit_is_still_audited(tmp_path) -> None:
+    """`raise SystemExit(main())` is how a script with a `main` ends, and status 0 is not a failure;
+    it used to take the audit down with it."""
+    script = _script(tmp_path, "if __name__ == '__main__':\n    draw()\n    raise SystemExit(0)\n")
+    try:
+        assert main([str(script)]) == 0
+    finally:
+        _cleanup_script_run()
+
+
+def test_a_script_that_exits_with_a_failure_is_reported(tmp_path) -> None:
+    """A nonzero exit is the script saying it failed; auditing its half-drawn figures would report
+    on a build that did not happen."""
+    script = _script(tmp_path, "draw()\nraise SystemExit(3)\n")
+    try:
+        with pytest.raises(AssertionError, match="exited with status 3"):
+            main([str(script)])
+    finally:
+        _cleanup_script_run()
 
 
 def test_a_target_that_produces_no_figures_says_so_and_exits_nonzero(tmp_path, capsys) -> None:

@@ -44,7 +44,11 @@ if TYPE_CHECKING:
 
 Mode = Literal["raise", "warn", "repair"]
 ENV_VAR = "OGVIZ_GUARD"
-_ORIGINAL = Figure.savefig
+# The `savefig` the guard calls through to and `unguard` puts back: whatever was in place when
+# `guard()` last installed over something that was not its own. It was captured once, AT IMPORT, so
+# a library that wrapped `savefig` after ogviz was imported was bypassed by every guarded save, and
+# `unguard` then restored the import-time method and dropped that library's wrapper for good.
+_UNDERNEATH = Figure.savefig
 
 # Set while the guard is working, so the save it performs at the end does not re-enter the wrapper
 # and audit the same figure again.
@@ -146,11 +150,17 @@ def guard(
     """
     from ogviz.layout.overlap import DEFAULT_MIN_GAP
 
+    global _INSTALLED, _UNDERNEATH
     floor = DEFAULT_MIN_GAP if min_gap is None else min_gap
+    # What is in place NOW, unless it is this module's own wrapper — capturing that would make a
+    # second `guard()` audit every figure twice and leave `unguard` restoring a wrapper.
+    if not is_guarded():
+        _UNDERNEATH = Figure.savefig
+    underneath = _UNDERNEATH
 
     def savefig(self: Figure, *args: object, **kwargs: object) -> object:
         if _AUDITING.get():
-            return _ORIGINAL(self, *args, **kwargs)  # type: ignore[arg-type]
+            return underneath(self, *args, **kwargs)  # type: ignore[arg-type]
         token = _AUDITING.set(True)
         try:
             found = _missing_glyphs(self) + _complaints(
@@ -166,28 +176,28 @@ def guard(
                 )
             if found:
                 warnings.warn("ogviz.guard: " + "; ".join(found), FigureQuality, stacklevel=2)
-            return _ORIGINAL(self, *args, **kwargs)  # type: ignore[arg-type]
+            return underneath(self, *args, **kwargs)  # type: ignore[arg-type]
         finally:
             _AUDITING.reset(token)
 
-    global _INSTALLED
     # The whole signature's worth of metadata, not `__doc__` alone: `help(fig.savefig)` and
     # `inspect.signature` should show matplotlib's, since the wrapper's point is to be invisible.
-    functools.update_wrapper(savefig, _ORIGINAL)
+    functools.update_wrapper(savefig, underneath)
     _INSTALLED = savefig
     Figure.savefig = savefig  # type: ignore[method-assign, assignment]
 
 
 def unguard() -> None:
-    """Put matplotlib's own `savefig` back — if what is there is ours.
+    """Put back the `savefig` that `guard()` found — if what is there is ours.
 
-    Only when `is_guarded()`: this assigned `_ORIGINAL` unconditionally, so a call from a project
-    that never guarded, or one sharing the process with another library's `savefig` wrapper,
-    silently removed a wrapper this module did not install.
+    Only when `is_guarded()`: this assigned matplotlib's original unconditionally, so a call from a
+    project that never guarded, or one sharing the process with another library's `savefig`
+    wrapper, silently removed a wrapper this module did not install. And what goes back is what
+    `guard()` wrapped, not what was there at import, for the same reason one step later.
     """
     global _INSTALLED
     if is_guarded():
-        Figure.savefig = _ORIGINAL  # type: ignore[method-assign]
+        Figure.savefig = _UNDERNEATH  # type: ignore[method-assign]
     _INSTALLED = None
 
 
