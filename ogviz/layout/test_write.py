@@ -116,6 +116,8 @@ def test_reproducible_metadata_names_the_key_each_format_stamps() -> None:
 
     assert reproducible_metadata(Path("x.svg")) == {"Date": None}
     assert reproducible_metadata(Path("x.png")) == {"Software": None}
+    assert reproducible_metadata(Path("x.SVG")) == {"Date": None}, "matplotlib reads it as SVG"
+    assert reproducible_metadata(Path("x.jpg")) is None, "Pillow's formats take no metadata"
 
 
 def test_crop_decides_whether_the_declared_canvas_is_what_lands(tmp_path) -> None:
@@ -213,3 +215,68 @@ def test_a_name_with_a_separator_in_it_cannot_write_outside_the_directory(tmp_pa
     assert not (tmp_path / "escaped.png").exists()
     assert [path.parent for path in written] == [out]
     assert written[0].name == "_escaped.png"
+
+
+def test_a_directory_given_as_a_string_is_accepted(tmp_path) -> None:
+    """Every path API in the standard library takes a `str`; this raised `AttributeError` from
+    `.mkdir` — after the gate had run, with the figure still open."""
+    written = save(_clean(), str(tmp_path / "as_text"), "fig", formats=("png",))
+    assert written == [tmp_path / "as_text" / "fig.png"]
+    assert written[0].exists()
+
+
+@pytest.mark.parametrize("extension", ["jpg", "jpeg", "tif", "tiff", "webp"])
+def test_a_format_that_carries_no_metadata_is_written(tmp_path, extension) -> None:
+    """Pillow's formats refuse `metadata=` whatever it holds, and `reproducible_metadata` handed
+    every format that is not SVG the PNG key."""
+    fig = _clean()
+    written = save(fig, tmp_path, "fig", formats=(extension,))
+    assert written[0].exists()
+    assert not plt.fignum_exists(fig.number)
+
+
+def test_the_premise_that_pillow_formats_refuse_any_metadata(tmp_path) -> None:
+    """A fact about matplotlib — measured, even `{}` is refused. If a future version accepts it,
+    this fails and the table in `reproducible_metadata` can widen."""
+    fig = _clean()
+    with pytest.raises(ValueError, match="metadata not supported"):
+        fig.savefig(tmp_path / "x.jpg", metadata={})
+    plt.close(fig)
+
+
+def test_an_unknown_format_is_refused_before_anything_is_written(tmp_path) -> None:
+    """A mixed list wrote the formats in front of the bad one and then raised, so a save that
+    failed still left half a figure on disk."""
+    fig = _clean()
+    with pytest.raises(AssertionError, match="nosuch"):
+        save(fig, tmp_path / "out", "fig", formats=("png", "svg", "nosuch"))
+    assert not (tmp_path / "out").exists(), "a refused save wrote something"
+    assert plt.fignum_exists(fig.number), "a refusal leaves the figure open, as the gate's does"
+    plt.close(fig)
+
+
+# The settle passes draw before the gate and warn the same way; that is the defect, not the test.
+@pytest.mark.filterwarnings("ignore:.*missing from font")
+def test_a_glyph_refusal_writes_nothing(tmp_path) -> None:
+    """The glyph gate raises when its block ENDS, and the writes were inside the block: a figure
+    with a tofu box was refused and written anyway, in every format.
+
+    The character warns under the pinned DejaVu; `test_guard.py` says why that is measured rather
+    than picked.
+    """
+    fig, ax = plt.subplots(figsize=(4.0, 3.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.set_title("no glyph for this: क")
+    with pytest.raises(AssertionError, match="no glyph"):
+        save(fig, tmp_path / "out", "tofu", check_overlap=False)
+    assert not (tmp_path / "out").exists(), "a refused figure was written anyway"
+    plt.close(fig)
+
+
+def test_pdf_and_postscript_lose_the_version_stamp(tmp_path) -> None:
+    """Both were handed PNG's key, which neither reads, so each carried the matplotlib version —
+    a file that differs between the two matplotlib legs CI runs."""
+    version = matplotlib.__version__.encode()
+    written = save(_clean(), tmp_path, "fig", formats=("pdf", "eps"))
+    for path in written:
+        assert version not in path.read_bytes(), path.suffix
