@@ -40,12 +40,6 @@ ALPHA = 0.05
 DECLARED_COLOR = "#4A6136"  # survives the correction
 REJECTED_COLOR = "#B4B0A4"  # does not
 POINT_SIZE = 62.0
-# How far above the larger of the top p and alpha a log ladder's axis runs, as a MULTIPLE. The axis
-# ran to 1.0 whatever the family held, and `unused_value_headroom` refused it: a family topping out
-# at 0.4 was "60% of the value axis empty", at 0.1 "90%". That check measures the share linearly,
-# so the multiple must stay under 1 / (1 - 0.40) = 1.67 to pass it; 1.5 leaves room for the top
-# marker and was clean on two families of 6 and 14 with tops from 0.03 to 0.9 at 8 x 5 in.
-LOG_HEADROOM = 1.5
 
 
 def bonferroni_threshold(count: int, *, alpha: float = ALPHA) -> float:
@@ -204,13 +198,10 @@ def multiplicity_ladder(
     if log:
         # The floor is the smallest thing that has to be VISIBLE — the smallest p or the tightest
         # threshold, whichever is lower — rather than a round decade, so the panel never opens a
-        # blank decade below the data. The top is the larger of the top p and alpha, since alpha is
-        # where the BH ramp ends, padded by `LOG_HEADROOM` and capped at 1, where p stops. It was 1
-        # outright, which left most families refused for the empty band above them.
+        # blank decade below the data. The top is 1 because that is where p stops.
         floor = min(float(sorted_p.min()), bonferroni_threshold(count, alpha=alpha))
-        top = min(1.0, max(float(sorted_p.max()), alpha) * LOG_HEADROOM)
         ax.set_yscale("log")
-        ax.set_ylim(floor / 2.5, top)
+        ax.set_ylim(floor / 2.5, 1.0)
     else:
         ax.set_ylim(0.0, max(float(sorted_p.max()), alpha) * 1.15)
     ax.set_xlabel("Rank")
