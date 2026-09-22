@@ -109,6 +109,15 @@ def test_the_rows_are_named_on_the_first_strip_drawn_not_under_the_first_column(
     plt.close(fig)
 
 
+def test_a_cloud_takes_plain_lists() -> None:
+    """`scatter_panel` read `cloud.x.shape`, so lists raised an AttributeError naming `list`."""
+    cloud = Cloud([0, 1, 2, 3], [1.0, 2.0, 2.5, 4.0], "#2E7CE0", "#1B4E8F", "a group")
+    assert isinstance(cloud.x, np.ndarray) and cloud.x.dtype == float
+    fig = plt.figure(figsize=(6, 6))
+    assert coupling_panels(fig, (Leg("x", "y", (cloud,)),)) == []
+    plt.close(fig)
+
+
 def test_two_points_get_no_trend_line() -> None:
     """A line through two points describes those two points and nothing else."""
     _fig, ax = plt.subplots()

@@ -85,7 +85,15 @@ SCATTER_TO_STRIP = (3.0, 1.15)  # how the height of one column is split
 
 @dataclass(frozen=True)
 class Cloud:
-    """One subset's points in a scatter, in the colours the project gives it."""
+    """One subset's points in a scatter, in the colours the project gives it.
+
+    `x` and `y` are ARRAY-LIKE and coerced here, as `lines.Line` already does and for the same
+    reason: `scatter_panel` reads `cloud.x.shape`, so the plain lists everyone hands matplotlib
+    raised `AttributeError: 'list' object has no attribute 'shape'` from inside the `require` meant
+    to give the caller a sentence. `Estimate`, `Leg`, `bars.Series`, `slopegraph.Strand` and the
+    table's rows were checked for the same defect and do not have it — each is read by `len`, by
+    index, or through an `np.asarray` at the point of use.
+    """
 
     x: NDArray[np.float64]
     y: NDArray[np.float64]
@@ -93,6 +101,11 @@ class Cloud:
     edge: str
     label: str
     trend: bool = True
+
+    def __post_init__(self) -> None:
+        for name in ("x", "y"):
+            # `object.__setattr__` because the dataclass is frozen, as in `lines.Line`.
+            object.__setattr__(self, name, np.asarray(getattr(self, name), dtype=float))
 
 
 @dataclass(frozen=True)
