@@ -20,6 +20,7 @@ from ogviz.qc.reading import (
     orientation_of,
 )
 from ogviz.tags import marked, value_of
+from ogviz.units import value_to_px
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -447,7 +448,18 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
             group += [other for other in fig.axes if _same_scale(other, ax)]
         tops = (_highest_drawn(other) for other in group)
         reach = max([own_reach, *(top for top in tops if top is not None)])
-        share = (high - reach) / (high - low)
+        # IN PIXELS, because the share is a claim about how much of the PANEL is empty. In data
+        # units the two agree only on a linear axis: on a log axis, data to 1000 under a limit of
+        # 2000 is half the numbers and under a tenth of the height, and a fitted panel was refused
+        # as mostly empty. Clamped into the view first, since a reach at or below zero has no pixel
+        # on a log axis at all.
+        orientation = orientation_of(ax)
+        top_px, bottom_px, reach_px = (
+            value_to_px(ax, value, orientation=orientation)
+            for value in (high, low, min(max(reach, low), high))
+        )
+        span_px = abs(top_px - bottom_px)
+        share = abs(top_px - reach_px) / span_px if span_px else math.nan
         if not math.isfinite(share) or share < floor:
             continue  # a share that is not a number is a measurement failure, not a verdict
         # `reach`, the number the decision was made on — on a shared scale that is the group's

@@ -273,3 +273,26 @@ def test_a_plain_sharey_grid_is_a_shared_scale_too() -> None:
     found = unused_value_headroom(fig)
     assert len(found) == 2 and all("nothing reaches past 10" in line for line in found), found
     plt.close(fig)
+
+
+def test_headroom_on_a_log_axis_is_measured_as_the_reader_sees_it() -> None:
+    """On a log axis the empty share is a share of the PANEL, not of the numbers.
+
+    Data to 1000 on an axis run to 2000 is half the value range and under a tenth of the panel's
+    height — one factor of two out of about three and a half decades. Measured in data units the
+    fitted panel was refused as mostly empty; in pixels it is fitted, which is what it looks like.
+    """
+    from ogviz.qc.arrangement import EMPTY_HEADROOM, unused_value_headroom
+
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    ax.semilogy([0, 1, 2, 3], [1.0, 10.0, 100.0, 1000.0])
+    ax.set_ylim(0.8, 2000.0)
+    fig.canvas.draw()
+    data_share = (2000.0 - 1000.0) / (2000.0 - 0.8)
+    assert data_share > EMPTY_HEADROOM, "premise: in data units it fires"
+    assert unused_value_headroom(fig) == []
+
+    ax.set_ylim(0.8, 1e6)  # three empty decades above the data: really over-tall
+    found = unused_value_headroom(fig)
+    assert found and found[0].startswith("49%"), found
+    plt.close(fig)
