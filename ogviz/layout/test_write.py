@@ -345,12 +345,14 @@ def test_a_glyph_refusal_writes_nothing(tmp_path) -> None:
     """The glyph gate raises when its block ENDS, and the writes were inside the block: a figure
     with a tofu box was refused and written anyway, in every format.
 
-    The character warns under the pinned DejaVu; `test_guard.py` says why that is measured rather
-    than picked.
+    The character warns under the pinned DejaVu, and it is one NO other test uses: matplotlib warns
+    for a missing glyph once per process per font and character, so sharing `test_guard.py`'s
+    Devanagari let whichever ran first consume the warning. `test_guard.py` says why the characters
+    are measured rather than picked; Hiragana U+3042 was probed the same way.
     """
     fig, ax = plt.subplots(figsize=(4.0, 3.0))
     ax.plot([0.0, 1.0], [0.0, 1.0])
-    ax.set_title("no glyph for this: क")
+    ax.set_title("no glyph for this: \u3042")
     with pytest.raises(AssertionError, match="no glyph"):
         save(fig, tmp_path / "out", "tofu", check_overlap=False)
     assert not (tmp_path / "out").exists(), "a refused figure was written anyway"
