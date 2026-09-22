@@ -251,3 +251,23 @@ def test_a_bracket_label_survives_a_rescale_after_it_was_placed() -> None:
     assert settle_bracket_labels(fig), "it has something to move"
     fig.canvas.draw()
     assert not significance_gaps(fig)
+
+
+def test_a_log_value_axis_is_refused_rather_than_bracketed_wrongly() -> None:
+    """The end ticks are `span * TICK_FRACTION` in DATA units, which assumes a linear axis.
+
+    On a log axis the same data length is a different number of pixels at every height, and one
+    bracket at the bottom of a wide range drops its end ticks below zero, which a log axis has no
+    place for.
+    """
+    from ogviz.significance import significance_row
+
+    _fig, ax = plt.subplots()
+    ax.plot([0.0, 1.0], [1.0, 1000.0])
+    ax.set_yscale("log")
+    ax.set_ylim(1.0, 1e4)
+    with pytest.raises(AssertionError, match="linear value axis"):
+        bracket_stack(ax, [(0.0, 1.0, 0.01)], start=1.0, span=999.0)
+    with pytest.raises(AssertionError, match="linear value axis"):
+        significance_row(ax, [(0.0, 1.0, 0.01)], start=1.0, span=999.0)
+    assert not [line for line in ax.lines if marked(line, "bracket")], "and nothing was drawn"

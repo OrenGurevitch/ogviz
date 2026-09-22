@@ -26,6 +26,7 @@ from ogviz import units
 from ogviz.orientation import (
     is_vertical,
     place_many,
+    require_linear_value_axis,
     stamp_orientation,
 )
 from ogviz.tags import mark, marked, value_of
@@ -161,6 +162,12 @@ def bracket_stack(
     """
     if not comparisons:
         return start
+    # A LOG VALUE AXIS IS REFUSED, as `group_violins`' marks and `value_ticks` refuse one. The end
+    # ticks are `span * TICK_FRACTION` in data units and the stack advances by converting pixels
+    # through one ratio; on a log axis neither means anything, and a bracket started at 1 on a
+    # 1-to-10000 axis with a span of 999 put its end ticks at -21, below anything a log axis can
+    # draw. Measuring the ticks in pixels would fix that one number and leave `span` meaningless.
+    require_linear_value_axis(ax, orientation, "bracket_stack")
     # Before anything is drawn, and even for `draw=False`: the panel this stack belongs to may have
     # nothing else that reveals which way it runs, and a bracket is the artist QC most needs to
     # measure along the right axis.
