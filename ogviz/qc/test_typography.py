@@ -192,3 +192,36 @@ def test_the_advisory_branch_is_silent_on_comfortable_type() -> None:
     fig.canvas.draw()
     assert type_too_small(fig) == []
     plt.close(fig)
+
+
+def _small_type_that_is_not_short(kind: str):
+    """3 pt type whose BOX is taller than the tick labels: turned on its side, or many lines."""
+    fig, ax = plt.subplots(figsize=(12.0, 8.0))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    if kind == "rotated":
+        note = ax.text(0.5, 0.2, "a note set very small indeed", fontsize=3.0, rotation=90)
+    else:
+        note = ax.text(0.5, 0.2, "\n".join(["a small line"] * 12), fontsize=3.0)
+    fig.canvas.draw()
+    tick = ax.get_yticklabels()[0]
+    assert note.get_window_extent().height > tick.get_window_extent().height, (
+        "premise: by box height the tick label is the smaller"
+    )
+    assert note.get_fontsize() < tick.get_fontsize()
+    return fig, note
+
+
+@pytest.mark.parametrize("kind", ["rotated", "multi-line"])
+def test_the_smallest_type_is_the_smallest_point_size_not_the_shortest_box(kind: str) -> None:
+    """Ranked by box HEIGHT, a rotated label counted its length and a multi-line one every line.
+
+    Either way 3 pt type lost to 16 pt tick labels, and the check reported on type that was fine
+    or on nothing at all. Both branches are asked: the journal question names the point size, and
+    the ratio one measures ONE line of the small type, not its whole box.
+    """
+    fig, note = _small_type_that_is_not_short(kind)
+    placed = type_too_small(fig, column_width=6.0)
+    assert placed and "3 pt" in placed[0], placed
+    said = type_too_small(fig)
+    assert said and note.get_text()[:10] in said[0], said
+    plt.close(fig)

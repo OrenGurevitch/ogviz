@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from matplotlib.text import Text
+
 from ogviz.layout.bounds import figure_text
 from ogviz.layout.collision import quoted
 from ogviz.layout.render import ensure_rendered
@@ -95,16 +97,45 @@ JOURNAL_MINIMUM_PT = 5.0
 
 
 def _smallest_text(fig: Figure) -> tuple[float, float, str] | None:
-    """(height px, point size, content) of the smallest visible label, or None if there is none."""
+    """(one-line height px, point size, content) of the smallest visible label, or None.
+
+    SMALLEST BY POINT SIZE, which is what "small type" means. It was ranked by the height of the
+    label's box, and a box is only as tall as one line when the label is one upright line: turned
+    on its side, a label's box is as tall as the label is long, and a label of twelve lines is
+    twelve lines tall. So 3 pt type set vertically or in a block lost to 16 pt tick labels, and the
+    check reported on type that was fine. Ties on size go to the shorter box, which is what the old
+    ranking did for the only case it got right.
+
+    The height handed back is ONE UPRIGHT LINE of that type, for the same reason: the ratio branch
+    divides it by the canvas, and a sideways label's full length would read as large type. For an
+    upright single line it is the box height exactly, so the measurement `CRAMPED_SHARE` was set
+    from is unchanged.
+    """
     ensure_rendered(fig)
-    smallest: tuple[float, float, str] | None = None
+    smallest: tuple[float, float, Text] | None = None
     for text, _owner in figure_text(fig, ticks=True, legend=True):
         height = float(text.get_window_extent().height)
         if height <= 0:
             continue
-        if smallest is None or height < smallest[0]:
-            smallest = (height, float(text.get_fontsize()), text.get_text())
-    return smallest
+        size = float(text.get_fontsize())
+        if smallest is None or (size, height) < smallest[:2]:
+            smallest = (size, height, text)
+    if smallest is None:
+        return None
+    size, height, text = smallest
+    return _one_line_height(fig, text, height), size, text.get_text()
+
+
+def _one_line_height(fig: Figure, text: Text, height: float) -> float:
+    """The height of one upright line of `text`'s type, in display pixels."""
+    content = text.get_text()
+    if float(text.get_rotation()) % 180.0 == 0.0 and "\n" not in content:
+        return height
+    probe = Text(0.0, 0.0, content.split("\n")[0].strip() or "lp")
+    probe.update_from(text)
+    probe.set_rotation(0.0)
+    probe.set_figure(fig)
+    return float(probe.get_window_extent(fig.canvas.get_renderer()).height)  # type: ignore[attr-defined]
 
 
 def type_too_small(fig: Figure, *, column_width: float | None = None) -> list[str]:
