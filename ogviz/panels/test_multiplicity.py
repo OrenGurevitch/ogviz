@@ -161,3 +161,26 @@ def test_an_unsorted_family_is_refused_rather_than_ranked() -> None:
     of declared findings with no error."""
     with pytest.raises(AssertionError, match="sorted ascending"):
         benjamini_hochberg_rank(np.array([0.045, 0.001, 0.040]))
+
+
+@pytest.mark.parametrize("top_p", [0.03, 0.1, 0.4, 0.9])
+def test_a_log_ladder_runs_its_axis_to_the_family_not_to_one(top_p) -> None:
+    """The axis ran to 1.0 whatever the family held, and the gate refused most of them.
+
+    The premise is asserted on the same panel: put back at 1.0, the top is refused for every family
+    here but the one already near it — so the clean result below is the new limit's doing.
+    """
+    from ogviz.qc import unused_value_headroom
+
+    p = [0.0004, 0.003, 0.008, 0.015, 0.03, top_p]
+    fig, ax = plt.subplots(figsize=(8.0, 5.0))
+    multiplicity_ladder(ax, p, log=True)
+    fig.canvas.draw()
+    low, high = ax.get_ylim()
+    assert max(top_p, 0.05) < high <= 1.0, "above the top p and alpha, and never past 1"
+    assert not unused_value_headroom(fig)
+
+    ax.set_ylim(low, 1.0)
+    fig.canvas.draw()
+    assert bool(unused_value_headroom(fig)) == (top_p < 0.6), "the premise: 1.0 was refused"
+    plt.close(fig)
