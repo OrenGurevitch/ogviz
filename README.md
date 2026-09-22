@@ -194,6 +194,7 @@ ogviz
 │   │   ├── hits_decoration(ax: Axes, box: Bbox, *, padding: float) -> int
 │   │   ├── labels_crossing_a_rule(...) -> ...
 │   │   ├── labels_on_the_marks(fig: Figure) -> list[tuple[Axes, Text, int]]
+│   │   ├── line_points(line: Line2D) -> NDArray[np.float64]
 │   │   ├── point_offsets(collection: Collection) -> NDArray[np.float64] | None
 │   │   ├── quoted(text: str) -> str
 │   │   ├── text_box(text: Text) -> Bbox

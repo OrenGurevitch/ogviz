@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout.bounds import panel_prefix
-from ogviz.layout.collision import point_offsets
+from ogviz.layout.collision import line_points, point_offsets
 from ogviz.tags import marked
 
 if TYPE_CHECKING:
@@ -182,7 +182,7 @@ def drawn_value_extent(
     for line in ax.lines:
         if _is_furniture(line) and not include_furniture:
             continue
-        values = np.asarray(line.get_ydata() if axis else line.get_xdata(), dtype=float)
+        values = line_points(line)[:, axis]
         values = values[np.isfinite(values)]
         if values.size:
             lows.append(float(values.min()))

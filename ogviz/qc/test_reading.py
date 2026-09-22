@@ -274,3 +274,51 @@ def test_contour_labels_are_still_read_as_text() -> None:
     assert labels, "premise: clabel really does add Text children"
     assert all(is_text(text) for text in labels)
     plt.close(fig)
+
+
+def _unit_lines() -> list:
+    """Line panels whose x data is not numbers: category names, and calendar dates."""
+    import datetime
+
+    categorical, dated = plt.subplots(figsize=(6.0, 4.0)), plt.subplots(figsize=(6.0, 4.0))
+    categorical[1].plot(["before", "during", "after"], [1.0, 3.0, 2.0], marker="o")
+    categorical[1].plot(["before", "before"], [0.5, 3.5])  # constant x: a vertical vote
+    days = [datetime.date(2024, 1, 1), datetime.date(2024, 2, 1), datetime.date(2024, 3, 1)]
+    dated[1].plot(days, [2.0, 1.0, 4.0], marker="o")
+    dated[1].plot(days[:2], [3.0, 3.0])  # constant y: a horizontal vote
+    return [categorical, dated]
+
+
+def test_a_line_drawn_with_strings_or_dates_is_read_in_the_units_it_was_drawn_in() -> None:
+    """The gate died on `ax.plot(["a", "b"], ...)`, which is an ordinary line panel.
+
+    `get_xdata()` hands back what the caller PASSED — strings, dates — and every site cast it with
+    `np.asarray(..., dtype=float)`, which raises on both. The premise is asserted, because it is a
+    fact about matplotlib: if a future version returned converted data here the test would pass
+    while checking nothing.
+    """
+    from ogviz.qc import audit
+
+    for (fig, ax), voted in zip(_unit_lines(), ("vertical", "horizontal"), strict=True):
+        with pytest.raises((TypeError, ValueError)):
+            np.asarray(ax.lines[0].get_xdata(), dtype=float)
+        fig.canvas.draw()
+        assert orientation_of(ax) == voted  # the two-point line was read, not skipped
+        audit(fig)  # the assertion is that these return at all
+        audit(fig, thorough=True)
+        plt.close(fig)
+
+
+def test_save_survives_a_line_drawn_with_strings_or_dates(tmp_path) -> None:
+    """`save` either writes or REFUSES; what it may not do is die inside the gate.
+
+    The dated panel is refused, correctly — at this width its date ticks run into each other — so
+    a refusal is accepted here and anything else that escapes fails the test.
+    """
+    from ogviz import save
+
+    for index, (fig, _ax) in enumerate(_unit_lines()):
+        try:
+            save(fig, tmp_path, f"units_{index}")
+        except AssertionError as refused:
+            assert str(refused).startswith("figure QC:"), refused

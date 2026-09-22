@@ -168,6 +168,20 @@ def point_offsets(collection: Collection) -> NDArray[np.float64] | None:
     return None
 
 
+def line_points(line: Line2D) -> NDArray[np.float64]:
+    """A line's points as an (N, 2) float array in data units, whatever it was plotted WITH.
+
+    `get_xdata()` and `get_ydata()` return what the caller passed, not what was drawn. For numbers
+    those are the same thing; for `ax.plot(["before", "after"], ...)` it is an array of strings, and
+    for a date axis an array of `datetime.date`. Every reader here cast it with
+    `np.asarray(..., dtype=float)`, which raises on both — so an ordinary categorical line panel did
+    not fail the gate, it crashed it. `get_xydata()` is the data after the axis's unit converter
+    has run: category indices, and date numbers, which are also what `transData` expects.
+    """
+    points = np.asarray(line.get_xydata(), dtype=float)
+    return points.reshape(-1, 2)
+
+
 NO_LINE = ("None", "none", " ", "")
 
 
@@ -273,9 +287,7 @@ def data_points(ax: Axes) -> list[MarkCloud]:
     for line in ax.lines:
         if id(line) in skip or not line.get_visible() or not _marked(line):
             continue
-        points = np.column_stack(
-            [np.asarray(line.get_xdata(), dtype=float), np.asarray(line.get_ydata(), dtype=float)]
-        )
+        points = line_points(line)
         if not len(points):
             continue
         width, height = _marker_footprint_px(line)

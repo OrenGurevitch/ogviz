@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from matplotlib.text import Text
 
-from ogviz.layout.collision import quoted
+from ogviz.layout.collision import line_points, quoted
 from ogviz.layout.overlap import (
     opaque_backing,
 )
@@ -45,8 +45,8 @@ def orientation_of(ax: Axes) -> Orientation:
         return recorded
     vertical = horizontal = 0
     for line in ax.lines:
-        xdata = np.asarray(line.get_xdata(), dtype=float)
-        ydata = np.asarray(line.get_ydata(), dtype=float)
+        points = line_points(line)
+        xdata, ydata = points[:, 0], points[:, 1]
         if xdata.size != 2:
             continue
         if float(xdata[0]) == float(xdata[1]):
@@ -101,10 +101,7 @@ def brackets_of(ax: Axes) -> list:
     # Nothing on this axes claims to be a bracket, so it was not drawn by this package. Infer.
     axis = 1 if orientation_of(ax) == "vertical" else 0
     return [
-        line
-        for line in ax.lines
-        if line.get_visible()
-        and _is_bracket(np.asarray(line.get_ydata() if axis else line.get_xdata(), dtype=float))
+        line for line in ax.lines if line.get_visible() and _is_bracket(line_points(line)[:, axis])
     ]
 
 
@@ -113,7 +110,7 @@ def bracket_tops_px(ax: Axes) -> list[float]:
     axis = 1 if orientation_of(ax) == "vertical" else 0
     tops = []
     for line in brackets_of(ax):
-        data = np.asarray(line.get_ydata() if axis == 1 else line.get_xdata(), dtype=float)
+        data = line_points(line)[:, axis]
         point = (0.0, float(np.max(data))) if axis == 1 else (float(np.max(data)), 0.0)
         tops.append(float(ax.transData.transform(point)[axis]))
     return sorted(tops)
@@ -218,8 +215,8 @@ def bracket_spans_px(ax: Axes) -> list[tuple[float, float, float]]:
     value_axis, category_axis = (1, 0) if upright else (0, 1)
     spans: list[tuple[float, float, float]] = []
     for line in brackets_of(ax):
-        along = np.asarray(line.get_ydata() if upright else line.get_xdata(), dtype=float)
-        across = np.asarray(line.get_xdata() if upright else line.get_ydata(), dtype=float)
+        points = line_points(line)
+        along, across = (points[:, 1], points[:, 0]) if upright else (points[:, 0], points[:, 1])
         top = float(np.max(along))
         near, far = float(np.min(across)), float(np.max(across))
 

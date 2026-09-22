@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout.bounds import panel_prefix
+from ogviz.layout.collision import line_points
 from ogviz.layout.render import ensure_rendered
 from ogviz.qc.reading import (
     filled_marks_over,
@@ -165,8 +166,8 @@ def _level_of(line, *, upright: bool) -> float:
     comment here recorded as fixed; it was fixed only for the panels that carry a tag, and the
     README's promise is that these checks work on any matplotlib figure, from any project.
     """
-    horizontal = np.asarray(line.get_ydata(), dtype=float)
-    vertical = np.asarray(line.get_xdata(), dtype=float)
+    points = line_points(line)
+    horizontal, vertical = points[:, 1], points[:, 0]
     if horizontal.size and np.ptp(horizontal) == 0.0 and np.ptp(vertical) != 0.0:
         return float(horizontal[0])  # a rule drawn across the panel: its level is y
     if vertical.size and np.ptp(vertical) == 0.0 and np.ptp(horizontal) != 0.0:
