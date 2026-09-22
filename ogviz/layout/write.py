@@ -7,6 +7,7 @@ of writing, so a broken figure cannot reach a README by being saved from somewhe
 from __future__ import annotations
 
 import io
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -254,7 +255,7 @@ def save(
     # INTO MEMORY FIRST, every format, and only then onto disk — measured byte-identical to writing
     # the path directly, for png, svg and pdf. The glyph gate raises as its block exits, so the
     # writes cannot sit inside it, and a later format failing must not strand an earlier one.
-    rendered: list[bytes] = []
+    rendered: list[tuple[Path, bytes]] = []
     with glyphs_must_render(), gate_already_run():
         for path in paths:
             stamps = reproducible_metadata(path)
@@ -263,19 +264,31 @@ def save(
             # Left out rather than passed as `None` where a format takes none: pgf refuses the
             # keyword itself.
             extra: dict[str, Any] = {} if stamps is None else {"metadata": stamps}
-            buffer = io.BytesIO()
-            fig.savefig(
-                buffer,
-                format=_format_of(path.suffix[1:]),
-                bbox_inches="tight" if crop else None,
-                facecolor=canvas,
-                dpi=dpi,
+            options: dict[str, Any] = {
+                "format": _format_of(path.suffix[1:]),
+                "bbox_inches": "tight" if crop else None,
+                "facecolor": canvas,
+                "dpi": dpi,
                 **extra,
-            )
-            rendered.append(buffer.getvalue())
+            }
+            if path.suffix == ".svg" and not plt.rcParams["svg.image_inline"]:
+                # An SVG that links its images rather than inlining them names them after its own
+                # file and writes them beside it, so it cannot be rendered into a buffer — the
+                # writer refuses one. It is rendered into a scratch directory under its real name,
+                # and every file that lands there is carried across with it.
+                with tempfile.TemporaryDirectory() as scratch:
+                    fig.savefig(Path(scratch) / path.name, **options)
+                    rendered.extend(
+                        (path.parent / written.name, written.read_bytes())
+                        for written in sorted(Path(scratch).iterdir())
+                    )
+                continue
+            buffer = io.BytesIO()
+            fig.savefig(buffer, **options)
+            rendered.append((path, buffer.getvalue()))
     # AFTER the gate: a refused figure used to leave an empty directory tree behind, and the
     # package's claim is that a refusal writes nothing.
-    for path, content in zip(paths, rendered, strict=True):
+    for path, content in rendered:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
     if close:

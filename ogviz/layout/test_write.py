@@ -364,3 +364,37 @@ def test_pdf_and_postscript_lose_the_version_stamp(tmp_path) -> None:
     written = save(_clean(), tmp_path, "fig", formats=("pdf", "eps"))
     for path in written:
         assert version not in path.read_bytes(), path.suffix
+
+
+def test_an_svg_that_links_its_images_is_written_with_them(tmp_path, monkeypatch) -> None:
+    """`svg.image_inline=False` names each image after the SVG and writes it beside it.
+
+    Such an SVG cannot be rendered into a buffer: the writer takes a buffer's missing name as an
+    empty one and drops `.image0.png` into the WORKING directory, linked from an SVG that will not
+    find it. So it is rendered under its real name elsewhere and carried across with its images.
+    The premise is asserted — the buffer route really does strand the image in the working
+    directory — so this is not a setting that happens to work either way.
+    """
+    import io
+
+    import numpy as np
+
+    elsewhere = tmp_path / "working"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    out = tmp_path / "out"
+    with matplotlib.rc_context({"svg.image_inline": False}):
+        fig, ax = plt.subplots(figsize=(3.0, 2.0))
+        ax.imshow(np.arange(16.0).reshape(4, 4))
+        fig.savefig(io.BytesIO(), format="svg")
+        stranded = list(elsewhere.iterdir())
+        assert stranded, "premise: a buffer strands the linked image in the working directory"
+        for path in stranded:
+            path.unlink()
+        paths = save(fig, out, "linked", formats=("svg",), check_overlap=False)
+    assert not list(elsewhere.iterdir()), "save stranded a linked image in the working directory"
+    tmp_path = out
+    assert paths == [tmp_path / "linked.svg"]
+    images = sorted(path.name for path in tmp_path.iterdir() if path.suffix == ".png")
+    assert images, "the linked image was not written beside the SVG"
+    assert all(name in (tmp_path / "linked.svg").read_text() for name in images)
