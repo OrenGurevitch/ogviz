@@ -35,7 +35,7 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap, Normalize, to_rgba
 from matplotlib.patches import Rectangle
 
-from ogviz.layout.ticks import typeset
+from ogviz.layout.ticks import format_value, typeset
 from ogviz.require import require
 from ogviz.tags import mark
 from ogviz.theme import INK, MUTED_INK, page_color
@@ -87,7 +87,7 @@ def effect_heatmap(
     p_values: NDArray[np.float64] | None = None,
     neutral: float = 0.0,
     reach: float | None = None,
-    value_format: str = "{:+,.2f}",
+    value_format: str | None = None,
     label_for: Callable[[float], str] | None = None,
     row_dividers: Sequence[int] = (),
     column_dividers: Sequence[int] = (),
@@ -102,6 +102,20 @@ def effect_heatmap(
     departure present, so the scale fits the data and stays symmetric. Pass it to hold one scale
     across several figures — a matrix whose colours mean something different from its neighbour's is
     worse than no colour at all.
+
+    `value_format` is a `str.format` spec for the printed numbers, the caller's to choose. LEFT OUT,
+    a number is printed by `format_value` at two decimals, signed when `neutral` is zero. It was the
+    spec `"{:+,.2f}"`, and that got two things wrong which `format_value` already gets right:
+
+    - a cell that IS zero printed `+0.00`, claiming a direction the one value with no direction
+      has not got — the thing `_scale_label` below refuses to do to the colour scale's midpoint;
+    - the sign is relative to ZERO, whatever `neutral` is. On a ratio matrix with `neutral=1.0`,
+      a cell of 0.80 — below neutral, drawn in the low colour — printed `+0.80`. Against a neutral
+      other than zero the default prints unsigned, and the colour says which side a cell is on.
+
+    A value that merely ROUNDS to zero keeps its sign (`-0.00`, `+0.00`), by `format_value`'s own
+    rule: that says "small, and which way", where a bare zero says "measured nothing". Every other
+    number prints the same string as before; the gallery's matrix prints identically.
 
     `row_dividers` and `column_dividers` are indices to rule a line BEFORE, for a matrix whose rows
     fall into groups.
@@ -143,6 +157,13 @@ def effect_heatmap(
     )
 
     colormap = diverging_map(colors)
+    signed = neutral == 0.0
+
+    def formatted(number: float) -> str:
+        if value_format is not None:
+            return typeset(value_format.format(number))
+        return format_value(number, decimals=2, strip_trailing_zeros=False, signed=signed)
+
     scale = Normalize(vmin=neutral - reach, vmax=neutral + reach)
     rows, columns = grid.shape
 
@@ -160,7 +181,7 @@ def effect_heatmap(
             # Per cell, from the fill actually behind it: one ink colour is unreadable at the dark
             # end of the map and white is unreadable in the pale middle.
             ink = page_color() if _luminance(fill) < DARK_FILL else INK
-            printed = MISSING_MARK if missing else typeset(value_format.format(value))
+            printed = MISSING_MARK if missing else formatted(value)
             number = ax.text(
                 column,
                 row,
@@ -227,7 +248,7 @@ def effect_heatmap(
             ScalarMappable(norm=scale, cmap=colormap),
             label=colorbar_label,
             ticks=bounds,
-            tick_labels=[_scale_label(value, neutral, value_format) for value in bounds],
+            tick_labels=[_scale_label(value, neutral, formatted) for value in bounds],
         )
 
 
@@ -259,7 +280,7 @@ def _stars_for(p: float, label_for: Callable[[float], str] | None) -> str:
     return "" if glyphs == NOT_SIGNIFICANT else glyphs
 
 
-def _scale_label(value: float, neutral: float, value_format: str) -> str:
+def _scale_label(value: float, neutral: float, formatted: Callable[[float], str]) -> str:
     """A bound on the colour scale, printed the way the cells print a number — except the middle.
 
     The cells use a signed format, which is right for a departure: plus 0.30 and minus 0.30 are
@@ -268,7 +289,7 @@ def _scale_label(value: float, neutral: float, value_format: str) -> str:
     value on it with no direction. `format_value(signed=True)` already draws this distinction for
     every other number this package prints; the sign is dropped here for the same reason.
     """
-    printed = value_format.format(value)
+    printed = formatted(value)
     if value != neutral:
         return printed
     return printed.lstrip("+") or printed
