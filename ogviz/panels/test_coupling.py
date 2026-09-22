@@ -94,6 +94,21 @@ def test_only_the_first_strip_names_its_rows() -> None:
     assert named[1] == []
 
 
+def test_the_rows_are_named_on_the_first_strip_drawn_not_under_the_first_column() -> None:
+    """It was `column == 0`, so a first leg with no estimates took every row name with it.
+
+    The premise is that the first column really has no strip: two strips for three legs.
+    """
+    rows = (Estimate("Pooled", 0.2, (0.1, 0.3), "#000000"),)
+    fig = plt.figure(figsize=(12, 6))
+    coupling_panels(fig, (_leg(), _leg(*rows), _leg(*rows)))
+    strips = [ax for ax in fig.axes if ax.get_ylim()[0] == pytest.approx(-0.7)]
+    assert len(strips) == 2, "the premise: the first leg draws no strip"
+    named = [[t.get_text() for t in ax.get_yticklabels() if t.get_text()] for ax in strips]
+    assert named == [["Pooled"], []]
+    plt.close(fig)
+
+
 def test_two_points_get_no_trend_line() -> None:
     """A line through two points describes those two points and nothing else."""
     _fig, ax = plt.subplots()

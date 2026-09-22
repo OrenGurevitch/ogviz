@@ -420,7 +420,10 @@ def coupling_panels(
     """One column per pair: the scatter above, its estimates below, all strips on one scale.
 
     Row labels are printed on the leftmost strip only. Repeating them under every column costs the
-    width the panels need and tells the reader nothing they did not learn from the first.
+    width the panels need and tells the reader nothing they did not learn from the first. The
+    leftmost strip DRAWN, not the strip under the first column: it was `column == 0`, so a first
+    leg with no estimates — which gets no strip at all — took every row label in the figure with
+    it, and the remaining strips were rows of intervals with nothing saying what any of them was.
 
     `reference` is where "no relationship" sits, passed to every strip AND to the shared scale so
     the two agree. There was no way to say it here: the strips took the default zero and the scale
@@ -452,7 +455,7 @@ def coupling_panels(
                 strip,
                 leg.estimates,
                 limits=scale,
-                name_the_rows=column == 0,
+                name_the_rows=len(strips) == 1,
                 label_for=label_for,
                 reference=reference,
             )
