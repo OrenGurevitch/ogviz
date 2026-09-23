@@ -40,7 +40,12 @@ import numpy as np
 from matplotlib.ticker import FuncFormatter
 
 from ogviz.layout.frame import color_scale
-from ogviz.layout.ticks import format_value, settle_corner_tick
+from ogviz.layout.ticks import (
+    format_value,
+    grouped_ticks,
+    groups_its_ticks,
+    settle_corner_tick,
+)
 from ogviz.require import require
 from ogviz.theme import MUTED_INK
 
@@ -123,6 +128,7 @@ def to_decibels(
     return 10.0 * np.log10(np.clip(np.nan_to_num(values, nan=smallest), smallest, None) / peak)
 
 
+@groups_its_ticks
 def spectrogram(
     ax: Axes,
     magnitudes: ArrayLike,
@@ -216,6 +222,10 @@ def spectrogram(
     # DC — so the corner states that origin twice and spells it two ways, "0" against "0.00".
     # Measured here before the fix, the two labels also overlapped by 7 px, and no gate catches it;
     # see `layout.ticks.settle_corner_tick` for why they are right not to and which copy goes.
+    # The time axis is grouped BEFORE the corner is settled, because settling freezes the labels the
+    # formatter prints at that moment; `groups_its_ticks` runs after and would find them fixed. An
+    # hour-long recording printed "3000" on its time axis and was refused by this package's gate.
+    grouped_ticks(ax, "x")
     settle_corner_tick(ax)
 
     if colorbar:

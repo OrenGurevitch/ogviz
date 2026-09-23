@@ -15,6 +15,9 @@ from matplotlib.text import Text
 from ogviz.layout.bounds import figure_text
 from ogviz.layout.collision import quoted
 from ogviz.layout.render import ensure_rendered
+
+# Defined beside the formatter that obeys them, so the rule and the fix read one set of patterns.
+from ogviz.layout.ticks import IDENTIFIER_TAIL, UNGROUPED, YEARS
 from ogviz.require import require
 
 if TYPE_CHECKING:
@@ -62,13 +65,6 @@ def one_minus_sign(fig: Figure) -> list[str]:
             f"{', '.join(sorted(minus)[:3])} use \u2212"
         ]
     return []
-
-
-UNGROUPED = re.compile(r"(?<![\d,.])\d{4,}(?![\d,]*\.?\d*%)(?!\.\d)")
-# A digit run closing a hyphenated token is an identifier, not a quantity: sub-1007, acq-1200.
-IDENTIFIER_TAIL = re.compile(r"[A-Za-z]\w*-$")
-
-YEARS = range(1800, 2200)
 
 
 # A figure whose smallest type would stack more than this many times up its short side is dense

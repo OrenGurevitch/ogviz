@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ogviz.layout import hairline_grid
+from ogviz.layout.ticks import groups_its_ticks
 from ogviz.marks import (
     BOX_COLOR,
     BOX_WIDTH,
@@ -131,6 +132,7 @@ def half_marks(
     )
 
 
+@groups_its_ticks
 def split_violins(
     ax: Axes,
     categories: Sequence[str],

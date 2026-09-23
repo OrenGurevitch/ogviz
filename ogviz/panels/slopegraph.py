@@ -28,6 +28,7 @@ import numpy as np
 
 from ogviz.layout import hairline_grid, legend_pill
 from ogviz.layout.stacking import place_end_labels
+from ogviz.layout.ticks import groups_its_ticks
 from ogviz.orientation import stamp_orientation
 from ogviz.require import require
 from ogviz.theme import INK, MUTED_INK
@@ -121,6 +122,7 @@ def crowded_ends(strands: Sequence[Strand], ax: Axes, *, gap_px: float = CROWDED
     ]
 
 
+@groups_its_ticks
 def slopegraph(
     ax: Axes,
     strands: Sequence[Strand],

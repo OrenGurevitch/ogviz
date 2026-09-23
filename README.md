@@ -266,6 +266,9 @@ ogviz
 │   ├── ticks
 │   │   ├── auto_decimals(value: float) -> int
 │   │   ├── format_value(...) -> ...
+│   │   ├── group_thousands(text: str) -> str
+│   │   ├── grouped_ticks(ax: Axes, axis: "Literal[x, y]") -> bool
+│   │   ├── groups_its_ticks(panel: Callable[P, R]) -> Callable[P, R]
 │   │   ├── round_ticks(low: float, high: float, count: int) -> list[float]
 │   │   ├── row_decimals(values: Iterable[float], *, scale: float) -> int
 │   │   ├── settle_corner_tick(ax: Axes) -> bool

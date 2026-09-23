@@ -260,3 +260,116 @@ def test_value_ticks_on_an_inverted_axis_keeps_the_inversion():
         assert all(min(before) < tick < max(before) for tick in ticks)
         assert limits() == before, "still inverted, and not moved"
         plt.close(_fig)
+
+
+@pytest.mark.parametrize(
+    ("text", "grouped"),
+    [
+        ("10000", "10,000"),
+        (f"{MINUS}15000", f"{MINUS}15,000"),
+        ("1200000", "1,200,000"),
+        ("12,000", "12,000"),  # already grouped
+        ("2024", "2024"),  # could be a year
+        ("sub-1007", "sub-1007"),  # an identifier's digits
+        ("1234.5", "1234.5"),  # a decimal is the check's to leave alone, so it is left alone here
+        ("12000.5", "12000.5"),  # and a longer one is not matched at a shorter run inside it
+        ("50%", "50%"),
+        ("0.25", "0.25"),
+    ],
+)
+def test_group_thousands_changes_exactly_what_the_check_reports(text, grouped) -> None:
+    """The formatter and `ungrouped_thousands` read one set of patterns, so what the check accepts
+    comes back identical and what it reports comes back grouped."""
+    from ogviz.layout.ticks import UNGROUPED, group_thousands
+
+    assert group_thousands(text) == grouped
+    assert not [m for m in UNGROUPED.finditer(grouped) if len(m.group(0)) > 4]
+
+
+def _large_panels():
+    import numpy as np
+
+    from ogviz import bar_panel, group_violins, line_panel, spectrogram
+    from ogviz.panels.bars import Series
+    from ogviz.panels.lines import Line
+
+    rng = np.random.default_rng(0)
+
+    def bars(ax):
+        bar_panel(ax, [Series("s", [12000.0, 15000.0, 17000.0], "#4A6136")], ["a", "b", "c"])
+
+    def violins(ax):
+        group_violins(
+            ax,
+            [
+                (0.0, rng.normal(20000.0, 2000.0, 40), "#E8A838", "#B97C10"),
+                (1.0, rng.normal(24000.0, 2000.0, 40), "#7C9A6E", "#4A6136"),
+            ],
+        )
+
+    def lines(ax):
+        line_panel(
+            ax, [Line(label="a", x=[0, 1, 2], y=[10000.0, 30000.0, 50000.0], color="#2E7CE0")]
+        )
+
+    def spectrum(ax):
+        spectrogram(
+            ax,
+            rng.random((30, 60)),
+            times=np.linspace(0.0, 3600.0, 60),
+            frequencies=np.linspace(0.0, 50.0, 30),
+        )
+
+    return {"bars": bars, "violins": violins, "lines": lines, "spectrogram": spectrum}
+
+
+@pytest.mark.parametrize("name", ["bars", "violins", "lines", "spectrogram"])
+def test_a_panel_of_large_values_is_not_refused_for_its_own_ticks(name) -> None:
+    """The panels left matplotlib's default formatter on the axis, which prints 10000, and this
+    package's gate refused them for ticks the caller never wrote.
+
+    The premise is asserted: the same axis handed back to the plain default formatter IS refused,
+    so the clean result is the grouping's doing and not data that happened to tick below 1,000.
+    """
+    from matplotlib.ticker import ScalarFormatter
+
+    from ogviz.qc import ungrouped_thousands
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    _large_panels()[name](ax)
+    assert not ungrouped_thousands(fig)
+
+    axis = ax.xaxis if name == "spectrogram" else ax.yaxis
+    labels = [label.get_text() for label in axis.get_ticklabels()]
+    axis.set_major_formatter(ScalarFormatter())
+    axis.set_ticks(axis.get_ticklocs())
+    fig.canvas.draw()
+    assert ungrouped_thousands(fig), f"premise: {labels} would have been refused ungrouped"
+    plt.close(fig)
+
+
+def test_grouping_leaves_a_callers_formatter_and_small_ticks_alone() -> None:
+    """Only matplotlib's untouched default is changed, it keeps its settings, and a tick below
+    1,000 prints exactly what matplotlib would have printed."""
+    from matplotlib.ticker import FuncFormatter, ScalarFormatter
+
+    from ogviz.layout.ticks import grouped_ticks
+
+    fig, (own, small) = plt.subplots(1, 2)
+    mine = FuncFormatter(lambda value, _pos: f"<{value:g}>")
+    own.yaxis.set_major_formatter(mine)
+    assert not grouped_ticks(own, "y")
+    assert own.yaxis.get_major_formatter() is mine
+
+    small.plot([0.0, 1.0], [-0.5, 750.0])
+    fig.canvas.draw()
+    before = [label.get_text() for label in small.get_yticklabels()]
+    assert grouped_ticks(small, "y")
+    assert not grouped_ticks(small, "y"), "a second call finds it already grouped"
+    fig.canvas.draw()
+    assert [label.get_text() for label in small.get_yticklabels()] == before
+    # matplotlib refuses `ticklabel_format` on anything that is not a ScalarFormatter, so a caller
+    # adjusting the notation after a panel must still be able to.
+    assert isinstance(small.yaxis.get_major_formatter(), ScalarFormatter)
+    small.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+    plt.close(fig)

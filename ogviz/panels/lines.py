@@ -30,7 +30,7 @@ import numpy as np
 from matplotlib.ticker import FuncFormatter, NullFormatter
 
 from ogviz.layout import hairline_grid, legend_pill
-from ogviz.layout.ticks import format_value
+from ogviz.layout.ticks import format_value, groups_its_ticks
 from ogviz.require import require
 from ogviz.theme import GRID, INK, LINE_SERIES, MUTED_INK
 
@@ -194,6 +194,7 @@ def _tick_text(value: float) -> str:
     return format_value(value)
 
 
+@groups_its_ticks
 def line_panel(
     ax: Axes,
     lines: Sequence[Line],

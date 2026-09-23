@@ -24,7 +24,7 @@ from matplotlib.path import Path
 from ogviz import units
 from ogviz.layout.frame import hairline_grid
 from ogviz.layout.panels import text_width_points
-from ogviz.layout.ticks import typeset
+from ogviz.layout.ticks import groups_its_ticks, typeset
 from ogviz.marks import (
     Z_ERROR,
     _draw_error_bars,
@@ -467,6 +467,7 @@ def _slot_points(ax: Axes, each: float, orientation: Orientation) -> float:
     return units.to_points(abs(float(along)), fig=figure)
 
 
+@groups_its_ticks
 def bar_panel(
     ax: Axes,
     series: Sequence[Series],

@@ -21,6 +21,7 @@ import numpy as np
 
 from ogviz.layout import drawn_value_extent, hairline_grid, ticks_over_data
 from ogviz.layout.overlap import DEFAULT_MIN_GAP
+from ogviz.layout.ticks import groups_its_ticks
 from ogviz.marks import CATEGORY_HALF_SLOT, iqr_box, mean_line, points, violin, widths_of
 from ogviz.orientation import (
     category_limits,
@@ -457,6 +458,7 @@ def _fit_bracket_stack(
     )
 
 
+@groups_its_ticks
 def group_violins(
     ax: Axes,
     groups: Sequence[tuple[float, NDArray[np.float64], str, str]],

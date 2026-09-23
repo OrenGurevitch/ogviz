@@ -16,14 +16,19 @@ display fact, so it lives here; the DATA is never touched.
 
 from __future__ import annotations
 
+import functools
 import math
+import re
 from typing import TYPE_CHECKING, Literal
+
+from matplotlib.axes import Axes as MplAxes
+from matplotlib.ticker import ScalarFormatter
 
 from ogviz.orientation import is_vertical, require_linear_value_axis, value_span
 from ogviz.require import require
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
     from matplotlib.axes import Axes
 
@@ -61,6 +66,99 @@ def round_ticks(low: float, high: float, count: int) -> list[float]:
             return [first + index * step for index in range(count)]
     even = (inner_high - inner_low) / (count - 1)
     return [inner_low + even * index for index in range(count)]
+
+
+# The house rule on grouping, stated once for the check that enforces it
+# (`qc.typography.ungrouped_thousands`) and for the formatter that obeys it (`grouped_ticks`), so
+# the two cannot disagree about what counts. A run of four or more digits not inside a decimal
+# and not ending a percentage is a number a reader counts...
+#
+# `(?!\d)` straight after the run stops the engine BACKTRACKING into it: without it, "12000.5" was
+# refused at the whole run by the decimal lookahead and then matched at "1200", so the check
+# reported a number the text does not contain.
+UNGROUPED = re.compile(r"(?<![\d,.])\d{4,}(?!\d)(?![\d,]*\.?\d*%)(?!\.\d)")
+# ...unless it closes a hyphenated token, which is an identifier: sub-1007, acq-1200...
+IDENTIFIER_TAIL = re.compile(r"[A-Za-z]\w*-$")
+# ...or is four digits that could be a year, an identifier no figure says is one.
+YEARS = range(1800, 2200)
+
+
+def group_thousands(text: str) -> str:
+    """Put a comma in every digit run `ungrouped_thousands` would report, and change nothing else.
+
+    Exactly the check's own reading, from the same three patterns: a year, an identifier's digits
+    and a decimal's fraction are left as they are, so text the check already accepts comes back
+    identical.
+    """
+
+    def group(match: re.Match[str]) -> str:
+        run = match.group(0)
+        if len(run) == 4 and int(run) in YEARS:
+            return run
+        if IDENTIFIER_TAIL.search(text[: match.start()]):
+            return run
+        return f"{int(run):,}"
+
+    return UNGROUPED.sub(group, text)
+
+
+class _GroupedScalar(ScalarFormatter):
+    """matplotlib's default number formatter, with `group_thousands` applied to what it prints.
+
+    A SUBCLASS, not a wrapper around the axis's formatter, because matplotlib checks the type:
+    `ax.ticklabel_format(...)` raises unless the formatter is a `ScalarFormatter`, so a wrapper
+    would have broken every caller who adjusts the notation after a panel is drawn. Everything but
+    the digits — decimals, the offset, the minus sign, which ticks carry a label — is the parent's,
+    built from the same rcParams, so a tick below 1,000 is byte-identical.
+    """
+
+    def __call__(self, x, pos=None) -> str:
+        return group_thousands(super().__call__(x, pos))
+
+    def get_offset(self) -> str:
+        return group_thousands(super().get_offset())
+
+
+def grouped_ticks(ax: Axes, axis: Literal["x", "y"]) -> bool:
+    """Group the thousands on an axis still carrying matplotlib's DEFAULT number formatter.
+
+    Every panel here drew its value axis with matplotlib's `ScalarFormatter`, which prints 10000,
+    so the package's own panels were refused by its own gate — `ungrouped_thousands` — for ticks
+    the caller never wrote, on any data from 1,000 up. Every consumer called `value_ticks` by hand
+    to get past it.
+
+    Only the default formatter is changed, and it keeps its settings: a caller who set their
+    own (or called `value_ticks`, which replaces it) keeps it, and so does a log axis, whose labels
+    are powers and not digit runs. Returns whether it changed anything.
+    """
+    target = ax.xaxis if axis == "x" else ax.yaxis
+    formatter = target.get_major_formatter()
+    if type(formatter) is not ScalarFormatter:
+        return False
+    # RE-CLASSED in place rather than rebuilt: the subclass adds no state, so the instance keeps
+    # every setting it had — including a `ticklabel_format` a caller applied before the panel,
+    # which matplotlib exposes no public getter to copy — and the axis keeps the object it holds.
+    formatter.__class__ = _GroupedScalar
+    return True
+
+
+def groups_its_ticks[**P, R](panel: Callable[P, R]) -> Callable[P, R]:
+    """Run a panel, then `grouped_ticks` on both axes of the axes it drew on (its first argument).
+
+    Both, not only the value axis, because the check reads both and a category axis is labelled by
+    a fixed formatter this leaves alone — as it does any axis the panel or its caller formatted.
+    """
+
+    @functools.wraps(panel)
+    def drawn(*args: P.args, **kwargs: P.kwargs) -> R:
+        result = panel(*args, **kwargs)
+        ax = args[0] if args else kwargs.get("ax")
+        if isinstance(ax, MplAxes):
+            grouped_ticks(ax, "x")
+            grouped_ticks(ax, "y")
+        return result
+
+    return drawn
 
 
 MINUS = "\u2212"  # the typographic minus matplotlib sets its own tick labels with

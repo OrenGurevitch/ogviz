@@ -29,6 +29,7 @@ from matplotlib import patheffects
 from matplotlib.ticker import MaxNLocator
 
 from ogviz.layout import hairline_grid
+from ogviz.layout.ticks import groups_its_ticks
 from ogviz.require import require
 from ogviz.significance import stars
 from ogviz.tags import mark
@@ -192,6 +193,7 @@ def trend_line(
     return float(ends[-1]), float(slope * ends[-1] + intercept)
 
 
+@groups_its_ticks
 def scatter_panel(
     ax: Axes,
     leg: Leg,
@@ -306,6 +308,7 @@ def _star_column(
         mark(drawn, "anchored")
 
 
+@groups_its_ticks
 def estimate_strip(
     ax: Axes,
     estimates: Sequence[Estimate],
