@@ -24,6 +24,7 @@ from ogviz.layout import (
     dead_space,
     figure_margins,
     fit_under_header,
+    format_value,
     grid_warnings,
     hairline_grid,
     label_rows,
@@ -60,7 +61,7 @@ from ogviz.layout import (
 from ogviz.layout.axis import settle_axis_labels
 from ogviz.layout.header import settle_header
 from ogviz.layout.panels import settle_caption
-from ogviz.layout.ticks import settle_corner_tick
+from ogviz.layout.ticks import settle_corner_tick, typeset
 from ogviz.marks import (
     Z_ERROR,
     Z_IQR,
@@ -220,6 +221,7 @@ __all__ = [
     "family_for",
     "figure_margins",
     "fit_under_header",
+    "format_value",
     "glyphs_must_render",
     "grid_warnings",
     "group_violins",
@@ -284,6 +286,7 @@ __all__ = [
     "to_decibels",
     "trend_line",
     "trim_margins",
+    "typeset",
     "unguard",
     "use_house_ink",
     "use_house_style",
