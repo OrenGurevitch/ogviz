@@ -36,7 +36,8 @@ Three things the names do not give away:
 - **`titled` returns a float** — where the header ends. `fit_under_header` needs it, or the panels
   grow into the title.
 - **`use_house_style()` once per process** — a second call resets the font family, so a project
-  that pins its own font after the first call loses the pin. Pass `PAPER_WHITE` for a manuscript;
+  that pins its own font after the first call loses the pin; one that pins a font takes
+  `use_house_ink()` alone, which is everything but the type. Pass `PAPER_WHITE` for a manuscript;
   the default page is a warm off-white that composites as a grey rectangle on a journal's white.
 
 Everything else is documented where it lives: each function's docstring carries the reasoning and
