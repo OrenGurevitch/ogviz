@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING
 
 from ogviz import units
 from ogviz.layout.bounds import figure_text
-from ogviz.layout.panels import text_width_points, wrap_to_width
+from ogviz.layout.panels import CAPTION_CLEARANCE_PX, text_width_points, wrap_to_width
 from ogviz.layout.render import ensure_rendered
 from ogviz.theme import INK, MUTED_INK
 
@@ -163,7 +163,33 @@ def caption(
         used = float(drawn.get_window_extent().height)
         if not managed:
             fig.subplots_adjust(bottom=max(0.06, (used + 0.030 * height_px) / height_px))
+            _clear_the_note(fig, drawn, height_px)
     return unreserved
+
+
+def _clear_the_note(fig: Figure, note: Text, height_px: float) -> None:
+    """Raise the panels until their tick labels and x-label clear the note, not only their frame.
+
+    The reservation above places the AXES BOX a little above the note, and a panel's decorations
+    hang below its box: the tick labels and the x-label. Measured on a 6 in wide figure with an
+    x-label and a two-line note, the label ran 44-49 px INTO the note, and off the bottom of the
+    canvas on the shorter figures — every one refused by the gate, and a consumer reserved the room
+    again by hand after every caption.
+
+    Measured from the rendered panels, as `settle_caption` does for a `panel_row` figure, so a
+    rotated tick row or a two-line label is handled by the same code as none. A figure whose
+    decorations already clear the note keeps exactly the layout it had.
+    """
+    for _attempt in range(3):
+        fig.canvas.draw()
+        boxes = [ax.get_tightbbox() for ax in fig.axes if ax.axison and ax.get_visible()]
+        reaching = [float(box.y0) for box in boxes if box is not None]
+        if not reaching:
+            return
+        short = float(note.get_window_extent().y1) + CAPTION_CLEARANCE_PX - min(reaching)
+        if short <= 0.5:
+            return
+        fig.subplots_adjust(bottom=fig.subplotpars.bottom + short / height_px)
 
 
 def longest_unbreakable(text: str, size: float) -> float:

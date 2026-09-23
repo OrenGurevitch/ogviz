@@ -136,3 +136,36 @@ def test_a_genuinely_unbreakable_word_still_says_so() -> None:
     assert said and "is one word and cannot be wrapped" in said[0]
     assert "shorter wording or smaller type" in said[0]
     plt.close(fig)
+
+
+@pytest.mark.parametrize("height", [3.0, 4.0, 6.0])
+def test_a_note_clears_the_x_label_and_ticks_not_only_the_frame(height) -> None:
+    """The note reserved room under the axes BOX, and the x-label and tick labels hang below it.
+
+    Measured on a 6 in wide figure with a two-line note: the label ran into the note, and off the
+    canvas on the shorter heights. The premise is asserted on an identical figure placed the old
+    way — axes bottom at the note plus the old margin — so the clean result is the fix's.
+    """
+    from ogviz.layout.panels import CAPTION_CLEARANCE_PX
+    from ogviz.qc import audit
+
+    note = (
+        "Source: invented. A note long enough to wrap onto a second line when the figure is "
+        "narrow, which it is here."
+    )
+    fig, ax = plt.subplots(figsize=(6.0, height))
+    ax.plot([0.0, 1.0], [0.0, 1.0])
+    ax.set_xlabel("Time (s)")
+    caption(fig, note)
+    fig.canvas.draw()
+    drawn = fig.texts[-1]
+    lowest = ax.get_tightbbox()
+    assert lowest is not None
+    assert lowest.y0 - drawn.get_window_extent().y1 >= CAPTION_CLEARANCE_PX - 0.5
+    assert not audit(fig)
+
+    used = drawn.get_window_extent().height
+    fig.subplots_adjust(bottom=max(0.06, (used + 0.030 * fig.bbox.height) / fig.bbox.height))
+    fig.canvas.draw()
+    assert audit(fig), "premise: placed by the frame alone, the label lands on the note"
+    plt.close(fig)
