@@ -9,6 +9,10 @@ an axis buried behind the bars, a star closer to one bracket than the next, two 
 same colour to a reader with colour-vision deficiency — it checks the rendered pixels and raises
 instead of writing. Colours, p-values and units stay yours.
 
+![A bar chart the gate refused, beside the complaints it raised](examples/out/13_the_gate.png)
+
+<sub><b>6</b> a figure it refused, and why — every word on the right comes from <code>audit</code></sub>
+
 ```bash
 uv add "ogviz @ git+https://github.com/OrenGurevitch/ogviz"
 ```
@@ -114,10 +118,7 @@ so one can be asked for by name — 3E, 1C.
 
 ## The QC gate
 
-![](examples/out/13_the_gate.png)
-
-<sub><b>6</b> every word on the right comes from <code>audit</code></sub>
-
+Plate 6, at the top of this page, is the gate at work.
 `save` runs it. `guard()` extends it to every `fig.savefig`, whoever called it; `OGVIZ_GUARD=1` does
 the same with no code change. Both also refuse a tofu box — text with no glyph in the resolved font.
 
