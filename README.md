@@ -436,13 +436,13 @@ ogviz
 ├── theme
 │   ├── family_for(text: str) -> str | None
 │   ├── glyphs_must_render() -> Iterator[None]
-│   ├── house_style(canvas: str) -> Iterator[None]
+│   ├── house_style(canvas: str, *, svg_salt: str) -> Iterator[None]
 │   ├── identity_colors(count: int, *, saturation: float, value: float) -> tuple[str, ...]
 │   ├── page_color() -> str
-│   ├── use_house_ink(canvas: str) -> None
-│   ├── use_house_style(canvas: str) -> None
-│   ├── use_house_type() -> None
-│   └── use_reproducible_svg() -> None
+│   ├── use_house_ink(canvas: str, *, svg_salt: str) -> None
+│   ├── use_house_style(canvas: str, *, svg_salt: str) -> None
+│   ├── use_house_type(*, svg_salt: str) -> None
+│   └── use_reproducible_svg(salt: str) -> None
 └── units
     ├── inches_to_points(inches: float) -> float
     ├── midpoint(ax: Axes, low: float, high: float, *, orientation: str) -> float

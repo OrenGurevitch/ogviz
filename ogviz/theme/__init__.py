@@ -213,7 +213,10 @@ def page_color() -> str:
     return str(mpl.rcParams["figure.facecolor"])
 
 
-def use_reproducible_svg() -> None:
+SVG_SALT = "ogviz"  # the default id salt; any fixed string gives reproducible bytes
+
+
+def use_reproducible_svg(salt: str = SVG_SALT) -> None:
     """Make an SVG re-render the same bytes: fix the salt matplotlib randomises its ids with.
 
     Its own call rather than a line inside one of the halves. It landed in `use_house_ink`, which is
@@ -222,13 +225,18 @@ def use_reproducible_svg() -> None:
     machines, which is this same requirement, one layer up. A project that pins its own COLOURS and
     takes the house type got nothing, and had no way to find out why its gallery still churned.
 
-    Both halves call it, so `use_house_style()` and either half on its own all still set it; a
-    project wanting a salt of its own sets `svg.hashsalt` after.
+    Both halves call it, so `use_house_style()` and either half on its own all still set it.
+
+    `salt` is the string the ids are derived from. Any fixed one makes the bytes reproducible; a
+    project whose SVGs are already committed under its own salt passes that one, since changing the
+    salt rewrites every id in every file. Every style function takes it as `svg_salt=` and hands it
+    through — projects were setting `svg.hashsalt` again after each call, which the next call to a
+    half silently undid.
     """
     # A fixed salt makes matplotlib's clip-path ids a function of the figure instead of the run, so
     # re-rendering an unchanged figure rewrites the same bytes and `git diff` on a committed gallery
     # shows only what actually changed. `save` drops the date stamp, which is the other half.
-    mpl.rcParams["svg.hashsalt"] = "ogviz"
+    mpl.rcParams["svg.hashsalt"] = salt
     # And text stays TEXT rather than being traced into outlines. This sat in `use_house_type` until
     # 2026-08-07, which was the same misfiling the salt had: it is a SERIALISATION decision, not a
     # typographic one, and the project most likely to need it is the one that calls neither type
@@ -239,7 +247,7 @@ def use_reproducible_svg() -> None:
     mpl.rcParams["svg.fonttype"] = "none"
 
 
-def use_house_type() -> None:
+def use_house_type(*, svg_salt: str = SVG_SALT) -> None:
     """Set the TYPOGRAPHY every house figure shares: families, sizes, weight.
 
     Separate from the ink because a project can be unable to take it. One that stacks its
@@ -268,10 +276,10 @@ def use_house_type() -> None:
             "legend.fontsize": TICK_SIZE,
         }
     )
-    use_reproducible_svg()
+    use_reproducible_svg(svg_salt)
 
 
-def use_house_ink(canvas: str = CANVAS) -> None:
+def use_house_ink(canvas: str = CANVAS, *, svg_salt: str = SVG_SALT) -> None:
     """Set the COLOURS and the weights every house figure shares — everything but the type.
 
     `canvas` defaults to the warm page, which is what these figures are read on: it cuts glare and
@@ -305,28 +313,28 @@ def use_house_ink(canvas: str = CANVAS) -> None:
             "legend.frameon": False,
         }
     )
-    use_reproducible_svg()
+    use_reproducible_svg(svg_salt)
 
 
-def use_house_style(canvas: str = CANVAS) -> None:
+def use_house_style(canvas: str = CANVAS, *, svg_salt: str = SVG_SALT) -> None:
     """Both halves, which is what a project with no constraint on its font wants. Call once.
 
     Unchanged in what it sets — `use_house_ink` plus `use_house_type` is exactly the set this always
     wrote, and a test holds that so the split cannot drift into a difference.
     """
-    use_house_ink(canvas)
-    use_house_type()
+    use_house_ink(canvas, svg_salt=svg_salt)
+    use_house_type(svg_salt=svg_salt)
 
 
 @contextmanager
-def house_style(canvas: str = CANVAS) -> Iterator[None]:
+def house_style(canvas: str = CANVAS, *, svg_salt: str = SVG_SALT) -> Iterator[None]:
     """`use_house_style()` for the duration of a `with` block, then put rcParams back.
 
     `use_house_style()` writes global state, so a process that renders one figure in this style
     and another in a project's own cannot use it twice. This scopes it.
     """
     with mpl.rc_context():
-        use_house_style(canvas)
+        use_house_style(canvas, svg_salt=svg_salt)
         yield
 
 

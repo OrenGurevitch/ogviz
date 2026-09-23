@@ -226,3 +226,36 @@ def test_identity_colors_refuses_zero_as_series_colors_does() -> None:
     with pytest.raises(AssertionError, match="at least one"):
         series_colors(0)
     assert len(identity_colors(1)) == 1
+
+
+def test_every_style_function_hands_a_projects_svg_salt_through() -> None:
+    """Projects set `svg.hashsalt` again after each style call, and the next half silently undid it.
+
+    The default is unchanged — every committed SVG in this repo was written under it.
+    """
+    import matplotlib as mpl
+
+    from ogviz.theme import (
+        SVG_SALT,
+        house_style,
+        use_house_ink,
+        use_house_style,
+        use_house_type,
+        use_reproducible_svg,
+    )
+
+    assert SVG_SALT == "ogviz"
+    with mpl.rc_context():
+        for call in (
+            lambda: use_reproducible_svg("mine"),
+            lambda: use_house_type(svg_salt="mine"),
+            lambda: use_house_ink(svg_salt="mine"),
+            lambda: use_house_style(svg_salt="mine"),
+        ):
+            mpl.rcParams["svg.hashsalt"] = None
+            call()
+            assert mpl.rcParams["svg.hashsalt"] == "mine"
+        with house_style(svg_salt="mine"):
+            assert mpl.rcParams["svg.hashsalt"] == "mine"
+        use_house_style()
+        assert mpl.rcParams["svg.hashsalt"] == SVG_SALT
