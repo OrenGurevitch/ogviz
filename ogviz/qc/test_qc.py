@@ -720,3 +720,30 @@ def test_a_wide_bracket_joins_the_columns_of_every_narrow_one_it_spans() -> None
     assert [sorted(column) for column in columns] == [[10.0, 11.0, 12.0]]
     apart = _overlapping_columns([(10.0, 0.0, 1.0), (11.0, 3.0, 4.0)])
     assert sorted(sorted(column) for column in apart) == [[10.0], [11.0]], "disjoint stays apart"
+
+
+def test_a_halo_in_the_figures_own_page_colour_is_recognised() -> None:
+    """The halo was compared against the house page from the rcParams at audit time, so a label
+    haloed in the figure's own page colour — a white page for a journal — was told to knock out a
+    gridline it already knocked out. The premise is the same label on the same white page with a
+    halo that does NOT match it, which is reported."""
+    import matplotlib.patheffects as effects
+
+    from ogviz.layout.collision import labels_crossing_a_rule
+
+    def labelled(halo: str) -> list:
+        fig, ax = plt.subplots(figsize=(5.0, 3.0))
+        fig.set_facecolor("white")
+        ax.set_facecolor("white")
+        ax.set(xlim=(0.0, 1.0), ylim=(0.0, 1.0), yticks=[0.0, 0.5, 1.0])
+        ax.grid(axis="y")
+        ax.plot([0.0, 0.2, 1.0], [0.1, 0.15, 0.9])
+        stroke = effects.withStroke(linewidth=4.0, foreground=halo)
+        ax.text(0.7, 0.5, "label", ha="center", va="center", path_effects=[stroke])
+        fig.canvas.draw()
+        found = labels_crossing_a_rule(fig)
+        plt.close(fig)
+        return found
+
+    assert labelled("#FF0000"), "premise: a halo that is not the page is not a knockout"
+    assert not labelled("white")

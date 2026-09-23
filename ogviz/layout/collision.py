@@ -442,12 +442,10 @@ def _haloed(text: Text) -> bool:
     quiet one: `getattr(..., {})` would find nothing, every haloed label would start being reported
     as crossing a gridline with nothing behind it, and the message would be about the label rather
     than about this function. `test_a_halo_knocks_a_gridline_out_as_well_as_a_box_does` in
-    `qc/test.py` is what turns that into a failing test instead — if it ever breaks on a matplotlib
-    upgrade, this private read is the first place to look.
+    `qc/test_qc.py` is what turns that into a failing test instead — if it ever breaks on a
+    matplotlib upgrade, this private read is the first place to look.
     """
-    from ogviz.theme import page_color
-
-    page = to_rgba(page_color())
+    backgrounds = _behind(text)
     for effect in text.get_path_effects():
         settings = getattr(effect, "_gc", None)
         if not isinstance(settings, dict):
@@ -456,9 +454,29 @@ def _haloed(text: Text) -> bool:
         if foreground is None or not settings.get("linewidth", 0.0):
             continue
         red, green, blue, alpha = to_rgba(foreground)
-        if alpha >= 1.0 and (red, green, blue) == page[:3]:
+        if alpha >= 1.0 and (red, green, blue) in backgrounds:
             return True
     return False
+
+
+def _behind(text: Text) -> set[tuple[float, float, float]]:
+    """The colours a halo can match and still read as the page: what is actually behind the text.
+
+    It compared against `page_color()` alone, which reads the rcParams in force WHEN THE AUDIT RUNS.
+    A figure whose page is set on the figure or the axes — a white one for a journal, or one audited
+    outside the style it was drawn under — had every correctly haloed label reported as crossing a
+    gridline with nothing behind it. The axes' own face counts where it is painted, the figure's
+    where the axes lets it through, and the house page still counts, as it always did.
+    """
+    from ogviz.theme import page_color
+
+    colours = {to_rgba(page_color())[:3]}
+    figure = text.get_figure(root=True)
+    if figure is not None:
+        colours.add(to_rgba(figure.get_facecolor())[:3])
+    if text.axes is not None and to_rgba(text.axes.get_facecolor())[3] > 0.0:
+        colours.add(to_rgba(text.axes.get_facecolor())[:3])
+    return colours
 
 
 def clear_position(
