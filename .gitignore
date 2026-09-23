@@ -20,3 +20,9 @@ build/
 *.egg-info/
 .coverage
 htmlcov/
+
+# Local assistant rules; CLAUDE.md is ignored above, and AGENTS.md is a symlink to it.
+AGENTS.md
+
+# Agent worktrees: a git worktree lives in here, which must never be committed.
+.claude/
