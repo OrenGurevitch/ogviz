@@ -457,3 +457,23 @@ def test_a_boolean_emphasis_is_not_a_category_index() -> None:
     _fig, ax = plt.subplots()
     with pytest.raises(AssertionError, match="category index"):
         bar_panel(ax, _two_series(), ["a", "b"], emphasis=True)  # type: ignore[arg-type]
+
+
+def test_value_labels_take_a_size_and_weight_and_default_to_the_house_ones() -> None:
+    """A project re-implemented `value_labels` to set the labels' size and weight."""
+    from ogviz.panels.bars import value_labels
+    from ogviz.theme import VALUE_LABEL_SIZE
+
+    fig, (house, own) = plt.subplots(1, 2)
+    for ax in (house, own):
+        ax.bar([0.0, 1.0], [1.0, 2.0])
+        ax.set_ylim(0.0, 3.0)
+    positions, values = np.array([0.0, 1.0]), np.array([1.0, 2.0])
+    value_labels(house, positions, values)
+    value_labels(own, positions, values, fontsize=8.0, weight="normal", emphasis=1)
+    assert {(t.get_fontsize(), t.get_fontweight()) for t in house.texts} == {
+        (VALUE_LABEL_SIZE, "bold")
+    }
+    assert [t.get_fontsize() for t in own.texts] == [8.0, 8.0]
+    assert [t.get_fontweight() for t in own.texts] == ["normal", "normal"]
+    plt.close(fig)

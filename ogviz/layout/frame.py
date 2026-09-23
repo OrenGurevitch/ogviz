@@ -36,19 +36,35 @@ def hairline_grid(ax: Axes, *, axis: Literal["x", "y"] = "y") -> None:
     ax.set_axisbelow(True)
 
 
-def baseline(ax: Axes, *, axis: Literal["x", "y"] = "x") -> None:
+def baseline(
+    ax: Axes,
+    *,
+    axis: Literal["x", "y"] = "x",
+    linewidth: float = 1.2,
+    color: str = MUTED_INK,
+) -> None:
     """A quiet rule on the category axis, and a hairline on the value axis.
 
     Not a heavy black bar. The category axis is a boundary, not data: at 2 pt of ink it competes
     with the marks for attention and, where a tick label sits on it, reads as a broken line rather
     than an axis.
+
+    `linewidth` and `color` are the category rule's, defaulting to the house values; the value-axis
+    hairline is not adjustable here, since it is the grid's colour by design. A project
+    re-implemented this to set the rule's weight.
     """
     near, far = ("bottom", "left") if axis == "x" else ("left", "bottom")
-    ax.spines[near].set(linewidth=1.2, color=MUTED_INK)
+    ax.spines[near].set(linewidth=linewidth, color=color)
     ax.spines[far].set(linewidth=1.0, color=GRID)
 
 
-def zero_baseline(ax: Axes, *, axis: Literal["x", "y"] = "x") -> None:
+def zero_baseline(
+    ax: Axes,
+    *,
+    axis: Literal["x", "y"] = "x",
+    linewidth: float = 1.4,
+    color: str = MUTED_INK,
+) -> None:
     """Heavy ink line at zero on the VALUE axis, for bars that grow from zero rather than the frame.
 
     `axis` is the CATEGORY axis, as in `baseline` beside it: `"x"` for an upright panel, where the
@@ -57,14 +73,15 @@ def zero_baseline(ax: Axes, *, axis: Literal["x", "y"] = "x") -> None:
     panel the rule the bars are measured from landed across the categories.
 
     Drawn wherever zero is — matplotlib clips it when zero is out of view, and a signed panel that
-    hides zero is the caller's decision, not this function's.
+    hides zero is the caller's decision, not this function's. `linewidth` and `color` are the zero
+    rule's, defaulting to the house values.
     """
     if axis == "x":
-        ax.axhline(0.0, color=MUTED_INK, linewidth=1.4, zorder=4)
+        ax.axhline(0.0, color=color, linewidth=linewidth, zorder=4)
         ax.spines["bottom"].set_visible(False)
         ax.spines["left"].set(linewidth=1.0, color=GRID)
     else:
-        ax.axvline(0.0, color=MUTED_INK, linewidth=1.4, zorder=4)
+        ax.axvline(0.0, color=color, linewidth=linewidth, zorder=4)
         ax.spines["left"].set_visible(False)
         ax.spines["bottom"].set(linewidth=1.0, color=GRID)
     ax.tick_params(axis=axis, length=0.0)

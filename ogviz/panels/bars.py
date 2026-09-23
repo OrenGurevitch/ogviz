@@ -349,6 +349,8 @@ def value_labels(
     knockout_colors: Sequence[str] | None = None,
     orientation: Orientation = "vertical",
     slot_points: float | None = None,
+    fontsize: float = VALUE_LABEL_SIZE,
+    weight: str = "bold",
 ) -> None:
     """Print each bar's value beyond its free end, clear of the whisker cap.
 
@@ -369,19 +371,24 @@ def value_labels(
     an index means that one, and an EMPTY collection means none of them — which is not the same
     thing as None and is what a grouped panel needs for the series the emphasis is not in. Passing
     None there instead would have made that whole series bold beside one muted one.
+
+    `fontsize` and `weight` are the emphasised labels' type; a label outside `emphasis` is set
+    normal whatever `weight` says. Both default to the house values, and `slot_points` still
+    shrinks from `fontsize` when a label would reach the next bar. A project re-implemented this
+    function to set them.
     """
     # A label belongs to one bar and must not spill onto its neighbour: printed over the bar beside
     # it, a number reads as that bar's. Fitted to the slot rather than assumed to fit, because
     # whether it does depends on the font — these labels fitted in Arial and reached 66 px onto the
     # next bar in DejaVu, which is the wider font the figures are checked against.
-    fitted_size = VALUE_LABEL_SIZE
+    fitted_size = fontsize
     if slot_points is not None:
         spelling = _format_of(values, value_format)
         widest = max(
-            text_width_points(typeset(spelling.format(value)), VALUE_LABEL_SIZE) for value in values
+            text_width_points(typeset(spelling.format(value)), fontsize) for value in values
         )
         if widest > slot_points:
-            fitted_size = max(VALUE_LABEL_SIZE * slot_points / widest, VALUE_LABEL_SIZE * 0.6)
+            fitted_size = max(fontsize * slot_points / widest, fontsize * 0.6)
     require(
         knockout_colors is None or len(knockout_colors) == len(values),
         f"{len(knockout_colors or ())} knockout colours for {len(values)} labels; "
@@ -410,7 +417,7 @@ def value_labels(
             ha=("center" if upright else ("right" if beyond else "left")),
             va=(("top" if beyond else "bottom") if upright else "center"),
             fontsize=fitted_size,
-            fontweight="bold" if picked is None or index in picked else "normal",
+            fontweight=weight if picked is None or index in picked else "normal",
             color=INK if picked is None or index in picked else MUTED_INK,
             zorder=Z_LABEL,
             bbox=(

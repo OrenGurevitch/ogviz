@@ -218,14 +218,14 @@ ogviz
 │   │   ├── required_margins(figures: Iterable[Figure], *, pad: float) -> Margins
 │   │   └── trim_margins(fig: Figure, *, pad_px: float) -> bool
 │   ├── frame
-│   │   ├── baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
+│   │   ├── baseline(ax: Axes, *, axis: "Literal[x, y]", linewidth: float, color: str) -> None
 │   │   ├── color_scale(...) -> ...
 │   │   ├── hairline_grid(ax: Axes, *, axis: "Literal[x, y]") -> None
 │   │   ├── is_color_scale(ax: Axes) -> bool
 │   │   ├── label_rows(...) -> ...
 │   │   ├── legend_pill(target: Axes | Figure, **kwargs: object) -> Legend
 │   │   ├── pill_frame(legend: Legend) -> Legend
-│   │   └── zero_baseline(ax: Axes, *, axis: "Literal[x, y]") -> None
+│   │   └── zero_baseline(...) -> ...
 │   ├── header
 │   │   ├── fit_under_header(...) -> ...
 │   │   ├── panel_left_edge(fig: Figure) -> float

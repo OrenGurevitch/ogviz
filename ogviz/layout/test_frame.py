@@ -120,3 +120,25 @@ def test_label_rows_says_what_is_missing_rather_than_dividing_by_zero() -> None:
     _fig, ax = plt.subplots()
     with pytest.raises(AssertionError, match="at least one position"):
         label_rows(ax, [], [["a group spanning them all"]])
+
+
+def test_the_baseline_rules_take_a_weight_and_colour_and_default_to_the_house_ones() -> None:
+    """A project re-implemented `baseline` to set its rule's weight. The defaults are the house
+    values, so every existing call draws the same rule."""
+    import matplotlib.colors as mcolors
+
+    from ogviz.layout.frame import baseline, zero_baseline
+    from ogviz.theme import MUTED_INK
+
+    fig, (house, own, zero) = plt.subplots(1, 3)
+    baseline(house)
+    assert house.spines["bottom"].get_linewidth() == 1.2
+    assert mcolors.same_color(house.spines["bottom"].get_edgecolor(), MUTED_INK)
+    baseline(own, linewidth=2.0, color="#123456")
+    assert own.spines["bottom"].get_linewidth() == 2.0
+    assert mcolors.same_color(own.spines["bottom"].get_edgecolor(), "#123456")
+    zero_baseline(zero, linewidth=0.8, color="#654321")
+    rule = zero.lines[-1]
+    assert rule.get_linewidth() == 0.8
+    assert mcolors.same_color(rule.get_color(), "#654321")
+    plt.close(fig)
