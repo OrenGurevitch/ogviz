@@ -189,6 +189,24 @@ def _sharing_the_value_axis(ax: Axes) -> list[Axes]:
     return list(group.get_siblings(ax))
 
 
+def _on_one_scale(fig: Figure, ax: Axes) -> list[Axes]:
+    """Every visible panel this one is deliberately on one value scale with, itself included.
+
+    Two ways onto one scale, and both count: matplotlib's own `sharey=True`, and this package's
+    `shared_scale` tag, which `share_value_limits` and `coupling_panels` set on panels whose limits
+    they made equal without linking the axes. Each check that asks "does anything on this scale use
+    the room" has to ask it of the same group, or one forgives a shared grid the other refuses.
+    """
+    group = [other for other in _sharing_the_value_axis(ax) if other.get_visible()]
+    if marked(ax, "shared_scale"):
+        group += [
+            other
+            for other in fig.axes
+            if other not in group and other.get_visible() and _same_scale(other, ax)
+        ]
+    return group
+
+
 def _data_reach(ax: Axes) -> float | None:
     """The highest value any mark reaches, or None where the panel draws no marks."""
     extent = drawn_value_extent(ax, orientation=orientation_of(ax))
@@ -211,14 +229,12 @@ def ticks_in_the_headroom(fig: Figure) -> list[str]:
             # No stack, so nothing is being held open. A scatter with a top margin is ordinary
             # breathing room, not reserved space, and ticks in it are the axis doing its job.
             continue
-        # Across everything sharing this y axis, not just this panel. Two panels deliberately on
-        # ONE scale — a blocks panel beside its condition averages, so the two stay comparable —
-        # have a tick that is real on the left and above every mark on the right, and a per-axes
-        # reach reported the right one for a tick the shared scale requires. The check survives:
-        # a tick above ALL the shared data is still in the headroom.
-        reaches = [
-            _data_reach(sibling) for sibling in _sharing_the_value_axis(ax) if sibling.get_visible()
-        ]
+        # Across everything on this panel's scale — linked or tagged — not just this panel. Two
+        # panels deliberately on ONE scale — a blocks panel beside its condition averages, so the
+        # two stay comparable — have a tick that is real on the left and above every mark on the
+        # right, and a per-axes reach reported the right one for a tick the shared scale requires.
+        # The check survives: a tick above ALL the shared data is still in the headroom.
+        reaches = [_data_reach(sibling) for sibling in _on_one_scale(fig, ax)]
         measured = [value for value in reaches if value is not None]
         if not measured:
             continue
@@ -443,9 +459,7 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
         # Two ways onto one scale, and both count. The tag is how this package says it; matplotlib's
         # own `sharey=True` is how everything else does, and reading the tag alone told the short
         # panel of a plain shared grid to tighten a limit it cannot move without un-sharing it.
-        group = [other for other in _sharing_the_value_axis(ax) if other.get_visible()]
-        if marked(ax, "shared_scale"):
-            group += [other for other in fig.axes if _same_scale(other, ax)]
+        group = _on_one_scale(fig, ax)
         tops = (_highest_drawn(other) for other in group)
         reach = max([own_reach, *(top for top in tops if top is not None)])
         # IN PIXELS, because the share is a claim about how much of the PANEL is empty. In data

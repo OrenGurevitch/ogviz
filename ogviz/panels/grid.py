@@ -21,7 +21,7 @@ from ogviz.layout import drawn_value_extent
 from ogviz.orientation import is_vertical, value_limits
 from ogviz.require import require
 from ogviz.tags import mark, marked
-from ogviz.units import px_to_value
+from ogviz.units import px_to_value, value_to_px
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -69,9 +69,11 @@ def share_value_limits(
     # Measured on each panel's OWN scale, before anything moves: how much room it fitted above its
     # bracket stack. Only consulted if aligning carries a stack past the shared top.
     clearances = [(ax, _clearance_above_stack(ax, orientation)) for ax in panels]
+    floor_room = _room_below_the_marks(panels, orientation)
     for ax in panels:
         value_limits(ax, orientation)(low, high)
         mark(ax, "shared_scale", len(panels))
+    low = _hold_the_room_below(panels, floor_room, low, high, orientation=orientation)
     # Both ends of the panel. A shared scale that leaves the brackets at six heights and the
     # printed means at six others is a shared scale in name only.
     #
@@ -86,6 +88,78 @@ def share_value_limits(
     if label_edge:
         label_shared_scale_once(panels, orientation=orientation)
     return low, high
+
+
+def _room_below_the_marks(panels: list[Axes], orientation: Orientation) -> float | None:
+    """The most room, in PIXELS, any panel left between its lowest mark and its floor.
+
+    Only for a grid that prints means, because the room is the mean row's: each panel sized it for
+    its own row on its own scale. None where no panel prints means, so a grid without a row keeps
+    exactly the limits it had.
+    """
+    if not any(marked(text, "mean_row") for ax in panels for text in ax.texts):
+        return None
+    figure = panels[0].get_figure(root=True)
+    if figure is not None:
+        figure.canvas.draw()
+    rooms = []
+    for ax in panels:
+        extent = drawn_value_extent(ax, orientation=orientation)
+        if extent is None:
+            continue
+        floor = (ax.get_ylim() if is_vertical(orientation) else ax.get_xlim())[0]
+        rooms.append(
+            abs(
+                value_to_px(ax, extent[0], orientation=orientation)
+                - value_to_px(ax, floor, orientation=orientation)
+            )
+        )
+    return max(rooms) if rooms else None
+
+
+def _hold_the_room_below(
+    panels: list[Axes],
+    room: float | None,
+    low: float,
+    high: float,
+    *,
+    orientation: Orientation,
+) -> float:
+    """Lower the shared floor until the grid's lowest mark keeps the room its row was sized for.
+
+    Each panel set its margin below the data as a fraction of its OWN span. Sharing a scale widens
+    the span — a panel of low values beside one of high values triples it — and the margin shrinks
+    in pixels by the same factor, so the printed mean that fitted under each violin was squeezed
+    onto the dots and refused by the gate. The room is held in pixels, which is what the row needs.
+
+    Lowered and re-measured, because moving the floor rescales the axis: a few rounds settle it.
+    A grid whose room already holds is returned untouched.
+    """
+    if room is None:
+        return low
+    extents = [drawn_value_extent(ax, orientation=orientation) for ax in panels]
+    lowest = min((extent[0] for extent in extents if extent is not None), default=None)
+    if lowest is None:
+        return low
+    reference = panels[0]
+    for _attempt in range(8):
+        have = abs(
+            value_to_px(reference, lowest, orientation=orientation)
+            - value_to_px(reference, low, orientation=orientation)
+        )
+        if have >= room - 0.5:
+            return low
+        per_px = (high - low) / max(
+            abs(
+                value_to_px(reference, high, orientation=orientation)
+                - value_to_px(reference, low, orientation=orientation)
+            ),
+            1e-9,
+        )
+        low -= (room - have) * per_px
+        for ax in panels:
+            value_limits(ax, orientation)(low, high)
+    return low
 
 
 def _stack_reach(ax: Axes, orientation: Orientation) -> float | None:

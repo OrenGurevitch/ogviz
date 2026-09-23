@@ -396,5 +396,68 @@ def test_aligning_a_tall_stack_keeps_it_under_the_shared_ceiling() -> None:
     share_value_limits([low, high])
     ceiling = low.get_ylim()[1]
     assert high.get_ylim()[1] == ceiling
+    # A float's width of tolerance: a stack given no room above its star's box ends ON the ceiling,
+    # and the two agree to the last bit or one past it depending on the order of the arithmetic.
+    tolerance = 1e-9 * (ceiling - low.get_ylim()[0])
     for ax in (low, high):
-        assert reach(ax) <= ceiling, "every bracket and star stays inside the shared axis"
+        assert reach(ax) <= ceiling + tolerance, "every bracket and star stays inside the axis"
+
+
+def _low_beside_high():
+    import numpy as np
+
+    from ogviz import group_violins
+
+    rng = np.random.default_rng(0)
+    fig, (low, high) = plt.subplots(1, 2, figsize=(10.0, 5.0))
+    for ax, shift in ((low, 0.0), (high, 8.0)):
+        group_violins(
+            ax,
+            [
+                (0.0, rng.normal(shift, 1.0, 30), "#E8A838", "#B97C10"),
+                (1.0, rng.normal(shift + 0.5, 1.0, 30), "#7C9A6E", "#4A6136"),
+            ],
+            comparisons=[(0.0, 1.0, 0.01)],
+        )
+    return fig, low, high
+
+
+def test_a_shared_scale_of_low_and_high_panels_passes_its_own_gate() -> None:
+    """Two refusals on the commonest shared grid there is, a panel of low values beside a high one.
+
+    Each panel sized the room under its data for its own mean row, as a fraction of its own span;
+    sharing tripled the span and squeezed the low panel's row onto its dots. And the ticks the high
+    panel's data needs were reported as climbing into the low panel's bracket headroom, because that
+    check knew matplotlib's `sharey` and not this package's shared-scale tag. The premise is
+    asserted: each panel passes on its own scale.
+    """
+    from ogviz import share_value_limits
+    from ogviz.qc import audit
+
+    fig, low, high = _low_beside_high()
+    fig.canvas.draw()
+    assert not audit(fig), "premise: each panel is clean on its own scale"
+    share_value_limits([low, high])
+    fig.canvas.draw()
+    assert not audit(fig)
+    plt.close(fig)
+
+
+def test_the_headroom_check_reads_a_tagged_shared_scale_as_one_scale() -> None:
+    """The tag is how this package says two panels are on one scale without linking the axes.
+
+    The premise: with the tag taken off, the same limits ARE reported, so the clean result is the
+    check reading the tag and not limits that happen to pass.
+    """
+    from ogviz import share_value_limits
+    from ogviz.qc import ticks_in_the_headroom
+    from ogviz.tags import mark
+
+    fig, low, high = _low_beside_high()
+    share_value_limits([low, high])
+    fig.canvas.draw()
+    assert not ticks_in_the_headroom(fig)
+    for ax in (low, high):
+        mark(ax, "shared_scale", None)
+    assert ticks_in_the_headroom(fig), "premise: untagged, the low panel's ticks are reported"
+    plt.close(fig)
