@@ -12,6 +12,7 @@ import warnings
 from typing import TYPE_CHECKING, Literal
 
 from ogviz import units
+from ogviz.layout.titles import axes_titles
 from ogviz.require import require
 from ogviz.tags import mark, marked
 from ogviz.theme import INK, MUTED_INK, SUBTITLE_SIZE, TITLE_SIZE
@@ -234,7 +235,7 @@ def _pin_top(fig: Figure, header_bottom: float, gap: float) -> None:
     fig.canvas.draw()
     figure_px = fig.get_figheight() * fig.dpi
     titles_px = max(
-        (float(ax.title.get_window_extent().height) for ax in fig.axes if ax.get_title().strip()),
+        (float(text.get_window_extent().height) for ax in fig.axes for text in axes_titles(ax)),
         default=0.0,
     )
     reserved = titles_px / figure_px * TITLE_CLEARANCE

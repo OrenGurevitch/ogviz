@@ -515,3 +515,97 @@ def metric_grid(seed: int = 21) -> dict[str, tuple[np.ndarray, np.ndarray, bool,
         best = int(np.argmin(values) if lower_is_better else np.argmax(values))
         grid[name] = (values, spread, lower_is_better, best)
     return grid
+
+
+# The benchmark template: five invented methods scored on eight invented metrics. The first three
+# belong to one group and the last two to another, and the first of them is an ensemble of the
+# next two, which is the shape the template exists to draw.
+BENCHMARK_ARMS = ("Ensemble", "Method A", "Method B", "Baseline 1", "Baseline 2")
+BENCHMARK_GROUPS = ("ours", "ours", "ours", "baselines", "baselines")
+# (metric, lower is better, large panel). The first two are the headline metrics.
+BENCHMARK_METRICS: tuple[tuple[str, bool, bool], ...] = (
+    ("Overlap", False, True),
+    ("Detection", False, True),
+    ("Recall", False, False),
+    ("Precision", False, False),
+    ("Volume error", True, False),
+    ("Stability", False, False),
+    ("Agreement", False, False),
+    ("Boundary (mm)", True, False),
+)
+
+
+def benchmark_scores(seed: int = 5) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    """Per metric, the five methods' scores and the half-width of an interval on each.
+
+    Invented, with a tie on purpose: on Overlap the ensemble and the first baseline are not
+    separated, so both lead, and on Boundary the first baseline leads outright. A template whose
+    every panel crowns the same bar would not show what the leader marking is for.
+    """
+    rng = np.random.default_rng(seed)
+    scores = {
+        "Overlap": (0.790, 0.771, 0.762, 0.787, 0.738),
+        "Detection": (0.741, 0.703, 0.692, 0.681, 0.617),
+        "Recall": (0.712, 0.701, 0.662, 0.644, 0.581),
+        "Precision": (0.801, 0.779, 0.812, 0.769, 0.742),
+        "Volume error": (0.212, 0.241, 0.263, 0.231, 0.312),
+        "Stability": (0.722, 0.731, 0.713, 0.702, 0.661),
+        "Agreement": (0.832, 0.801, 0.791, 0.812, 0.721),
+        "Boundary (mm)": (4.62, 5.14, 5.38, 4.41, 8.93),
+    }
+    out: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    for name, _lower, _large in BENCHMARK_METRICS:
+        values = np.array(scores[name], dtype=float)
+        out[name] = (values, values * rng.uniform(0.012, 0.03, values.size))
+    return out
+
+
+# The condition-bars template: four invented measures under three conditions.
+CONDITIONS = ("Baseline", "Task A", "Task B")
+
+
+def condition_measures() -> dict[str, dict[str, object]]:
+    """Four invented measures: per-condition means and intervals, and a p-value per contrast.
+
+    `events` has no spread in the baseline condition (nobody produced one), so that bar has NO
+    interval, which the panel must draw as no whisker rather than as a whisker of length zero.
+    `reported` is a percentage of participants, so its interval is asymmetric and its axis is
+    bounded at 100.
+    """
+    n = 24
+    out: dict[str, dict[str, object]] = {}
+    rates = np.array([6.1, 8.4, 11.7])
+    out["rate"] = {
+        "means": rates,
+        "lower": rates * 0.12,
+        "upper": rates * 0.12,
+        "p": (0.21, 0.0004, 0.012),
+    }
+    strict = np.array([2.2, 3.9, 5.6])
+    out["strict"] = {
+        "means": strict,
+        "lower": strict * 0.15,
+        "upper": strict * 0.15,
+        "p": (0.06, 0.003, 0.0009),
+    }
+    events = np.array([0.0, 1.4, 3.2])
+    out["events"] = {
+        "means": events,
+        "lower": np.array([np.nan, 0.5, 0.8]),
+        "upper": np.array([np.nan, 0.5, 0.8]),
+        "p": (0.002, 0.04, 0.0003),
+    }
+    yes = np.array([4, 11, 18])
+    share = 100.0 * yes / n
+    # Wilson interval: stays inside 0-100 and is not symmetric about the share, as the data are not.
+    z = 1.96
+    p = yes / n
+    centre = (p + z**2 / (2 * n)) / (1 + z**2 / n)
+    half = z * np.sqrt(p * (1 - p) / n + z**2 / (4 * n**2)) / (1 + z**2 / n)
+    out["reported"] = {
+        "means": share,
+        "lower": share - 100.0 * (centre - half),
+        "upper": 100.0 * (centre + half) - share,
+        "p": (0.03, 0.0002, 0.04),
+    }
+    return out

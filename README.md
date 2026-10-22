@@ -117,6 +117,25 @@ so one can be asked for by name — 3E, 1C.
 </tr>
 </table>
 
+### 6 · Templates
+
+Two layouts that three projects reached on their own. Each is a few calls, and each plate below is
+built from invented numbers by `examples/__main__.py`, which is the specification.
+
+![](examples/out/19_bar_template.png)
+
+<sub><b>6A</b> <code>featured_grid</code> and <code>benchmark_panel</code>: two headline metrics over six more,
+every method in every panel. A method keeps its hue; the leader, and any bar tied with it by the rule you pass,
+is full strength and outlined; the rest are the same hue faded. Groups sit on named bands, and an ensemble
+is striped in its two members' colours. Value labels print last, once the limits are final.</sub>
+
+![](examples/out/20_condition_bars.png)
+
+<sub><b>6B</b> a 2×2 of bars over conditions: left-aligned titles that <code>fit_titles</code> sizes as a set,
+a bar with no interval drawn with no whisker, ticks that stop where the data does (<code>ceiling_ticks</code>,
+<code>scale_ticks</code>), and brackets for the contrasts that clear. <code>assert_printed</code> checks that the numbers
+on the canvas are the ones formatted from your results table.</sub>
+
 ## The QC gate
 
 Plate 6, at the top of this page, is the gate at work.
@@ -190,6 +209,9 @@ ogviz
 │   │   ├── caption(...) -> ...
 │   │   ├── longest_unbreakable(text: str, size: float) -> float
 │   │   └── overflowing_text(fig: Figure) -> list[str]
+│   ├── ceilings
+│   │   ├── ceiling_ticks(high: float, *, bins: int) -> list[float]
+│   │   └── scale_ticks(ceiling: float, *, max_ticks: int) -> list[float]
 │   ├── collision
 │   │   ├── MarkCloud(*args, **kwargs)
 │   │   ├── PanelMarks(*args, **kwargs)
@@ -276,6 +298,10 @@ ogviz
 │   │   ├── settle_corner_tick(ax: Axes) -> bool
 │   │   ├── typeset(text: str) -> str
 │   │   └── value_ticks(...) -> ...
+│   ├── titles
+│   │   ├── axes_titles(ax: Axes) -> list[Text]
+│   │   ├── fit_titles(...) -> ...
+│   │   └── title_text(ax: Axes) -> str
 │   └── write
 │       ├── plain_filename(name: str) -> str
 │       ├── reproducible_metadata(path: Path) -> dict[str, None] | None
@@ -313,6 +339,17 @@ ogviz
 │   │   ├── default_value_format(values: NDArray[np.float64]) -> str
 │   │   ├── rounded_free_end(fraction: float, *, along: "Literal[x, y]")
 │   │   └── value_labels(...) -> ...
+│   ├── benchmark
+│   │   ├── Arm(label: str, color: str, group: str | None, second_color: str | None) -> None
+│   │   ├── Benchmark(...) -> ...
+│   │   ├── benchmark_panel(...) -> ...
+│   │   ├── featured_grid(...) -> ...
+│   │   ├── group_bands(...) -> ...
+│   │   ├── group_positions(groups: Sequence[str | None], *, gap: float) -> list[float]
+│   │   ├── leaders(...) -> ...
+│   │   ├── mark_leaders(...) -> ...
+│   │   ├── panel_letters(axes: Sequence[Axes], *, size: float, letters: str) -> None
+│   │   └── stripe_bars(ax: Axes, stripes: Mapping[int, str], *, bands: int) -> None
 │   ├── coupling
 │   │   ├── Cloud(...) -> ...
 │   │   ├── Estimate(...) -> ...
@@ -393,6 +430,9 @@ ogviz
 │   ├── marks
 │   │   ├── buried_baselines(fig: Figure) -> list[str]
 │   │   └── dots_off_the_marks(fig: Figure) -> list[str]
+│   ├── printed
+│   │   ├── assert_printed(fig: Figure, expected: Iterable[str]) -> None
+│   │   └── unprinted(fig: Figure, expected: Iterable[str]) -> list[str]
 │   ├── reading
 │   │   ├── artist_name(artist) -> str
 │   │   ├── bracket_spans_px(ax: Axes) -> list[tuple[float, float, float]]

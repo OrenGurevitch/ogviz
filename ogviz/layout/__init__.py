@@ -15,6 +15,8 @@ passing through.
   ink         overlap decided on rendered pixels
   density     how much of the page is unused
   ticks       round numbers, and values in their display unit
+  ceilings    ticks for an axis that ends at a ceiling
+  titles      panel titles sized as a set
   panels      a row of panels with a reserved caption row
   bounds      text that leaves the canvas or reaches across its neighbour
   stacking    labels sharing a column, placed without overlap
@@ -24,6 +26,7 @@ passing through.
 
 from ogviz.layout.axis import drawn_value_extent, ticks_over_data
 from ogviz.layout.caption import caption, overflowing_text
+from ogviz.layout.ceilings import ceiling_ticks, scale_ticks
 from ogviz.layout.collision import (
     annotate_clear,
     clear_position,
@@ -60,6 +63,7 @@ from ogviz.layout.panels import (
 )
 from ogviz.layout.stacking import place_end_labels, stack_without_overlap
 from ogviz.layout.ticks import auto_decimals, format_value, round_ticks, value_ticks
+from ogviz.layout.titles import fit_titles
 from ogviz.layout.write import reproducible_metadata, save
 
 __all__ = [
@@ -70,11 +74,13 @@ __all__ = [
     "auto_decimals",
     "baseline",
     "caption",
+    "ceiling_ticks",
     "clear_position",
     "clipped_artists",
     "dead_space",
     "drawn_value_extent",
     "figure_margins",
+    "fit_titles",
     "fit_under_header",
     "format_value",
     "grid_warnings",
@@ -96,6 +102,7 @@ __all__ = [
     "round_ticks",
     "rows_that_fit",
     "save",
+    "scale_ticks",
     "settle_header",
     "stack_without_overlap",
     "text_over_data",

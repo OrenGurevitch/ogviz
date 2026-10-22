@@ -50,6 +50,7 @@ from ogviz.qc.arrangement import (
 from ogviz.qc.color import legend_colors, series_confusable_under_cvd
 from ogviz.qc.ink import colliding_ink, drawn_but_invisible
 from ogviz.qc.marks import buried_baselines, dots_off_the_marks
+from ogviz.qc.printed import assert_printed, unprinted
 from ogviz.qc.reading import (
     GAP_TOLERANCE_PX,
     artist_name,
@@ -76,6 +77,7 @@ __all__ = [
     "THOROUGH_CHECKS",
     "artist_name",
     "assert_clean",
+    "assert_printed",
     "audit",
     "bracket_tops_px",
     "buried_baselines",
@@ -111,6 +113,7 @@ __all__ = [
     "ticks_in_the_headroom",
     "type_too_small",
     "ungrouped_thousands",
+    "unprinted",
     "unused_value_headroom",
     "value_label_off_its_marks",
 ]

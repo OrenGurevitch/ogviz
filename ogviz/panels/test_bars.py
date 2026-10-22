@@ -477,3 +477,16 @@ def test_value_labels_take_a_size_and_weight_and_default_to_the_house_ones() -> 
     assert [t.get_fontsize() for t in own.texts] == [8.0, 8.0]
     assert [t.get_fontweight() for t in own.texts] == ["normal", "normal"]
     plt.close(fig)
+
+
+def test_a_nan_interval_means_no_interval_and_the_label_still_prints_above_the_bar():
+    """A condition with no spread has no SEM. The label went to a NaN height and vanished while the
+    gate reported a clean figure; the premise below is that the value really is NaN."""
+    fig, ax = plt.subplots()
+    errors = np.array([[0.2, 0.3, np.nan], [0.2, 0.3, np.nan]])
+    assert np.isnan(errors[:, 2]).all()
+    bar_panel(ax, [Series("s", [1.0, 2.0, 0.5], SERIES[0], errors)], ["a", "b", "c"], rounded=True)
+    positions = {t.get_text(): t.get_position()[1] for t in ax.texts}
+    assert all(np.isfinite(height) for height in positions.values()), positions
+    assert positions["0.50"] > 0.5, "straight above its own bar"
+    fig.canvas.draw()

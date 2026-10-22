@@ -399,7 +399,10 @@ def value_labels(
         picked = {emphasis} if isinstance(emphasis, int) else set(emphasis)
     low_limit, high_limit = value_span(ax, orientation)
     span = float(high_limit - low_limit)
-    caps = _error_pairs(values, errors)
+    # A NaN interval means "no interval for this bar" (a condition with no spread has no SEM), and
+    # the label then sits straight above the bar. Left as NaN it put the label at a NaN height: the
+    # text was created, drawn nowhere, and the gate reported a clean figure.
+    caps = np.nan_to_num(_error_pairs(values, errors), nan=0.0)
     upright = is_vertical(orientation)
     if value_format is None:
         value_format = default_value_format(values)

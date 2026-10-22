@@ -15,6 +15,7 @@ from ogviz.layout.axis import drawn_value_extent
 from ogviz.layout.bounds import panel_prefix
 from ogviz.layout.collision import quoted
 from ogviz.layout.render import ensure_rendered
+from ogviz.layout.titles import axes_titles
 from ogviz.qc.reading import (
     bracket_tops_px,
     orientation_of,
@@ -290,7 +291,7 @@ def header_crowds_the_panels(fig: Figure, *, floor: float = CROWDED_HEADER_PX) -
     ensure_rendered(fig)
     header = _visible(fig.texts)
     panel = _visible([text for ax in fig.axes for text in ax.texts])
-    panel += [ax.title for ax in fig.axes if ax.get_title().strip()]
+    panel += [text for ax in fig.axes for text in axes_titles(ax)]
     if not header or not panel:
         return []
     lowest = min(text.get_window_extent().y0 for text in header)

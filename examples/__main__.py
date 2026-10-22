@@ -24,16 +24,20 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Rectangle
+from matplotlib.colors import to_hex
 from matplotlib.ticker import FixedLocator, FuncFormatter, LogLocator, NullFormatter
 from scipy.stats import t as t_distribution
 
 from examples.data import (
     ARM_LABELS,
+    BENCHMARK_ARMS,
+    BENCHMARK_GROUPS,
+    BENCHMARK_METRICS,
     BENDING_LEVELS,
     BLOCKS,
     COHORT,
     CONDITION_TINTS,
+    CONDITIONS,
     CONTROL,
     CONTROL_EDGE,
     DOMAINS,
@@ -46,8 +50,10 @@ from examples.data import (
     SYSTEMS,
     TREATED,
     TREATED_EDGE,
+    benchmark_scores,
     bending_by_nation,
     concentration_ppm,
+    condition_measures,
     correlation_with_interval,
     coupled_variables,
     domain_profile,
@@ -65,6 +71,8 @@ from ogviz import (
     INK,
     MUTED_INK,
     PANEL_FILL,
+    SERIES,
+    Arm,
     Cell,
     Cloud,
     Estimate,
@@ -73,24 +81,34 @@ from ogviz import (
     Row,
     Series,
     Strand,
+    align_ticks,
     bar_panel,
     baseline,
+    benchmark_panel,
+    bracket_stack,
     broken_zero,
     caption,
+    ceiling_ticks,
     coupling_panels,
     effect_heatmap,
     error_bars,
+    featured_grid,
+    fit_titles,
     fit_under_header,
+    format_value,
     group_violins,
     hairline_grid,
     identity_colors,
     label_rows,
     legend_pill,
     line_panel,
+    mark_leaders,
     page_color,
+    panel_letters,
     reference_line,
     reproducible_metadata,
     save,
+    scale_ticks,
     series_colors,
     slopegraph,
     spectrogram,
@@ -495,7 +513,7 @@ def metric_grid_figure() -> None:
             emphasis=best,  # the value label half of the marking, which the panel already does
             value_format="{:.3f}" if values.max() < 2.0 else "{:.2f}",
         )
-        _mark_the_leader(ax, best, count=len(SYSTEMS), label_size=label_size)
+        mark_leaders(ax, {best}, label_size=label_size)
         # The title wraps rather than shrinks, because unlike a system name it has spaces in it:
         # "Boundary (mm) — lower better" ran 70 px past its panel under the pinned font.
         ax.set_title(
@@ -536,32 +554,151 @@ def metric_grid_figure() -> None:
     render(fig, "09_metric_grid")
 
 
-def _mark_the_leader(ax, best: int, *, count: int, label_size: float) -> None:
-    """Outline the leading bar, and set its name and its interval in ink while the rest stay muted.
+def bar_template() -> None:
+    """The benchmark template: two headline metrics large, six small, every method in every panel.
 
-    `bar_panel`'s `emphasis` already does the VALUE, so this is the rest of the same signal. Reached
-    for through the drawn artists rather than added to `bar_panel` as arguments: this is one
-    figure's convention for saying "this one", and a panel that grew a knob per decoration would be
-    a figure's style sheet wearing a function's clothes.
+    WHAT THE TEMPLATE DECIDES SO A PROJECT DOES NOT. Each method keeps its hue in every panel; in a
+    panel the leader is drawn at full strength and outlined, and everything else is the same hue
+    faded toward the page. A TIE LEADS TOGETHER, because two bars whose intervals do not separate
+    them should not be told apart by a 0.003 difference. The methods sit in two groups on tinted
+    bands, each band named, so "ours" and "the baselines" read as two sets without a legend. The
+    ensemble is striped in its two members' colours, so it reads as the two combined.
+
+    THE LEADER IS COMPUTED, never passed in. `benchmark_panel` works it out from the values, the
+    metric's direction and `tied`, so the marking cannot come to disagree with the bars, and it
+    would disagree silently, because a saturated bar looks deliberate whichever one it is.
+
+    THE VALUE LABELS ARE PRINTED LAST, after the limits are final, because each label's height is
+    measured from them. The six bounded metrics share a 0 to 1 scale; the two errors do not, since
+    one scale across all eight would flatten six panels to show the seventh.
     """
-    bars = [patch for patch in ax.patches if isinstance(patch, Rectangle) and patch.get_width()]
-    if best < len(bars):
-        bars[best].set_edgecolor(INK)
-        bars[best].set_linewidth(2.0)
-    for index, label in enumerate(ax.get_xticklabels()):
-        label.set_fontweight("bold" if index == best else "normal")
-        label.set_color(INK if index == best else MUTED_INK)
-        label.set_fontsize(label_size)
-    # The whiskers live in one LineCollection across every bar, so the colour is set per segment.
-    shades = [INK if index == best else MUTED_INK for index in range(count)]
-    for container in ax.containers:
-        parts = getattr(container, "lines", None)
-        if not parts or len(parts) < 3:
-            continue
-        for collection in parts[2]:
-            collection.set_colors(shades)
-        for cap, shade in zip(parts[1], [s for s in shades for _ in (0, 1)], strict=False):
-            cap.set_color(shade)
+    scores = benchmark_scores()
+    blue, amber, green, _orange, purple = SERIES
+    arms = [
+        Arm("Ensemble\nA + B", green, "ours", second_color=blue),
+        Arm("Method\nA", green, "ours"),
+        Arm("Method\nB", blue, "ours"),
+        Arm("Baseline\n1", amber, "baselines"),
+        Arm("Baseline\n2", purple, "baselines"),
+    ]
+    assert tuple(arm.group for arm in arms) == BENCHMARK_GROUPS
+    assert tuple(arm.label.replace("\n", " ") for arm in arms[1:]) == BENCHMARK_ARMS[1:]
+    short = ["Ensemble", "A", "B", "Base 1", "Base 2"]
+    bands = {
+        "ours": to_hex(tint(blue, strength=0.90)),
+        "baselines": to_hex(tint(amber, strength=0.88)),
+    }
+    band_names = {"ours": ("Our methods", "Ours"), "baselines": ("Baselines", "Base")}
+    fig, large, small = featured_grid(size=(17.0, 12.4))
+    panels = [*large, *small]
+    drawn = []
+    for ax, (name, lower, big) in zip(panels, BENCHMARK_METRICS, strict=True):
+        values, spread = scores[name]
+
+        def tied(best: int, other: int, values=values, spread=spread) -> bool:
+            # Stands in for a paired interval over the same cases, which a real project computes.
+            return abs(values[best] - values[other]) <= (spread[best] + spread[other]) / 2
+
+        drawn.append(
+            benchmark_panel(
+                ax,
+                arms,
+                values,
+                spread,
+                lower_is_better=lower,
+                tied=tied,
+                labels=None if big else short,
+                group_colors=bands,
+                group_names=band_names if big else None,
+                value_format="{:.2f}",
+            )
+        )
+        top = float((values + spread).max())
+        ax.set_ylim(0.0, 1.0 if not lower else top * 1.18)
+        ax.set_title(name, fontsize=20 if big else 13, fontweight="bold", pad=8)
+        ax.tick_params(axis="x", length=0, labelsize=14 if big else 10)
+        ax.tick_params(axis="y", labelsize=13 if big else 9.5)
+        if big or ax in small[3:]:
+            ax.set_xlabel("Method", fontsize=15 if big else 10.5, fontweight="bold", labelpad=6)
+    bounded = [
+        ax for ax, (_n, lower, _b) in zip(panels, BENCHMARK_METRICS, strict=True) if not lower
+    ]
+    align_ticks(bounded)
+    for ax, (_n, _lower, big), result in zip(panels, BENCHMARK_METRICS, drawn, strict=True):
+        result.label(ax, fontsize=14 if big else 9.5, lead_fontsize=15 if big else 10.0)
+    header_bottom = titled(
+        fig,
+        "The benchmark template",
+        subtitle="invented scores, 95% intervals; the leader and any tie are outlined",
+    )
+    fit_under_header(fig, header_bottom, bottom=0.0)
+    panel_letters(panels)
+    render(fig, "19_bar_template")
+
+
+def condition_bars() -> None:
+    """Four measures under three conditions: bars, intervals where they exist, brackets that clear.
+
+    THE FIGURE DRAWS THE TABLE'S NUMBERS and computes none of its own: the means, the intervals and
+    the p-values come in already worked out, and a project asserts them against the results table
+    it prints before it draws (`assert_printed` checks the other direction, that the strings on the
+    canvas are the ones formatted from it).
+
+    A BAR WITH NO INTERVAL GETS NO WHISKER. In the events panel nobody produced an event in the
+    baseline, so that condition has no spread; the interval is NaN and nothing is drawn, where a
+    whisker of length zero would read as a measured certainty. The percentage panel is bounded at
+    100 and its interval is asymmetric, so its axis is `scale_ticks(100)` and every other panel's
+    ticks stop at the first one that covers the data (`ceiling_ticks`), so nothing floats above the
+    last labelled tick and the room held open for the brackets stays unlabelled.
+
+    TITLES SHRINK AS A SET. `fit_titles` finds the largest size at which every title fits its own
+    panel and refuses, naming the title, if none does.
+    """
+    measures = condition_measures()
+    panels = (
+        ("rate", "Rate per minute", "events per minute"),
+        ("strict", "Rate, strict threshold", "events per minute"),
+        ("events", "Events, counted live", "events counted"),
+        ("reported", "Reported afterwards", "% of participants"),
+    )
+    fig, axes = plt.subplots(
+        2, 2, figsize=(14.0, 10.5), gridspec_kw={"wspace": 0.22, "hspace": 0.34}
+    )
+    contrasts = ((0, 1), (1, 2), (0, 2))
+    for ax, letter, (key, title, ylabel) in zip(axes.flat, "ABCD", panels, strict=True):
+        data = measures[key]
+        means = np.asarray(data["means"], dtype=float)
+        below = np.asarray(data["lower"], dtype=float)
+        above = np.asarray(data["upper"], dtype=float)
+        bar_panel(
+            ax,
+            [Series(title, means, list(CONDITION_TINTS), np.vstack([below, above]))],
+            list(CONDITIONS),
+            value_format="{:.0f}" if key == "reported" else "{:.1f}",
+            rounded=True,
+        )
+        reach = float(np.nanmax(means + np.nan_to_num(above)))
+        ticks = scale_ticks(100.0) if key == "reported" else ceiling_ticks(reach)
+        top = max(reach, ticks[-1])
+        ax.set_ylim(-0.04 * top, top * 1.25)
+        cleared = [(a, b, p) for (a, b), p in zip(contrasts, data["p"], strict=True) if p < 0.05]  # type: ignore[arg-type]
+        star_top = bracket_stack(ax, cleared, start=top * 1.1, span=top, fontsize=22)
+        ax.set_ylim(-0.04 * top, max(star_top + 0.04 * top, top * 1.25))
+        ax.set_yticks(ticks, [format_value(t) for t in ticks])
+        ax.spines["bottom"].set_position(("data", 0))
+        ax.spines["left"].set_bounds(0, ax.get_ylim()[1])
+        ax.set_ylabel(ylabel, fontsize=16, fontweight="bold")
+        ax.set_title(f"{letter}   {title}", loc="left", fontsize=19, fontweight="bold", pad=12)
+        ax.tick_params(axis="x", labelsize=17, length=0)
+        ax.tick_params(axis="y", labelsize=15)
+    fit_titles(fig, list(axes.flat), largest=19.0, smallest=14.0)
+    header_bottom = titled(
+        fig,
+        "Four measures, three conditions",
+        subtitle="invented numbers; whiskers are 95% intervals, brackets mark contrasts that clear",
+    )
+    fit_under_header(fig, header_bottom, bottom=0.0)
+    render(fig, "20_condition_bars")
 
 
 def coupling_triangle() -> None:
@@ -1262,6 +1399,8 @@ EXAMPLES = (
     bars_with_reference,
     grouped_bars,
     metric_grid_figure,
+    bar_template,
+    condition_bars,
     horizontal,
     # Relationships over a continuous axis: one panel of series, then the composite built from them.
     effort_curves,

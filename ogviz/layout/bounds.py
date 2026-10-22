@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 from ogviz.layout.collision import quoted
 from ogviz.layout.frame import is_color_scale
 from ogviz.layout.render import ensure_rendered
+from ogviz.layout.titles import axes_titles, title_text
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -63,7 +64,7 @@ def panel_text(ax: Axes, *, ticks: bool = False, legend: bool = False) -> Iterat
     """
     from ogviz.layout.overlap import drawn_tick_labels
 
-    yield ax.title
+    yield from axes_titles(ax)
     yield ax.xaxis.label
     yield ax.yaxis.label
     yield from ax.texts
@@ -135,7 +136,7 @@ def panel_prefix(fig: Figure, ax: Axes) -> str:
     gets a sentence either way, rather than an orphaned `": "` on the figures where there is
     nothing to say.
     """
-    title = ax.get_title().strip()
+    title = title_text(ax)
     if title:
         return f"panel {quoted(title)!r}: "
     if len(fig.axes) == 1:
@@ -164,8 +165,8 @@ def _panel_name(fig: Figure, ax: Axes, text: Text) -> str:
     Neither is an INDEX used on a single-panel figure. "panel 0 of 1 (in reading order)" is three
     facts a reader already has and one — "of 1" — that says the identification was never in doubt.
     """
-    title = ax.get_title().strip()
-    if title and text is not ax.title:
+    title = title_text(ax)
+    if title and text not in axes_titles(ax):
         return f"its panel ({quoted(title)!r})"
     if len(fig.axes) == 1:
         return "its panel"
