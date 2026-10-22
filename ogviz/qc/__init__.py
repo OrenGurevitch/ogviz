@@ -38,6 +38,7 @@ from ogviz.layout.overlap import (
 from ogviz.layout.panels import grid_warnings
 from ogviz.layout.render import ensure_rendered, one_render
 from ogviz.qc.arrangement import (
+    category_axis_untitled,
     header_crowds_the_panels,
     layout_not_applied,
     mean_rows_unaligned,
@@ -81,6 +82,7 @@ __all__ = [
     "audit",
     "bracket_tops_px",
     "buried_baselines",
+    "category_axis_untitled",
     "clipped_artists",
     "colliding_ink",
     "dots_off_the_marks",
@@ -149,7 +151,12 @@ THOROUGH_CHECKS = (drawn_but_invisible,)
 
 # Never fail a build. `guard(advise=True)` runs them and `--list-checks` names them; before this
 # tuple existed the guard listed the three by hand and the CLI could not name them at all.
-ADVISORY_CHECKS = (dead_space, type_too_small, header_crowds_the_panels)
+ADVISORY_CHECKS = (
+    dead_space,
+    type_too_small,
+    header_crowds_the_panels,
+    category_axis_untitled,
+)
 
 
 def _run(check: Callable[..., list[str]], fig: Figure, **settings: float) -> list[str]:

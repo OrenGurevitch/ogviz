@@ -16,6 +16,7 @@ passing through.
   density     how much of the page is unused
   ticks       round numbers, and values in their display unit
   ceilings    ticks for an axis that ends at a ceiling
+  axis_text   the type of a bar panel's axes, and its category axis title
   titles      panel titles sized as a set
   panels      a row of panels with a reserved caption row
   bounds      text that leaves the canvas or reaches across its neighbour
@@ -25,6 +26,13 @@ passing through.
 """
 
 from ogviz.layout.axis import drawn_value_extent, ticks_over_data
+from ogviz.layout.axis_text import (
+    LARGE_AXIS_TEXT,
+    SMALL_AXIS_TEXT,
+    TEMPLATE_AXIS_TEXT,
+    AxisText,
+    style_axis_text,
+)
 from ogviz.layout.caption import caption, overflowing_text
 from ogviz.layout.ceilings import ceiling_ticks, scale_ticks
 from ogviz.layout.collision import (
@@ -67,6 +75,10 @@ from ogviz.layout.titles import fit_titles
 from ogviz.layout.write import reproducible_metadata, save
 
 __all__ = [
+    "LARGE_AXIS_TEXT",
+    "SMALL_AXIS_TEXT",
+    "TEMPLATE_AXIS_TEXT",
+    "AxisText",
     "Margins",
     "annotate_clear",
     "assert_no_text_overlap",
@@ -105,6 +117,7 @@ __all__ = [
     "scale_ticks",
     "settle_header",
     "stack_without_overlap",
+    "style_axis_text",
     "text_over_data",
     "text_overlaps",
     "text_width_points",

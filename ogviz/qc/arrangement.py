@@ -16,6 +16,7 @@ from ogviz.layout.bounds import panel_prefix
 from ogviz.layout.collision import quoted
 from ogviz.layout.render import ensure_rendered
 from ogviz.layout.titles import axes_titles
+from ogviz.orientation import is_vertical, read_orientation
 from ogviz.qc.reading import (
     bracket_tops_px,
     orientation_of,
@@ -487,3 +488,63 @@ def unused_value_headroom(fig: Figure, *, floor: float = EMPTY_HEADROOM) -> list
             "the room to something (a bracket stack, a reference level)"
         )
     return complaints
+
+
+def _title_can_be_shared(fig: Figure, ax: Axes, *, upright: bool) -> bool:
+    """Whether another panel sits where this one's category axis title would be shared.
+
+    A grid titles its bottom row only: under the top row the title ran into the panel titles below
+    it (measured at -87 px on a two-row template). So a panel is excused when another visible panel
+    overlaps it across and lies beyond its category axis, below an upright one and left of a
+    horizontal one.
+    """
+    here = ax.get_position()
+    for other in fig.axes:
+        if other is ax or not other.get_visible():
+            continue
+        there = other.get_position()
+        if upright:
+            across = min(here.x1, there.x1) - max(here.x0, there.x0) > 0
+            beyond = there.y1 <= here.y0 + 1e-6
+        else:
+            across = min(here.y1, there.y1) - max(here.y0, there.y0) > 0
+            beyond = there.x1 <= here.x0 + 1e-6
+        if across and beyond:
+            return True
+    return False
+
+
+def category_axis_untitled(fig: Figure) -> list[str]:
+    """A bar or violin panel whose names sit on an axis that has no title.
+
+    Under the bars the reader sees "Ensemble", "A", "B" and has to guess whether those are methods,
+    folds or sites. One project shipped a family of bar figures this way and then had to add the
+    title to every one: the request was "add x axis titles in all the figures", twice, and each
+    figure had passed every other check. The title is the caller's words, so the package can only
+    say there is none; `style_axis_text` sets it, bold and at a size that reads.
+
+    A grid is asked for one title per column, on the bottom row, because a title under the top row
+    runs into the panel titles beneath it. Only panels a drawing function marked with an
+    orientation are read, so a scatter or an image is never asked for one.
+
+    Advisory: whether a figure needs the title is the author's call on a figure with an obvious
+    category (a plate whose panel title already says "by system"), so a build does not fail on it.
+    """
+    ensure_rendered(fig)
+    out: list[str] = []
+    for ax in fig.axes:
+        orientation = read_orientation(ax)
+        if orientation is None or not ax.get_visible():
+            continue
+        upright = is_vertical(orientation)
+        axis = ax.xaxis if upright else ax.yaxis
+        names = [t for t in axis.get_ticklabels() if t.get_visible() and t.get_text().strip()]
+        if not names or axis.label.get_text().strip():
+            continue
+        if _title_can_be_shared(fig, ax, upright=upright):
+            continue
+        out.append(
+            f"{panel_prefix(fig, ax)}the {'x' if upright else 'y'} axis carries category names "
+            'and no title; set one with `style_axis_text(ax, "Method")`'
+        )
+    return out

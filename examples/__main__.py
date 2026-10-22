@@ -69,9 +69,12 @@ from examples.data import (
 )
 from ogviz import (
     INK,
+    LARGE_AXIS_TEXT,
     MUTED_INK,
     PANEL_FILL,
     SERIES,
+    SMALL_AXIS_TEXT,
+    TEMPLATE_AXIS_TEXT,
     Arm,
     Cell,
     Cloud,
@@ -113,6 +116,7 @@ from ogviz import (
     slopegraph,
     spectrogram,
     split_violins,
+    style_axis_text,
     table_panel,
     ticks_over_data,
     tint,
@@ -176,11 +180,15 @@ def _significant(tests, seat) -> list[tuple[float, float, float]]:
 
 
 def _ticks(ax, data: dict[str, np.ndarray], count: int = 2) -> None:
+    """The group names, large and bold, and the title that says what they are groups of."""
     ax.set_xticks(range(count))
     ax.set_xticklabels(
-        [f"Control\nn={len(data['control'])}", f"Treated\nn={len(data['treated'])}"], fontsize=15
+        [f"Control\nn={len(data['control'])}", f"Treated\nn={len(data['treated'])}"],
+        fontsize=LARGE_AXIS_TEXT.category_tick,
+        fontweight="bold",
     )
     ax.tick_params(axis="x", length=0)
+    style_axis_text(ax, "Group", text=LARGE_AXIS_TEXT, ticks=False)
     baseline(ax)
 
 
@@ -352,6 +360,7 @@ def grouped_bars() -> None:
         list(DOMAINS),
     )
     ax.set_ylabel("Domain score (z)", fontsize=17, fontweight="bold")
+    style_axis_text(ax, "Domain", text=LARGE_AXIS_TEXT)
     zero_baseline(ax)
     legend_pill(ax, loc="upper left", ncol=2)
     header_bottom = titled(
@@ -375,6 +384,7 @@ def bars_with_reference() -> None:
         reference_side="right",
     )
     ax.set_ylabel("Expected goals per match", fontsize=17, fontweight="bold")
+    style_axis_text(ax, "Formation", text=LARGE_AXIS_TEXT)
     ax.set_ylim(0, 2.15)
     header_bottom = titled(
         fig,
@@ -400,7 +410,8 @@ def horizontal() -> None:
         left, _groups(skewed_groups()), comparisons=[(0.0, 1.0, 0.004)], orientation="horizontal"
     )
     left.set_yticks([0, 1])
-    left.set_yticklabels(["Control", "Treated"], fontsize=15)
+    left.set_yticklabels(["Control", "Treated"], fontweight="bold")
+    style_axis_text(left, "Group")
     left.set_xlabel("Measurement (units)", fontsize=16, fontweight="bold")
     bar_panel(
         right,
@@ -415,6 +426,7 @@ def horizontal() -> None:
     # labels are. Without the margin they touch, and the QC gate says so.
     right.set_xlim(right.get_xlim()[0] * 1.45, right.get_xlim()[1])
     right.set_xlabel("Domain score (z)", fontsize=16, fontweight="bold")
+    style_axis_text(right, "Domain")
     right.axvline(0.0, color=INK, lw=2.0, zorder=4)  # the same value, said by name
     right.legend(loc="lower right", frameon=False, bbox_to_anchor=(1.0, -0.26), ncol=2)
     titled(fig, "Laid on their side", subtitle="orientation='horizontal' on any mark or panel")
@@ -436,6 +448,7 @@ def split_violin_pair() -> None:
         mean_decimals=1,
     )
     ax.set_ylabel("Interval (ms)", fontsize=17, fontweight="bold")
+    style_axis_text(ax, "Block", text=LARGE_AXIS_TEXT)
     baseline(ax)
     header_bottom = titled(
         fig,
@@ -542,6 +555,10 @@ def metric_grid_figure() -> None:
             ax.spines[side].set_color(INK)
             ax.spines[side].set_linewidth(0.9)
         zero_baseline(ax)
+    # One title per column, on the bottom row: under the top row it would run into the panel titles
+    # below. The tick labels keep the size `_size_that_fits` measured for them.
+    for ax in axes[-1]:
+        style_axis_text(ax, "System", ticks=False)
     header_bottom = titled(
         fig,
         "Every metric, one panel each",
@@ -616,10 +633,13 @@ def bar_template() -> None:
         top = float((values + spread).max())
         ax.set_ylim(0.0, 1.0 if not lower else top * 1.18)
         ax.set_title(name, fontsize=20 if big else 13, fontweight="bold", pad=8)
-        ax.tick_params(axis="x", length=0, labelsize=14 if big else 10)
-        ax.tick_params(axis="y", labelsize=13 if big else 9.5)
-        if big or ax in small[3:]:
-            ax.set_xlabel("Method", fontsize=15 if big else 10.5, fontweight="bold", labelpad=6)
+        ax.tick_params(axis="x", length=0)
+        titled_here = big or ax in small[3:]
+        style_axis_text(
+            ax,
+            "Method" if titled_here else None,
+            text=TEMPLATE_AXIS_TEXT if big else SMALL_AXIS_TEXT,
+        )
     bounded = [
         ax for ax, (_n, lower, _b) in zip(panels, BENCHMARK_METRICS, strict=True) if not lower
     ]
@@ -689,8 +709,8 @@ def condition_bars() -> None:
         ax.spines["left"].set_bounds(0, ax.get_ylim()[1])
         ax.set_ylabel(ylabel, fontsize=16, fontweight="bold")
         ax.set_title(f"{letter}   {title}", loc="left", fontsize=19, fontweight="bold", pad=12)
-        ax.tick_params(axis="x", labelsize=17, length=0)
-        ax.tick_params(axis="y", labelsize=15)
+        ax.tick_params(axis="x", length=0)
+        style_axis_text(ax, "Condition" if ax in axes[-1] else None, text=LARGE_AXIS_TEXT)
     fit_titles(fig, list(axes.flat), largest=19.0, smallest=14.0)
     header_bottom = titled(
         fig,
@@ -1183,6 +1203,10 @@ def violin_grid() -> None:
             mean_decimals=2,
         )
         ax.set_title(name, fontsize=17, fontweight="bold", pad=14)
+        for label in ax.get_xticklabels():
+            label.set_fontweight("bold")
+    for ax in axes[-1]:
+        style_axis_text(ax, "Training level", ticks=False)
     for ax in axes[:, 0]:
         ax.set_ylabel("Bending strength (arbitrary)", fontsize=16, fontweight="bold", labelpad=8)
     header_bottom = titled(
@@ -1377,6 +1401,10 @@ def violin_grid_tall() -> None:
         ticks_over_data(ax)
         ax.set_title(title, fontsize=16, fontweight="bold", pad=12)
         ax.set_ylabel(unit, fontsize=14, labelpad=8)
+        for label in ax.get_xticklabels():
+            label.set_fontweight("bold")
+    for ax in axes[-1]:
+        style_axis_text(ax, "Stage of the road", ticks=False)
     header_bottom = titled(
         fig,
         "One company, six measures, three stages of the road",

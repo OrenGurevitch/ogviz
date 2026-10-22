@@ -198,6 +198,9 @@ ogviz
 │   │   ├── marks_span_px(ax: Axes, *, along: int) -> tuple[float, float] | None
 │   │   ├── settle_axis_labels(fig: Figure, *, drift: float) -> list[str]
 │   │   └── ticks_over_data(...) -> ...
+│   ├── axis_text
+│   │   ├── AxisText(category_tick: float, value_tick: float, category_title: float) -> None
+│   │   └── style_axis_text(...) -> ...
 │   ├── bounds
 │   │   ├── figure_levels(fig: Figure | SubFigure) -> list[Figure | SubFigure]
 │   │   ├── figure_text(...) -> ...
@@ -413,6 +416,7 @@ ogviz
 │   ├── __main__
 │   │   └── main(argv: Sequence[str] | None) -> int
 │   ├── arrangement
+│   │   ├── category_axis_untitled(fig: Figure) -> list[str]
 │   │   ├── header_crowds_the_panels(fig: Figure, *, floor: float) -> list[str]
 │   │   ├── layout_not_applied(fig: Figure) -> list[str]
 │   │   ├── mean_rows_unaligned(fig: Figure) -> list[str]
