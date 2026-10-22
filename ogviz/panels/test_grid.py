@@ -420,6 +420,7 @@ def _low_beside_high():
             comparisons=[(0.0, 1.0, 0.01)],
         )
         ax.set_xlabel("Group")
+    fig.subplots_adjust(bottom=0.16)  # room for the title in the wider of the two fonts
     return fig, low, high
 
 
