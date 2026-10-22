@@ -1184,7 +1184,6 @@ def violin_grid() -> None:
             # all three and a reader can follow one bender from novice to master.
             point_colors=[subject] * len(BENDING_LEVELS),
             outline_violins=True,
-            violin_kwargs={"alpha": 0.28},
             # The rim is the page rather than a darker tint: at this dot size a dark rim is under a
             # pixel wide, so it antialiases into a grey halo and the cloud reads as smudged instead
             # of as separate dots. A page-coloured rim separates them without darkening them.
@@ -1387,7 +1386,6 @@ def violin_grid_tall() -> None:
             bracket_kwargs={"fontsize": GRID_STAR_SIZE},
             point_colors=[subject] * len(STAGES_OF_THE_ROAD),
             outline_violins=True,
-            violin_kwargs={"alpha": 0.28},
             point_kwargs={"edge_width": 0.5, "size": 26.0},
             categories=list(STAGES_OF_THE_ROAD),
             category_fontsize=14,

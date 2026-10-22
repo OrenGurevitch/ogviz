@@ -62,10 +62,12 @@ Z_MEDIAN_DOT = 8
 # consume this package converged on these values independently of it, one porting the other whole
 # after matching them by hand did not work; they are the defaults here so nobody ports them again.
 VIOLIN_WIDTH = 0.8
-# Paler than the 0.35 this was, because the body is now wider: the same alpha over a third more area
-# reads as the claim rather than as the texture, and the violin is meant to be the shape the dots
-# sit in.
-VIOLIN_ALPHA = 0.28
+# 0.46, up from 0.28. At 0.28 a body is 72% page, so a muted hue washes out and no choice of colour
+# fixes it: a project that consumes this package kept 0.28 for a while, found its figures too pale
+# to read, and moved to 0.46 with darker group colours; the poster-scale violins that followed read
+# well. The body stays under the dots and well under the mean line, so the stronger fill costs the
+# marks nothing, and the gate's colour-vision check reads the fill colour, which has not moved.
+VIOLIN_ALPHA = 0.46
 POINT_SIZE = 30
 POINT_ALPHA = 0.85
 POINT_EDGE_WIDTH = 0.8

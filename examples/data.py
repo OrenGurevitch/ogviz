@@ -18,10 +18,12 @@ from __future__ import annotations
 import numpy as np
 
 # Two groups with an intrinsic meaning, so the example passes colours in the way a project does.
-TREATED = "#7C9A6E"
-TREATED_EDGE = "#4A6136"
-CONTROL = "#E8A838"
-CONTROL_EDGE = "#B97C10"
+# ogviz's own series green and amber, each with an edge 28% darker, so the body reads as a colour
+# and not as a tint at the default fill strength.
+TREATED = "#14A97C"
+TREATED_EDGE = "#0E7A59"
+CONTROL = "#EFA607"
+CONTROL_EDGE = "#AC7805"
 
 # THREE conditions — amber, blue, green — for the two condition grids. Saturated rather than pastel
 # and drawn at a low alpha, so the body is pale but its outline is not: the dots sit ON the body,
