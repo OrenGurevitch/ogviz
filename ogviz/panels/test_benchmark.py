@@ -81,6 +81,8 @@ def _panel(values, *, lower: bool = False, tied=None):
         tied=tied,
         value_format="{:.2f}",
     )
+    ax.set_xlabel("Method")
+    fig.subplots_adjust(bottom=0.2)
     return fig, ax, drawn
 
 

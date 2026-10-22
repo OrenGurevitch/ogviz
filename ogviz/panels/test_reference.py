@@ -28,6 +28,8 @@ pytestmark = pytest.mark.usefixtures("pinned_font")
 def _bars():
     fig, ax = plt.subplots(figsize=(7.0, 5.0))
     bar_panel(ax, [Series("arm", np.array([0.62, 0.71, 0.78]), "#7C9A6E")], ["A", "B", "C"])
+    ax.set_xlabel("Arm")
+    fig.subplots_adjust(bottom=0.16)
     return fig, ax
 
 

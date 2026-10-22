@@ -29,6 +29,7 @@ def _pair(categories=("sensor A", "sensor B"), seed: int = 0):
     right = [rng.normal(10.4, 1.0, 40) for _ in categories]
     fig, ax = plt.subplots(figsize=(7.0, 6.0))
     split_violins(ax, list(categories), left, right, **COLORS)
+    ax.set_xlabel("Sensor")
     fig.canvas.draw()
     return fig, ax
 

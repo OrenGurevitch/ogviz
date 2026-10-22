@@ -145,18 +145,14 @@ CHECKS = (
     one_minus_sign,
     ungrouped_thousands,
     grid_warnings,
+    category_axis_untitled,
 )
 
 THOROUGH_CHECKS = (drawn_but_invisible,)
 
 # Never fail a build. `guard(advise=True)` runs them and `--list-checks` names them; before this
 # tuple existed the guard listed the three by hand and the CLI could not name them at all.
-ADVISORY_CHECKS = (
-    dead_space,
-    type_too_small,
-    header_crowds_the_panels,
-    category_axis_untitled,
-)
+ADVISORY_CHECKS = (dead_space, type_too_small, header_crowds_the_panels)
 
 
 def _run(check: Callable[..., list[str]], fig: Figure, **settings: float) -> list[str]:

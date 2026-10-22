@@ -112,6 +112,7 @@ def test_a_correct_panel_says_nothing() -> None:
     group_violins(ax, _three_groups(), comparisons=[(0.0, 1.0, 0.03), (1.0, 2.0, 0.006)])
     ax.set_xticks([0, 1, 2])
     ax.set_xticklabels(["low", "mid", "high"])  # a real panel labels its categories
+    ax.set_xlabel("Level")  # and says what they are levels of
     assert audit(fig) == []
 
 

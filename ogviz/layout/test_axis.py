@@ -177,6 +177,7 @@ def test_a_real_violin_panel_is_settled_by_save() -> None:
     )
     value_ticks(ax, count=4)
     ax.set_ylabel("concentration (ppm)")
+    ax.set_xlabel("Group")
     fig.canvas.draw()
     assert abs(_offset(ax)) > 8.0, "the premise: a bracket stack pushes the label off its ticks"
 

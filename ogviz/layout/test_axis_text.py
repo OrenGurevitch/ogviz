@@ -61,3 +61,15 @@ def test_a_panel_nothing_stamped_is_never_asked_for_a_category_title() -> None:
     ax.plot([0, 1], [0, 1])
     fig.canvas.draw()
     assert category_axis_untitled(fig) == []
+
+
+def test_the_gate_refuses_to_write_a_bar_panel_whose_names_have_no_title() -> None:
+    """Gating, not advice: `assert_clean` raises, and a one-word title is enough to pass."""
+    from ogviz import assert_clean
+
+    fig, ax = plt.subplots()
+    _bars(ax)
+    with pytest.raises(AssertionError, match="category names and no title"):
+        assert_clean(fig)
+    style_axis_text(ax, "Method")
+    assert_clean(fig)

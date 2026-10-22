@@ -11,7 +11,7 @@ instead of writing. Colours, p-values and units stay yours.
 
 ![A bar chart the gate refused, beside the complaints it raised](examples/out/13_the_gate.png)
 
-<sub><b>6</b> a figure it refused, and why — every word on the right comes from <code>audit</code></sub>
+<sub><b>0</b> a figure it refused, and why — every word on the right comes from <code>audit</code></sub>
 
 ```bash
 uv add "ogviz @ git+https://github.com/OrenGurevitch/ogviz"
@@ -51,34 +51,48 @@ the measurement behind it. Requires Python ≥ 3.12 and matplotlib ≥ 3.10.
 
 `uv run just figures` renders these from invented data with fixed seeds. The source,
 `examples/__main__.py`, is the specification rather than an illustration. Each panel is labelled,
-so one can be asked for by name — 3E, 1C.
+so one can be asked for by name — 1B, 2D.
 
-### 1 · Distributions
+### 1 · Bar templates
+
+The layouts I build bar figures from. Each is a few calls, and each plate is drawn from invented
+numbers by `examples/__main__.py`, which is the specification.
+
+![](examples/out/19_bar_template.png)
+
+<sub><b>1A</b> <code>featured_grid</code> and <code>benchmark_panel</code>: two headline metrics over six more,
+every method in every panel. A method keeps its hue; the leader, and any bar tied with it by the rule you pass,
+is full strength and outlined; the rest are the same hue faded. Groups sit on named bands, and an ensemble
+is striped in its two members' colours. Value labels print last, once the limits are final.</sub>
+
+![](examples/out/20_condition_bars.png)
+
+<sub><b>1B</b> a 2×2 of bars over conditions: left-aligned titles that <code>fit_titles</code> sizes as a set,
+a bar with no interval drawn with no whisker, ticks that stop where the data does (<code>ceiling_ticks</code>,
+<code>scale_ticks</code>), and brackets for the contrasts that clear. <code>assert_printed</code> checks that the numbers
+on the canvas are the ones formatted from your results table.</sub>
+
+![](examples/out/09_metric_grid.png)
+
+<sub><b>1C</b> a metric grid: one panel per metric, the same systems in the same hue in each</sub>
+
+### 2 · Violins
 
 <table>
 <tr>
-<td width="43%"><img src="examples/out/01_two_group_violin.png" width="100%"><br><sub><b>1A</b> <code>group_violins</code></sub></td>
-<td width="57%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub><b>1B</b> four panels, each on its own scale</sub></td>
+<td width="43%"><img src="examples/out/01_two_group_violin.png" width="100%"><br><sub><b>2A</b> <code>group_violins</code></sub></td>
+<td width="57%"><img src="examples/out/03_violin_grid.png" width="100%"><br><sub><b>2B</b> four panels, each on its own scale</sub></td>
 </tr>
 <tr>
-<td width="48%" rowspan="2"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub><b>1C</b> a condition grid</sub></td>
-<td width="52%"><img src="examples/out/02_display_units.png" width="100%"><br><sub><b>1D</b> <code>display_scale</code></sub></td>
+<td width="48%" rowspan="2"><img src="examples/out/04_violin_grid_tall.png" width="100%"><br><sub><b>2C</b> a condition grid</sub></td>
+<td width="52%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><b>2D</b> <code>split_violins</code></sub></td>
 </tr>
 <tr>
-<td width="52%"><img src="examples/out/05_split_violins.png" width="100%"><br><sub><b>1E</b> <code>split_violins</code></sub></td>
+<td width="52%"><img src="examples/out/02_display_units.png" width="100%"><br><sub><b>2E</b> <code>display_scale</code></sub></td>
 </tr>
 </table>
 
-### 2 · Spectra
-
-<table>
-<tr>
-<td width="46%"><img src="examples/out/06_power_spectrum.png" width="100%"><br><sub><b>2A</b> a power spectrum</sub></td>
-<td width="54%"><img src="examples/out/18_stft_spectrogram.png" width="100%"><br><sub><b>2B</b> <code>spectrogram</code></sub></td>
-</tr>
-</table>
-
-### 3 · Bars
+### 3 · Other bars
 
 <table>
 <tr>
@@ -91,60 +105,46 @@ so one can be asked for by name — 3E, 1C.
 </tr>
 </table>
 
-![](examples/out/09_metric_grid.png)
-
-<sub><b>3E</b> a metric grid</sub>
-
-### 4 · Curves, coupling and change
+### 4 · Spectra
 
 <table>
 <tr>
-<td width="55%"><img src="examples/out/11_effort_curves.png" width="100%"><br><sub><b>4A</b> <code>line_panel</code></sub></td>
-<td width="45%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><b>4B</b> <code>slopegraph</code></sub></td>
-</tr>
-<tr>
-<td colspan="2"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><b>4C</b> <code>coupling_panels</code>; its lower half is <code>estimate_strip</code>, which works standalone</sub></td>
+<td width="46%"><img src="examples/out/06_power_spectrum.png" width="100%"><br><sub><b>4A</b> a power spectrum</sub></td>
+<td width="54%"><img src="examples/out/18_stft_spectrogram.png" width="100%"><br><sub><b>4B</b> <code>spectrogram</code></sub></td>
 </tr>
 </table>
 
-### 5 · Matrices and tables
+### 5 · Curves, coupling and change
 
 <table>
 <tr>
-<td width="46%"><img src="examples/out/14_effect_heatmap.png" width="100%"><br><sub><b>5A</b> <code>effect_heatmap</code></sub></td>
-<td width="54%"><img src="examples/out/16_comparison_table.png" width="100%"><br><sub><b>5B</b> <code>table_panel</code></sub></td>
+<td width="55%"><img src="examples/out/11_effort_curves.png" width="100%"><br><sub><b>5A</b> <code>line_panel</code></sub></td>
+<td width="45%"><img src="examples/out/15_slopegraph.png" width="100%"><br><sub><b>5B</b> <code>slopegraph</code></sub></td>
+</tr>
+<tr>
+<td colspan="2"><img src="examples/out/12_coupling_panels.png" width="100%"><br><sub><b>5C</b> <code>coupling_panels</code>; its lower half is <code>estimate_strip</code>, which works standalone</sub></td>
 </tr>
 </table>
 
-### 6 · Templates
+### 6 · Matrices and tables
 
-Two layouts that three projects reached on their own. Each is a few calls, and each plate below is
-built from invented numbers by `examples/__main__.py`, which is the specification.
-
-![](examples/out/19_bar_template.png)
-
-<sub><b>6A</b> <code>featured_grid</code> and <code>benchmark_panel</code>: two headline metrics over six more,
-every method in every panel. A method keeps its hue; the leader, and any bar tied with it by the rule you pass,
-is full strength and outlined; the rest are the same hue faded. Groups sit on named bands, and an ensemble
-is striped in its two members' colours. Value labels print last, once the limits are final.</sub>
-
-![](examples/out/20_condition_bars.png)
-
-<sub><b>6B</b> a 2×2 of bars over conditions: left-aligned titles that <code>fit_titles</code> sizes as a set,
-a bar with no interval drawn with no whisker, ticks that stop where the data does (<code>ceiling_ticks</code>,
-<code>scale_ticks</code>), and brackets for the contrasts that clear. <code>assert_printed</code> checks that the numbers
-on the canvas are the ones formatted from your results table.</sub>
+<table>
+<tr>
+<td width="46%"><img src="examples/out/14_effect_heatmap.png" width="100%"><br><sub><b>6A</b> <code>effect_heatmap</code></sub></td>
+<td width="54%"><img src="examples/out/16_comparison_table.png" width="100%"><br><sub><b>6B</b> <code>table_panel</code></sub></td>
+</tr>
+</table>
 
 ## The QC gate
 
-Plate 6, at the top of this page, is the gate at work.
+Plate 0, at the top of this page, is the gate at work.
 `save` runs it. `guard()` extends it to every `fig.savefig`, whoever called it; `OGVIZ_GUARD=1` does
 the same with no code change. Both also refuse a tofu box — text with no glyph in the resolved font.
 
 It catches colliding text, labels sitting on the marks, an axis title centred on room the data
 never reaches, an axis run so far past the data that nothing uses the space, clipped ink, buried
 spines and thresholds, stars at uneven distances, dots on the mean line, ungrouped thousands, mixed
-minus signs, a grid with an empty slot, and two legend series that merge under colour-vision
+minus signs, a grid with an empty slot, a bar or violin panel whose names have no axis title, and two legend series that merge under colour-vision
 deficiency — among others. `--list-checks` prints the current set.
 
 Where a linter reads a chart specification, these read the RENDERED figure — so they work on any

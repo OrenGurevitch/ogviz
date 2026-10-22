@@ -443,9 +443,12 @@ def split_violin_pair() -> None:
         list(BLOCKS),
         first,
         second,
-        left_color="#C1685C",
-        right_color="#5C8C7A",
+        left_color=SERIES[0],
+        right_color=SERIES[1],
         mean_decimals=1,
+        labels=("Sensor A", "Sensor B"),
+        mean_weight="normal",
+        mean_color=INK,
     )
     ax.set_ylabel("Interval (ms)", fontsize=17, fontweight="bold")
     style_axis_text(ax, "Block", text=LARGE_AXIS_TEXT)
@@ -555,6 +558,7 @@ def metric_grid_figure() -> None:
             ax.spines[side].set_color(INK)
             ax.spines[side].set_linewidth(0.9)
         zero_baseline(ax)
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _position: format_value(value)))
     # One title per column, on the bottom row: under the top row it would run into the panel titles
     # below. The tick labels keep the size `_size_that_fits` measured for them.
     for ax in axes[-1]:
@@ -696,6 +700,8 @@ def condition_bars() -> None:
             list(CONDITIONS),
             value_format="{:.0f}" if key == "reported" else "{:.1f}",
             rounded=True,
+            error_width=2.4,
+            error_capsize=6.0,
         )
         reach = float(np.nanmax(means + np.nan_to_num(above)))
         ticks = scale_ticks(100.0) if key == "reported" else ceiling_ticks(reach)

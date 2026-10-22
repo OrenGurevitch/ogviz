@@ -26,6 +26,8 @@ from ogviz.layout.frame import hairline_grid
 from ogviz.layout.panels import text_width_points
 from ogviz.layout.ticks import groups_its_ticks, typeset
 from ogviz.marks import (
+    ERROR_CAPSIZE,
+    ERROR_LINEWIDTH,
     Z_ERROR,
     _draw_error_bars,
 )
@@ -495,6 +497,8 @@ def bar_panel(
     emphasis: int | tuple[int, int] | None = None,
     rounded: bool = False,
     orientation: Orientation = "vertical",
+    error_width: float = ERROR_LINEWIDTH,
+    error_capsize: float = ERROR_CAPSIZE,
 ) -> None:
     """Draw one or several bar series over shared categories, with sign-aware value labels.
 
@@ -515,6 +519,10 @@ def bar_panel(
 
     `orientation="horizontal"` draws the same panel with the categories down the left, which is
     what a long category name needs — the alternative is rotated tick labels that collide.
+
+    `error_width` and `error_capsize` size the whiskers, in points. The defaults suit a plain panel;
+    a figure printed small, or one whose bars carry a leader outline, wants them heavier so the
+    interval still reads over the bar.
     """
     require(
         series,
@@ -550,6 +558,7 @@ def bar_panel(
             f"emphasis {emphasis} is not a category index of {len(categories)}",
         )
     stamp_orientation(ax, orientation)
+    mark(ax, "category_axis")
     upright = is_vertical(orientation)
     count = len(series)
     centres = (
@@ -603,7 +612,15 @@ def bar_panel(
         else:
             ax.barh(bars_at, values, height=each * 0.92, **shared)  # type: ignore[arg-type]
         if entry.errors is not None:
-            _draw_error_bars(ax, bars_at, values, caps, orientation=orientation)
+            _draw_error_bars(
+                ax,
+                bars_at,
+                values,
+                caps,
+                orientation=orientation,
+                linewidth=error_width,
+                capsize=error_capsize,
+            )
 
     category_ticks(ax, orientation)(centres)
     category_tick_labels(ax, orientation)(list(categories))

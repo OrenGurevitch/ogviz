@@ -419,6 +419,7 @@ def _low_beside_high():
             ],
             comparisons=[(0.0, 1.0, 0.01)],
         )
+        ax.set_xlabel("Group")
     return fig, low, high
 
 

@@ -44,9 +44,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import to_rgb, to_rgba
 from matplotlib.patches import FancyBboxPatch, Polygon, Rectangle
+from matplotlib.ticker import FuncFormatter
 
 from ogviz import units
 from ogviz.layout.render import ensure_rendered
+from ogviz.layout.ticks import format_value
 from ogviz.orientation import read_orientation
 from ogviz.panels.bars import (
     BAR_ALPHA,
@@ -81,6 +83,8 @@ NAME_MARGIN_PX = 6.0  # clear space a band name keeps from each band edge
 Z_BAND = 0.05  # under the gridlines, under everything
 Z_BAND_NAME = 6
 LEADER_OUTLINE = 2.0
+ERROR_WIDTH = 2.4  # whisker weight in points: thick enough to read over a bar and its outline
+ERROR_CAPSIZE = 6.0
 STRIPES = 6  # equal diagonal bands per striped bar, alternating the bar's own colour and the second
 LETTER_SIZE = 22.0
 LETTER_RISE_PT = 10.0  # how far above the axes' top edge a panel letter sits
@@ -496,14 +500,18 @@ def benchmark_panel(
     group_names: Mapping[str, Sequence[str]] | None = None,
     reference_band: tuple[float, float, str] | None = None,
     fade: float = FADE,
+    error_width: float = ERROR_WIDTH,
+    error_capsize: float = ERROR_CAPSIZE,
 ) -> Benchmark:
     """One metric across every arm: bars in each arm's hue, the leaders at full strength.
 
     Draws the bars, the group bands and the ensemble stripes, and marks the leaders. It does NOT
     print the value labels; call `.label(ax)` on the result once the panel's limits are final.
     `labels` overrides the arms' names on the axis, for a small panel where the full name does not
-    fit; the colour still says which arm. `errors` is a length-N array (symmetric) or 2 by N
-    (lower, upper), and a NaN means no interval for that bar.
+    fit; the colour still says which arm. Value ticks read "0" and "1", never "0.0" and "1.0".
+    `errors` is a length-N array (symmetric) or 2 by N (lower, upper), and a NaN means no interval
+    for that bar. The whiskers are heavier than a plain panel's (`error_width`, `error_capsize`),
+    since a leader's outline and a faded fill both compete with a thin one.
     """
     array = np.asarray(values, dtype=float)
     require(len(arms) == array.size, f"{len(arms)} arms for {array.size} values")
@@ -524,6 +532,8 @@ def benchmark_panel(
         rounded=True,
         show_values=False,
         reference_band=reference_band,
+        error_width=error_width,
+        error_capsize=error_capsize,
     )
     centres = np.asarray(positions if positions is not None else range(len(arms)), dtype=float)
     knockouts = [page_color()] * len(arms)
@@ -531,6 +541,7 @@ def benchmark_panel(
         shades = _band_colors(arms, group_colors)
         group_bands(ax, groups, centres, colors=shades, names=group_names)  # type: ignore[arg-type]
         knockouts = [shades[group] for group in groups]  # type: ignore[index]
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _position: format_value(value)))
     mark_leaders(ax, lead)
     seconds = {
         index: arm.second_color if index in lead else tint(arm.second_color, strength=fade)

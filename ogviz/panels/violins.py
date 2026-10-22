@@ -372,6 +372,7 @@ def _finish(ax: Axes, orientation: Orientation, *, grid: bool) -> None:
     limits are supposed to be.
     """
     stamp_orientation(ax, orientation)
+    mark(ax, "category_axis")
     if grid:
         # Drawn by the panel, not by the caller. Every example had to remember `hairline_grid`, and
         # the two grid examples did not — six panels shipped with no rule to read a violin against.

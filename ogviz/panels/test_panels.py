@@ -300,6 +300,7 @@ def test_the_gate_can_be_asked_for_more_breathing_room() -> None:
     groups = [(float(i), rng.normal(i * 0.3, 1.0, 30), "#E8A838", "#B97C10") for i in range(3)]
     fig, ax = plt.subplots(figsize=(8.0, 6.0))
     group_violins(ax, groups, categories=["one", "two", "three"])
+    ax.set_xlabel("Group")
     fig.canvas.draw()
     assert not audit(fig), "clean at the default floor"
     # Its closest pair of labels sits 114 px apart, which is comfortable; a project that demanded
@@ -331,6 +332,7 @@ def test_a_panel_carries_its_project_bracket_typography_into_both_bracket_calls(
             comparisons=[(0.0, 1.0, 1e-4), (1.0, 2.0, 1e-3), (0.0, 2.0, 1e-5)],
             bracket_kwargs={"fontsize": size},
         )
+        ax.set_xlabel("Group")
         fig.canvas.draw()
         return ax.get_ylim()[1], audit(fig)
 

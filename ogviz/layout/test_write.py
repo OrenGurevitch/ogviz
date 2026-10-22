@@ -188,6 +188,8 @@ def test_save_hands_its_settle_adjustments_to_a_caller_who_asks(tmp_path) -> Non
         ],
         comparisons=[(0.0, 1.0, 0.001)],
     )
+    ax.set_xlabel("Group")
+    fig.subplots_adjust(bottom=0.16)  # room for the title, which the default margin does not leave
     # What moves the brackets out from under their labels. `ax.margins` cannot do it: this panel
     # set its own limits when it fitted the bracket stack, so autoscaling is off and a margin
     # changes nothing.

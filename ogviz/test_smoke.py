@@ -31,6 +31,7 @@ def test_a_full_two_group_panel_renders_and_saves(tmp_path: Path) -> None:
     ax.set_xticks([0, 1])
     ax.set_xticklabels(["Control\nn=30", "Treated\nn=48"])
     ax.set_ylabel("Composite score (z)")
+    ax.set_xlabel("Group")
     hairline_grid(ax)
     baseline(ax)
     header = titled(fig, "Composite score", subtitle="invented data, two groups")

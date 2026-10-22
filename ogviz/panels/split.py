@@ -132,6 +132,9 @@ def half_marks(
     )
 
 
+LEGEND_HEADROOM = 0.24  # of the value span, held above the marks so the legend sits clear of them
+
+
 @groups_its_ticks
 def split_violins(
     ax: Axes,
@@ -148,12 +151,24 @@ def split_violins(
     bottom_pad: float = 0.28,
     grid: bool = True,
     headroom: float = 0.12,
+    labels: tuple[str, str] | None = None,
+    mean_weight: str = "bold",
+    mean_color: str | None = None,
 ) -> None:
     """A back-to-back pair of half-violins per category, each half with its own marks.
 
     `left` and `right` hold one array per category, in the same order as `categories`; they do not
     have to be the same length as each other, since a paired measurement can drop samples on one
     side.
+
+    `labels` names the two halves, left then right, as a legend in the panel's top-left corner, in
+    headroom it holds open above the marks. A
+    split violin says nothing about which half is which without it: the colour is the only cue, and
+    the printed means repeat it rather than explain it. Left as None, no legend is drawn, since a
+    caller may be naming the halves in a figure-level legend or a caption already.
+
+    `mean_weight` and `mean_color` set the printed means: bold in each half's own colour by
+    default, or any weight and one ink colour for both when the pair should read as one row.
     """
     require(
         len(left) == len(right) == len(categories),
@@ -189,7 +204,8 @@ def split_violins(
     every = np.concatenate([np.asarray(v, dtype=float) for v in (*left, *right)])
     low, high = float(every.min()), float(every.max())
     span = high - low or constant_span(high)
-    ax.set_ylim(low - bottom_pad * span, high + headroom * span)
+    room = max(headroom, LEGEND_HEADROOM) if labels is not None else headroom
+    ax.set_ylim(low - bottom_pad * span, high + room * span)
     ax.set_xlim(-0.5 - width / 2, positions[-1] + 0.5 + width / 2)
 
     for at, values in zip(positions, left, strict=True):
@@ -201,6 +217,7 @@ def split_violins(
 
     ax.set_xticks(positions)
     ax.set_xticklabels(list(categories))
+    mark(ax, "category_axis")
     if show_means:
         _printed_pairs(
             ax,
@@ -212,10 +229,27 @@ def split_violins(
             y=low - bottom_pad * span * 0.5,  # settled exactly by `align_mean_rows` below
             decimals=mean_decimals,
             scale=display_scale,
+            weight=mean_weight,
+            color=mean_color,
         )
         # Same rule as every other panel: midway between the frame and the lowest drawn mark. A
         # fraction chosen here would be a third answer to one question.
         align_mean_rows([ax], floor=ax.get_ylim()[0])
+    if labels is not None:
+        _name_the_halves(ax, labels, (left_color, right_color))
+
+
+def _name_the_halves(ax: Axes, labels: tuple[str, str], colors: tuple[str, str]) -> None:
+    """A two-entry legend, each swatch in its half's colour at the strength the body is drawn."""
+    from matplotlib.patches import Patch
+
+    from ogviz.layout import legend_pill
+
+    handles = [
+        Patch(facecolor=color, edgecolor=color, alpha=VIOLIN_ALPHA, label=label)
+        for label, color in zip(labels, colors, strict=True)
+    ]
+    legend_pill(ax, handles=handles, loc="upper left", ncol=2)
 
 
 def _printed_pairs(
@@ -229,6 +263,8 @@ def _printed_pairs(
     y: float,
     decimals: int | None,
     scale: float,
+    weight: str = "bold",
+    color: str | None = None,
 ) -> None:
     """Both means under each category, each in its own half's colour so neither is ambiguous.
 
@@ -246,7 +282,10 @@ def _printed_pairs(
     size = VALUE_LABEL_SIZE * 0.85
     drawn: list[Text] = []
     for at, low_values, high_values in zip(positions, left, right, strict=True):
-        for side, values, color in ((-1, low_values, left_color), (1, high_values, right_color)):
+        for side, values, half_color in (
+            (-1, low_values, left_color),
+            (1, high_values, right_color),
+        ):
             printed = ax.text(
                 at + side * 0.22,
                 y,
@@ -254,8 +293,8 @@ def _printed_pairs(
                 ha="center",
                 va="center",
                 fontsize=size,
-                fontweight="bold",
-                color=color,
+                fontweight=weight,
+                color=color or half_color,
                 zorder=9,
                 bbox={
                     "facecolor": page_color(),

@@ -524,19 +524,20 @@ def category_axis_untitled(fig: Figure) -> list[str]:
     say there is none; `style_axis_text` sets it, bold and at a size that reads.
 
     A grid is asked for one title per column, on the bottom row, because a title under the top row
-    runs into the panel titles beneath it. Only panels a drawing function marked with an
-    orientation are read, so a scatter or an image is never asked for one.
+    runs into the panel titles beneath it. Only panels a drawing function marked as
+    carrying category names are read (`bar_panel`, the violin panels), so a scatter, an image or a
+    slopegraph is never asked for one.
 
-    Advisory: whether a figure needs the title is the author's call on a figure with an obvious
-    category (a plate whose panel title already says "by system"), so a build does not fail on it.
+    GATING. A figure whose names have no title has shipped more than once, each time to be fixed by
+    hand, and a build that does not refuse it will ship the next one. A panel with nothing to say
+    about its categories can still pass by setting a title of one word.
     """
     ensure_rendered(fig)
     out: list[str] = []
     for ax in fig.axes:
-        orientation = read_orientation(ax)
-        if orientation is None or not ax.get_visible():
+        if not ax.get_visible() or not marked(ax, "category_axis"):
             continue
-        upright = is_vertical(orientation)
+        upright = is_vertical(read_orientation(ax) or "vertical")
         axis = ax.xaxis if upright else ax.yaxis
         names = [t for t in axis.get_ticklabels() if t.get_visible() and t.get_text().strip()]
         if not names or axis.label.get_text().strip():

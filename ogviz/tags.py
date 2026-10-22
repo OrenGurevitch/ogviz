@@ -48,6 +48,9 @@ Tag = Literal[
     # placed around. Recorded because a `tight_layout` afterwards changes what a lane is worth.
     "lane",
     "position",
+    # A panel whose category axis carries names for bars or violins, which must say what they are
+    # names OF. Set by the drawing functions that put names there, and read by the title check.
+    "category_axis",
     # Which way a panel runs, recorded by the panel that was told.
     "orientation",
     # How many panels this one shares a value scale with, set by `share_value_limits`. A panel is
